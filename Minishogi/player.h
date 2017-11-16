@@ -5,7 +5,7 @@
 class Player {
 public :
 	bool Move(int *chessboard,playerboard &board,std::string from, std::string to,int pro,int isWhiteturn) ;
-
+	p1.DoMove(chessboard, pboard, from, to, pro, true);
 
 };
 int ConvertInput(std::string position);

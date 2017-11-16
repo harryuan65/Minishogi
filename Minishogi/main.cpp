@@ -10,7 +10,7 @@ int main()
 	AI a1;
 	Initalize(pboard, chessboard);
 	PrintChessBoard(chessboard);
-	
+	bool turn = true;
 	
 	bool end = false;
 	
@@ -22,6 +22,7 @@ int main()
 		cin >> from >> to >> pro;
 
 		p1.Move(chessboard,pboard,from,to,pro,true);
+		turn != turn;
 
 	}
 	return 0;

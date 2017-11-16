@@ -3,13 +3,13 @@
 
 //輔助用的
 #define hConsole GetStdHandle(STD_OUTPUT_HANDLE)
-void SetColor(int color = 7)
+void SetColor(int color = 7) // 7 is white color
 {
 	SetConsoleTextAttribute(hConsole,color);
 }
 
 
-void Initalize(playerboard &board, int *chessboard)
+void Initalize(playerboard &board, int *chessboard) //init position by c.piece with hex
 {
 	board.w_occupied = WHITE_INIT;
 	board.b_occupied = BLACK_INIT;
@@ -20,7 +20,7 @@ void Initalize(playerboard &board, int *chessboard)
 	board.chesspiece[w_Bishop] = W_BISHOP_INIT;
 	board.chesspiece[w_Rook] = W_ROOK_INIT;
 	board.chesspiece[w_King] = W_KING_INIT;
-	board.chesspiece[w_e_Pawn] = 0;
+	board.chesspiece[w_e_Pawn] = 0; //e for evolution
 	board.chesspiece[w_e_Silver] = 0;
 	board.chesspiece[w_e_Bishop] = 0;
 	board.chesspiece[w_e_Rook] = 0;
@@ -36,9 +36,9 @@ void Initalize(playerboard &board, int *chessboard)
 	board.chesspiece[b_e_Bishop] = 0;
 	board.chesspiece[b_e_Rook] = 0;
 
-	memset(chessboard, BLANK, CHESS_BOARD_SIZE * sizeof(int));
-
-	chessboard[A5] = ROOK | COLOR_BOUND;
+	memset(chessboard, BLANK, CHESS_BOARD_SIZE * sizeof(int)); //initialize memory 
+	// color_bound = change color to black piece
+	chessboard[A5] = ROOK | COLOR_BOUND; 
 	chessboard[A4] = BISHOP | COLOR_BOUND;
 	chessboard[A3] = SILVER | COLOR_BOUND;
 	chessboard[A2] = GOLD | COLOR_BOUND;
@@ -142,7 +142,7 @@ void PrintChessBoard(int *chessboard)
 				printf("%2s", "飛");
 				break;
 			case KING: // white king
-					SetColor(143);//白色字 現在改黑了
+					SetColor(143);//白色字 
 				printf("%2s", "玉");
 				break;
 			case ePAWN: // 9 white e_pawn
@@ -196,7 +196,7 @@ void PrintChessBoard(int *chessboard)
 			case beBISHOP: //28 black e_bishop
 					 SetColor(192);
 				printf("%2s", "馬");
-				SetColor();
+				SetColor(); // init 7
 				break;
 			case beROOK: //29 black e_rook
 					 SetColor(192);
