@@ -1,6 +1,6 @@
+#include"head.h"
 #ifndef _LIBRARY_
 #define _LIBRARY_
-#include "define.h"
 
 /*	player	*/
 enum {
@@ -20,16 +20,16 @@ enum {
 	F5, F4, F3, F2, F1, // R, R, B, B, G
 	G5, G4, G3, G2, G1,	// G, S, S, P, P
 
-						// black_hand
-						H5, H4, H3, H2, H1, // R, R, B, B, G
-						I5, I4, I3, I2, I1	// G, S, S, P, P
+	// black_hand
+	H5, H4, H3, H2, H1, // R, R, B, B, G
+	I5, I4, I3, I2, I1	// G, S, S, P, P
 };
 #define HAND_SIZE  20
 #define BOARD_SIZE 25
 #define CHESS_BOARD_SIZE 45 // 20 + 25
 
 /*	chess	*/
-enum {
+enum {				//Prrrrint usage
 	PROMOTE = 8, BLANK = 0,
 	// 1	   2     3       4     5     6 (pure)
 	PAWN, SILVER, GOLD, BISHOP, ROOK, KING,
@@ -37,6 +37,10 @@ enum {
 	//     9		10	   11       12     13
 	//	1001	  1010	 1011     1100	 1101 (binary) -> ( pure | PROMOTE )
 	ePAWN = 9, eSILVER, eNULL, eBISHOP, eROOK,
+	bPAWN = 17, bSILVER, bGOLD, bBISHOP, bROOK, bKING,
+	bePAWN = 25, beSILVER, 
+	beBISHOP = 28, beROOK,
+
 	CHESS_SIZE = 10
 };
 
@@ -54,12 +58,11 @@ enum ChessName {
 	w_e_Bishop, b_e_Bishop,
 	w_e_Rook, b_e_Rook
 };
-class fighter {
+class playerboard {
 public:
 	U32 w_occupied, b_occupied;
 	U16 black_hand, white_hand;
 	U32 chesspiece[20];
-	U32 b_e_rook;
 };
 
 
