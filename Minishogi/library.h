@@ -4,7 +4,7 @@
 
 /*	player	*/
 enum {
-	TURN_WHITE = 0, TURN_BLACK = 1
+	WHITE = 0, BLACK = 1
 };
 
 /*	board	*/
@@ -29,69 +29,52 @@ enum {
 #define CHESS_BOARD_SIZE 45 // 20 + 25
 
 /*	chess	*/
-enum {				//Print usage
-	PROMOTE = 8, BLANK = 0,
-	// 1	   2     3       4     5     6 (pure)
-	PAWN, SILVER, GOLD, BISHOP, ROOK, KING,
-	// evolution
-	//     9		10	   11       12     13
-	//	1001	  1010	 1011     1100	 1101 (binary) -> ( pure | PROMOTE )
-	ePAWN = 9, eSILVER, eNULL, eBISHOP, eROOK,
-	bPAWN = 17, bSILVER, bGOLD, bBISHOP, bROOK, bKING,
-	bePAWN = 25, beSILVER, 
-	beBISHOP = 28, beROOK,
+enum {				
+	//Print ,identify chess usage
+	PAWN,//0
+	SILVER,//1
+	GOLD,//2
+	BISHOP, //3
+	ROOK,//4
+	KING,//5
+	E_PAWN,//6
+	E_SILVER,//7
+	E_BISHOP,//8
+	E_ROOK,//9
 
-	CHESS_SIZE = 10
+	bPAWN,//10
+	bSILVER,//11
+	bGOLD,//12
+	bBISHOP,//13
+	bROOK,//14
+	bKING,//15
+	b_E_PAWN,//16
+	b_E_SILVER,//17
+	b_E_BISHOP,//18
+	b_E_ROOK,//19
+	BLANK //20
 };
 
 
 /*	bitboard	*/
-enum ChessName {
-	w_Pawn, b_Pawn,		//0 1
-	w_Silver, b_Silver,	//2 3 
-	w_Gold, b_Gold,
-	w_Bishop, b_Bishop,
-	w_Rook, b_Rook,
-	w_King, b_King,
-	w_e_Pawn, b_e_Pawn,
-	w_e_Silver, b_e_Silver,
-	w_e_Bishop, b_e_Bishop,
-	w_e_Rook, b_e_Rook
-};
-class playerboard {
-public:
-	U32 occupied[2];
-	U16 black_hand, white_hand;
-	U32 chesspiece[20];
-};
+/*
+TURN_WHITE 0
+TURN_BLACK 1
+PAWN 0
+SILVER 1
+GOLD 2
+BISHOP 3
+ROOK 4
+KING 5
+E_PAWN 6
+E_SILVER 7
+E_BISHOP 8
+E_ROOK 9
+*/
 
-
-
-/*	generate ordering	*/
-const int move_ordering[CHESS_SIZE] = {
-	eROOK, eBISHOP, ROOK, BISHOP,
-	eSILVER, ePAWN, GOLD, SILVER, PAWN, KING
-};
-
-const int attack_ordering[CHESS_SIZE] = {
-	PAWN, SILVER, GOLD, ePAWN, eSILVER,
-	BISHOP, ROOK, eBISHOP, eROOK, KING
-};
-
-const int white_pce_bias[CHESS_SIZE] = {
-	0,	 2,	 4,	 6,	 8,
-	10,	12,	14,	16,	18
-};
-
-const int black_pce_bias[CHESS_SIZE] = {
-	1,	 3,	 5,	 7,	 9,
-	11,	13,	15,	17,	19
-};
 
 /*	all chess move	*/
 /*	king bit move	*/
-
-//const U32 Move[20][BOARD_SIZE];
 
 
 const U32 king_move[BOARD_SIZE] = {

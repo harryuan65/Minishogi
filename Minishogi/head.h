@@ -8,16 +8,12 @@
 #include <time.h>
 #include <direct.h>
 #include <sstream>
+#include <vector>
 #include "define.h"
 #include "library.h"
-#include "player.h"
-#include "human.h"
-#include "AI.h"
-#include "boardfunctions.h"
+#include "board.h"
 
 
-extern U64 nodes;
-extern double total_branch;
-extern double search_branch;
+
 
 #endif

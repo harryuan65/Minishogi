@@ -5,6 +5,14 @@ typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
 typedef unsigned __int16 U16;
 typedef unsigned __int8   U8;
+/* TURN*/
+#define TURN_WHITE 0
+#define TURN_BLACK 1
+#define BLACKCHESS 0x0a
+
+
+
+
 
 /*	attack	*/
 #define w_king_attack(pos)       (king_move[pos]     & board.occupied[BLACK])
@@ -121,7 +129,7 @@ typedef unsigned __int8   U8;
 #define LIMIT_DEPTH		11
 #define DEPTH_UCHI      3
 #define FIRST           1
-#define COLOR_BOUND       0x10  // 16
+#define COLOR_BOUND       10  // 16->10
 typedef struct line_t 
 {
 	int pv_count;
