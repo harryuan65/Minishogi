@@ -9,18 +9,18 @@ enum {
 
 /*	board	*/
 enum {
-	// board
+	// initialize board
 	A5, A4, A3, A2, A1,
 	B5, B4, B3, B2, B1,
 	C5, C4, C3, C2, C1,
 	D5, D4, D3, D2, D1,
 	E5, E4, E3, E2, E1,
 
-	// white_hand
+	//initialize white_hand
 	F5, F4, F3, F2, F1, // R, R, B, B, G
 	G5, G4, G3, G2, G1,	// G, S, S, P, P
 
-	// black_hand
+	//initialize black_hand
 	H5, H4, H3, H2, H1, // R, R, B, B, G
 	I5, I4, I3, I2, I1	// G, S, S, P, P
 };
