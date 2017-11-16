@@ -142,15 +142,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bitscan.cpp" />
+    <ClCompile Include="boardfunctions.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="player.cpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="AI.h" />
+    <ClInclude Include="bitscan.h" />
+    <ClInclude Include="boardfunctions.h" />
     <ClInclude Include="define.h" />
     <ClInclude Include="head.h" />
     <ClInclude Include="human.h" />
     <ClInclude Include="library.h" />
     <ClInclude Include="player.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -121,7 +121,7 @@ typedef unsigned __int8   U8;
 #define LIMIT_DEPTH		11
 #define DEPTH_UCHI      3
 #define FIRST           1
-
+#define COLOR_BOUND       0x10  // 16
 typedef struct line_t 
 {
 	int pv_count;

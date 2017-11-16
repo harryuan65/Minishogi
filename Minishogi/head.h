@@ -1,14 +1,20 @@
 #ifndef _HEAD_
 #define _HEAD_
 
-#include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <assert.h>
 #include <time.h>
 #include <direct.h>
+#include <sstream>
 #include "define.h"
 #include "library.h"
+#include "player.h"
+#include "human.h"
+#include "AI.h"
+#include "boardfunctions.h"
+using namespace std;
 
 extern U64 nodes;
 extern double total_branch;

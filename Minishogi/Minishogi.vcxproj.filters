@@ -15,28 +15,43 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="bitscan.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="boardfunctions.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+    <ClCompile Include="player.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="player.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="human.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="AI.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="define.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="head.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="library.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>資源檔</Filter>
-    </ClCompile>
+    <ClInclude Include="human.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="head.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="define.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="boardfunctions.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="bitscan.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="AI.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
