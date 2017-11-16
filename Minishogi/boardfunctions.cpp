@@ -1,18 +1,20 @@
 #include"head.h"
 #include<Windows.h>
+using namespace std;
 
+std::string invalid_move = "Invalid Move";
 //輔助用的
 #define hConsole GetStdHandle(STD_OUTPUT_HANDLE)
-void SetColor(int color = 7) // 7 is white color
+void SetColor(int color = 7)
 {
 	SetConsoleTextAttribute(hConsole,color);
 }
 
 
-void Initalize(playerboard &board, int *chessboard) //init position by c.piece with hex
+void Initalize(playerboard &board, int *chessboard)
 {
-	board.w_occupied = WHITE_INIT;
-	board.b_occupied = BLACK_INIT;
+	board.occupied[TURN_WHITE] = WHITE_INIT;
+	board.occupied[TURN_BLACK] = BLACK_INIT;
 
 	board.chesspiece[w_Pawn] = W_PAWN_INIT;
 	board.chesspiece[w_Silver] = W_SILVER_INIT;
@@ -20,7 +22,7 @@ void Initalize(playerboard &board, int *chessboard) //init position by c.piece w
 	board.chesspiece[w_Bishop] = W_BISHOP_INIT;
 	board.chesspiece[w_Rook] = W_ROOK_INIT;
 	board.chesspiece[w_King] = W_KING_INIT;
-	board.chesspiece[w_e_Pawn] = 0; //e for evolution
+	board.chesspiece[w_e_Pawn] = 0;
 	board.chesspiece[w_e_Silver] = 0;
 	board.chesspiece[w_e_Bishop] = 0;
 	board.chesspiece[w_e_Rook] = 0;
@@ -36,9 +38,9 @@ void Initalize(playerboard &board, int *chessboard) //init position by c.piece w
 	board.chesspiece[b_e_Bishop] = 0;
 	board.chesspiece[b_e_Rook] = 0;
 
-	memset(chessboard, BLANK, CHESS_BOARD_SIZE * sizeof(int)); //initialize memory 
-	// color_bound = change color to black piece
-	chessboard[A5] = ROOK | COLOR_BOUND; 
+	memset(chessboard, BLANK, CHESS_BOARD_SIZE * sizeof(int));
+
+	chessboard[A5] = ROOK | COLOR_BOUND;
 	chessboard[A4] = BISHOP | COLOR_BOUND;
 	chessboard[A3] = SILVER | COLOR_BOUND;
 	chessboard[A2] = GOLD | COLOR_BOUND;
@@ -142,7 +144,7 @@ void PrintChessBoard(int *chessboard)
 				printf("%2s", "飛");
 				break;
 			case KING: // white king
-					SetColor(143);//白色字 
+					SetColor(143);//白色字
 				printf("%2s", "玉");
 				break;
 			case ePAWN: // 9 white e_pawn
@@ -196,7 +198,7 @@ void PrintChessBoard(int *chessboard)
 			case beBISHOP: //28 black e_bishop
 					 SetColor(192);
 				printf("%2s", "馬");
-				SetColor(); // init 7
+				SetColor();
 				break;
 			case beROOK: //29 black e_rook
 					 SetColor(192);
@@ -226,5 +228,120 @@ void PrintChessBoard(int *chessboard)
 
 	return;
 }
+int ConvertInput(std::string position) {
+	/*cout << position << " = " <<
+	(int)(5 * (position[0] - 'A'))<<"+"<< (int)('5' - position[1]) <<
+	" = "<< (int)(5 * (position[0] - 'A') + ('5' - position[1] )) << endl;*/
+	return (int)(5 * (position[0] - 'A') + ('5' - position[1]));
+}
+bool Human_DoMove(int *chessboard, playerboard &board, std::string from, std::string to, int pro, int isWhiteturn)
+{
+	if ((pro < 0 || pro>1) ||
+		(from[0] < 'A'&&from[1] > 'F') && (from[1] >= '0'&&from[1] > '9') &&
+		(to[0] < 'A'&&to[1] > 'F') && (to[1] < '0'&&to[1] > '9'))
+	{
+		std::cout << invalid_move + ":bad input\n";
+		return false;
+	}
+	else
+	{
+		int from_pos = ConvertInput(from);
+		int to_pos = ConvertInput(to);
+		if (isWhiteturn)
+		{
+			switch (chessboard[from_pos])
+			{
+			case BLANK:
+				cout << " " << endl;
+				break;
+			case PAWN: // white pawn
+				cout << "步" << endl;
 
+				//cout<<"BitScan(wPawn) = "<<BitScan(&(board.chesspiece[w_Pawn]));
+				//像是BitScan會回傳15
+				break;
+			case SILVER: // white silver
+				cout << "銀" << endl;
+				break;
+			case GOLD: // white gold
+				cout << "金" << endl;
+				break;
+			case BISHOP: // white bishop
+				cout << "角" << endl;
+				break;
+			case ROOK: // white rook
+				cout << "飛" << endl;
+				break;
+			case KING: // white king
+					   //白色字 現在改黑了
+				cout << "玉" << endl;
+				break;
+			case ePAWN: // 9 white e_pawn
+				cout << "ㄈ" << endl;
+				break;
+			case eSILVER: // 10 white e_silver
+				cout << "全" << endl;
+				break;
+			case eBISHOP: // 12 white e_bishop
+				cout << "馬" << endl;
+				break;
+			case eROOK: // 13 white e_rook
+				cout << "龍" << endl;
+				break;
+			}
+		}
+		else
+		{
+			switch (chessboard[from_pos])
+			{
+			case bPAWN: // 17 black pawn
+				cout << "步" << endl;
+				break;
+			case bSILVER: //18 black silver
+				cout << "銀" << endl;
+				break;
+			case bGOLD: //19 black gold
+				cout << "金" << endl;
+				break;
+			case bBISHOP: //20 black bishop
+				cout << "角" << endl;
+				break;
+			case bROOK: //21 black rook
+				cout << "飛" << endl;
+				break;
+			case bKING: //22 black king
+				cout << "王" << endl;
+				break;
+			case bePAWN: //25 black e_pawn
+				cout << "ㄈ" << endl;
+				break;
+			case beSILVER: //26 black e_silver
+				cout << "全" << endl;
+				break;
+			case beBISHOP: //28 black e_bishop
+				cout << "馬" << endl;
+				break;
+			case beROOK: //29 black e_rook
+				cout << "龍" << endl;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+}
+
+bool AI_DoMove(playerboard &board,int isWhiteturn)
+{
+	
+}
+
+
+//Rules
+int Negascout();
+bool MobeGenerator();
+int QuietscenceSearch();
+
+bool Uchifuzume();
+bool Sennichite();
 

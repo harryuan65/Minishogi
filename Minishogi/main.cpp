@@ -6,11 +6,9 @@ int main()
 {
 	int chessboard[CHESS_BOARD_SIZE] = {BLANK};
 	playerboard pboard;
-	Player p1;
-	AI a1;
 	Initalize(pboard, chessboard);
 	PrintChessBoard(chessboard);
-	bool turn = true;
+	
 	
 	bool end = false;
 	
@@ -21,8 +19,7 @@ int main()
 		cout << "²¾°Ê: X#, X#, 0/1"<<endl;
 		cin >> from >> to >> pro;
 
-		p1.Move(chessboard,pboard,from,to,pro,true);
-		turn != turn;
+		Human_DoMove(chessboard,pboard,from,to,pro,true);
 
 	}
 	return 0;

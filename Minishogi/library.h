@@ -4,7 +4,7 @@
 
 /*	player	*/
 enum {
-	WHITE = 0, BLACK = 1
+	TURN_WHITE = 0, TURN_BLACK = 1
 };
 
 /*	board	*/
@@ -29,7 +29,7 @@ enum {
 #define CHESS_BOARD_SIZE 45 // 20 + 25
 
 /*	chess	*/
-enum {				//Prrrrint usage
+enum {				//Print usage
 	PROMOTE = 8, BLANK = 0,
 	// 1	   2     3       4     5     6 (pure)
 	PAWN, SILVER, GOLD, BISHOP, ROOK, KING,
@@ -60,7 +60,7 @@ enum ChessName {
 };
 class playerboard {
 public:
-	U32 w_occupied, b_occupied;
+	U32 occupied[2];
 	U16 black_hand, white_hand;
 	U32 chesspiece[20];
 };

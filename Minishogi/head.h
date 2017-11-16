@@ -14,7 +14,7 @@
 #include "human.h"
 #include "AI.h"
 #include "boardfunctions.h"
-using namespace std;
+
 
 extern U64 nodes;
 extern double total_branch;
