@@ -1,5 +1,6 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
+#include "define.h"
 
 /*	player	*/
 enum {
