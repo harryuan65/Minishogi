@@ -8,7 +8,8 @@ typedef unsigned __int8   U8;
 /* TURN*/
 #define TURN_WHITE 0
 #define TURN_BLACK 1
-#define BLACKCHESS 0x0a
+#define UPGRADED 0x08
+#define BLACKCHESS 0x10
 
 
 

@@ -1,6 +1,6 @@
 #ifndef _HEAD_
 #define _HEAD_
-
+using namespace std;
 #include <iostream>
 #include <stdlib.h>
 #include <string>

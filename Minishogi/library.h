@@ -31,28 +31,38 @@ enum {
 /*	chess	*/
 enum {				
 	//Print ,identify chess usage
-	PAWN,//0
-	SILVER,//1
-	GOLD,//2
-	BISHOP, //3
-	ROOK,//4
-	KING,//5
-	E_PAWN,//6
-	E_SILVER,//7
-	E_BISHOP,//8
-	E_ROOK,//9
-
-	bPAWN,//10
-	bSILVER,//11
-	bGOLD,//12
-	bBISHOP,//13
-	bROOK,//14
-	bKING,//15
-	b_E_PAWN,//16
-	b_E_SILVER,//17
-	b_E_BISHOP,//18
-	b_E_ROOK,//19
-	BLANK //20
+	BLANK,	//0
+	PAWN,	//1
+	SILVER,	//2
+	GOLD,	//3
+	BISHOP, //4
+	ROOK,	//5
+	KING,	//6
+	//7
+	//8
+	//E_PAWN,//9
+	//E_SILVER,//10
+	//11
+	//E_BISHOP,//12
+	//E_ROOK,//13
+	//14
+	//15
+	//16
+	//bPAWN //17
+	//bSILVER,18
+	//bGOLD,19
+	//bBISHOP,20
+	//bROOK,21
+	//bKING,22
+	//23
+	//24
+	//b_E_PAWN,25
+	//b_E_SILVER,26
+	//27
+	//b_E_BISHOP,28
+	//b_E_ROOK,29
+	//30
+	//31
 };
 
 

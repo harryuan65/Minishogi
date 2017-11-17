@@ -3,14 +3,15 @@
 #ifndef _BOARD_
 #define _BOARD_
 
-class Board {
+class  Board {
 public:
 	U32 occupied[2];
-	U32 chesspiece[20];
+	U32 chesspiece[32];
 	int board[25];
 	int hand[10];
 //	vector<Action> record;
-	
+	Board();
+	~Board();
 	bool Initialize();
 	bool Initialize(std::string board_str/*Board &board, int *chessboard*/);
 	bool DoMove(Action m_Action);
@@ -25,10 +26,6 @@ public:
 };
 
 
-
-
-
-
 bool Human_DoMove(int *chessboard, Board &board, std::string from, std::string to, int pro, int isWhiteturn);
 bool AI_DoMove(Board &board, int isWhiteturn);
 
@@ -39,4 +36,10 @@ int QuietscenceSearch();
 
 bool Uchifuzume();
 bool Sennichite();
+
+
+
+
+
+
 #endif 
