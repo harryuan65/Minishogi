@@ -568,7 +568,7 @@ bool Board::DoMove(Action m_Action)
 		to_pos=(m_Action<<20)>>26,
 		pro=m_Action>>24,
 		chessnumber=(m_Action<<14)>>26,
-		dstchess = (m_Action<<8)>>24,
+		dstchess = (m_Action<<8)>>25,
 		turn = (chessnumber - BLACKCHESS < 0) ? WHITE : BLACK;//board[src]
 
 	//cout << pro <<  " " <<dstchess<< " " << chessnumber<< " "<< to_pos<< " " <<from_pos<< " "  << endl;
@@ -579,6 +579,7 @@ bool Board::DoMove(Action m_Action)
 		int eaten = board[to_pos];
 		bitboard[eaten] = 0;//那顆棋子不見了
 		cout << "[" << showchess[chessnumber] << "] 吃掉 " << "[" << showchess[eaten] << "]" << endl;
+		eaten ^= BLACKCHESS;
 		hand[handcount] = eaten;
 		handcount++;
 	}
@@ -586,7 +587,8 @@ bool Board::DoMove(Action m_Action)
 	bitboard[chessnumber] = dstboard;//更新該棋子自己的位置
 	board[to_pos] = chessnumber;//將board上面目的位置更新為該棋子(編號)
 	board[from_pos] = BLANK;//原本清空
-	occupied[turn] = occupied[turn] ^ (1 << from_pos) | dstboard;//更新該方的occupied
+	occupied[turn] = ((occupied[turn] ^ (1 << from_pos) | dstboard)<<7)>>7;//更新該方的occupied
+	cout << occupied[turn] << endl;;
 	return true;
 }
 bool Human_DoMove(Board &currentboard, int turn)
@@ -640,7 +642,14 @@ bool Human_DoMove(Board &currentboard, int turn)
 				|| chessnumber == (PAWN | BLACKCHESS) || chessnumber == (SILVER | BLACKCHESS) || chessnumber == (BISHOP | BLACKCHESS) || chessnumber == (ROOK | BLACKCHESS))
 			{
 				//是否在敵區內
-				if (((1 << to_pos) & 0x0003ff) > 0 || ((1 << to_pos) & 0x1ff800) > 0)
+				if (chessnumber-16<0&&((1 << to_pos) & 0x0003ff) > 0 )
+				{
+					currentboard.bitboard[chessnumber | UPGRADED] = currentboard.bitboard[chessnumber];
+					currentboard.bitboard[chessnumber] = 0;
+					currentboard.board[from_pos] = chessnumber | UPGRADED;
+					chessnumber |= UPGRADED;
+				}
+				else if (chessnumber - 16>0&& ((1 << to_pos) & 0x1ff800) > 0)
 				{
 					currentboard.bitboard[chessnumber | UPGRADED] = currentboard.bitboard[chessnumber];
 					currentboard.bitboard[chessnumber] = 0;
@@ -649,7 +658,7 @@ bool Human_DoMove(Board &currentboard, int turn)
 				}
 				else
 				{
-					cout << "你在敵區，是在升變沙小" << endl;
+					cout << "你不在敵區，是在升變沙小" << endl;
 					return false;
 				}
 				/*
@@ -674,22 +683,28 @@ bool Human_DoMove(Board &currentboard, int turn)
 			規則三：步兵不能打在自己步兵同行=>二步
 			規則四：步兵不可立即將死>打步詰
 			*/
-			if (chessnumber == PAWN|| chessnumber == (PAWN | BLACKCHESS))
+			if (chessnumber == PAWN || chessnumber == (PAWN | BLACKCHESS))
 			{
 				if (Movement[PAWN][to_pos] == 0)
 				{
 					cout << "Invalid Move!: " << showchess[chessnumber] << " 打入該位置不能移動" << endl;
 					return false;
 				}
-				else {
-					U32 samecolumn = 1<<to_pos;
-					U32 temp = 1<<to_pos;
+				else if (currentboard.board[to_pos] == KING || currentboard.board[to_pos] == (KING | BLACKCHESS))
+				{
+					cout << "Invalid Move!: " << showchess[chessnumber] << " 打步詰" << endl;
+					return false;
+				}
+				else
+				{
+					U32 samecolumn = 1 << to_pos;
+					U32 temp = 1 << to_pos;
 					while (temp)
 					{
-						temp<<= 5;
-						samecolumn |=temp;
+						temp <<= 5;
+						samecolumn |= temp;
 					}
-					temp = 1<<to_pos;
+					temp = 1 << to_pos;
 					while (temp)
 					{
 						temp >>= 5;
@@ -698,20 +713,21 @@ bool Human_DoMove(Board &currentboard, int turn)
 					samecolumn <<= 7;
 					samecolumn >>= 7;
 
-					if ((samecolumn & currentboard.bitboard[chessnumber])>0)
+					if ((samecolumn & currentboard.bitboard[chessnumber]) > 0)
 					{
 						cout << "Invalid Move!: " << showchess[chessnumber] << " 二步" << endl;
 						return false;
 					}
+
+					Action action = 0;
+					action = (pro << 25) | (currentboard.board[to_pos] << 18) | (currentboard.board[from_pos] << 12) | to_pos << 6 | from_pos;
+					//cout << action << endl;
+					currentboard.DoMove(action);
+					return true;
 				}
-				
-			}
-			else if (currentboard.board[to_pos] == KING || currentboard.board[to_pos] == KING | BLACKCHESS)
-			{
-				cout << "Invalid Move!: " << showchess[chessnumber] << " 打步詰" << endl;
-				return false;
-			}
 			
+
+			}
 		}
 		else
 		{
