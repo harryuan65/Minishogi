@@ -142,13 +142,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Action.cpp" />
     <ClCompile Include="bitscan.cpp" />
     <ClCompile Include="board.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="action.h" />
     <ClInclude Include="bitscan.h" />
     <ClInclude Include="board.h" />
     <ClInclude Include="define.h" />

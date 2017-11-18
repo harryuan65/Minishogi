@@ -1,4 +1,5 @@
 
+#include "board.h"
 #include"head.h"
 void InitializeByInput(Board &b)
 {
@@ -17,24 +18,25 @@ int main()
 	
 	m_Board.Initialize();
 
-	string from, to;
-	int pro;
+	
 	bool playerturn = Human;
 	
 	m_Board.PrintChessBoard();
-
+	Action a = 0;
+	
 	while (!m_Board.isGameOver())
 	{
 		if (playerturn == Human) {
-			cout << "Input X# X# 0/1:";
-			cin >> from >> to >> pro;
-			if (pro == 0) break;
-			Human_DoMove(m_Board, from, to, pro, TURN_WHITE);
+			
+			Human_DoMove(m_Board, TURN_WHITE);
 		}
 		else
 		{
 			AI_DoMove(m_Board, TURN_BLACK);
 		}
+		system("pause");
+		system("cls");
+		m_Board.PrintChessBoard();
 		
 	}
 	//board_str.clear();

@@ -11,10 +11,7 @@ using namespace std;
 #include <vector>
 #include "define.h"
 #include "library.h"
-#include "board.h"
 #include "bitscan.h"
-
-
 
 
 #endif

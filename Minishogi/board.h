@@ -1,5 +1,4 @@
 #include"head.h"
-#include"action.h"
 #ifndef _BOARD_
 #define _BOARD_
 
@@ -8,7 +7,8 @@ public:
 	U32 occupied[2];
 	U32 bitboard[32];
 	int board[25];
-	int hand[10];
+	int hand[10];//¤âµP¼Æ¶q
+	int handcount;
 //	vector<Action> record;
 	Board();
 	~Board();
@@ -26,11 +26,11 @@ public:
 };
 
 
-bool Human_DoMove(Board &currentboard, std::string from, std::string to, int pro, int isWhiteturn);
+bool Human_DoMove(Board &currentboard, int isWhiteturn);
 bool AI_DoMove(Board &board, int isWhiteturn);
 
 //Rules
-inline U32 DstBoard(Board board,int chessnumber,int position,bool isAttack);
+ U32 DstBoard(Board board,int chessnumber,int position,bool isAttack);
 U32 BishopMove(Board board, int pos, int turn);
 U32 RookMove(Board board, int pos, int turn);
 
