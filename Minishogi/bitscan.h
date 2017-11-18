@@ -1,8 +1,13 @@
 #pragma once
-#include"head.h"
+#include"define.h"
+#ifndef _BITSCAN_
+#define _BITSCAN_
+
 int BitScan(U32 *board); // LSB
-int BitScanReverse(U32 board); // MSB;#pragma once
+int BitScanRev(U32 board); // MSB;#pragma once
 
 
 
 
+
+#endif // !_BITSCAN_

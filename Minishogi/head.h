@@ -12,6 +12,7 @@ using namespace std;
 #include "define.h"
 #include "library.h"
 #include "board.h"
+#include "bitscan.h"
 
 
 

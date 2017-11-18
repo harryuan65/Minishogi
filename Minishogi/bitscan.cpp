@@ -1,4 +1,4 @@
-#include "head.h"
+#include "bitscan.h"
 
 const int index32[32] = {
 	0, 14,  1, 15,  9, 18,  2, 12,
@@ -15,7 +15,7 @@ int BitScan(U32 *board) // LSB
 	return index32[((bitboard ^ (bitboard - 1)) * debrujin32) >> 27]; // 27 = 32 - 5
 }
 
-int BitScanReverse(U32 board) // MSB
+int BitScanRev(U32 board) // MSB
 {
 	const U32 debrujin32 = U32(0x7ca26eb);
 	board |= board >> 1;

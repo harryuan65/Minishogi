@@ -6,7 +6,7 @@
 class  Board {
 public:
 	U32 occupied[2];
-	U32 chesspiece[32];
+	U32 bitboard[32];
 	int board[25];
 	int hand[10];
 //	vector<Action> record;
@@ -26,17 +26,21 @@ public:
 };
 
 
-bool Human_DoMove(int *chessboard, Board &board, std::string from, std::string to, int pro, int isWhiteturn);
+bool Human_DoMove(Board &currentboard, std::string from, std::string to, int pro, int isWhiteturn);
 bool AI_DoMove(Board &board, int isWhiteturn);
 
 //Rules
+inline U32 DstBoard(Board board,int chessnumber,int position,bool isAttack);
+U32 BishopMove(Board board, int pos, int turn);
+U32 RookMove(Board board, int pos, int turn);
+
+//Generator
 int Negascout();
 bool MobeGenerator();
 int QuietscenceSearch();
 
 bool Uchifuzume();
 bool Sennichite();
-
 
 
 

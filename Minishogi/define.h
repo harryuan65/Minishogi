@@ -10,7 +10,7 @@ typedef unsigned __int8   U8;
 #define TURN_BLACK 1
 #define UPGRADED 0x08
 #define BLACKCHESS 0x10
-
+#define EMPTY -1
 
 
 
@@ -64,7 +64,7 @@ typedef unsigned __int8   U8;
 
 /*	mask	*/
 #define rank_mask(pos)   (row_upper[pos] | row_lower[pos])
-#define file_mask(pos)   (column_upper[pos] | file_lower[pos])
+#define file_mask(pos)   (column_upper[pos] | row_lower[pos])
 #define slope1_mask(pos) (slope1_upper[pos] | slope1_lower[pos])
 #define slope2_mask(pos) (slope2_upper[pos] | slope2_lower[pos])
 
