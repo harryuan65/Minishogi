@@ -38,7 +38,7 @@ enum {
 	ROOK,	//5
 	KING,	//6
 	//7
-	//8
+	PROMOTE = 8,
 	//E_PAWN,//9
 	//E_SILVER,//10
 	//11

@@ -26,14 +26,14 @@ int main()
 	
 	while (!m_Board.isGameOver())
 	{
-		if (playerturn == Human) {
+		//if (playerturn == Human) {
 			
-			Human_DoMove(m_Board, TURN_WHITE);
-		}
+			Human_DoMove(m_Board, playerturn ^= 1);
+		/*}
 		else
 		{
 			AI_DoMove(m_Board, TURN_BLACK);
-		}
+		}*/
 		system("pause");
 		system("cls");
 		m_Board.PrintChessBoard();

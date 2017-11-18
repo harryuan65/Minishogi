@@ -1,8 +1,7 @@
-#include "head.h"
 #include "board.h"
-#include<Windows.h>
+#include <Windows.h>
 U32 Movement[20][BOARD_SIZE] = {
-	/* 0 */{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+	/* 0 */{ 0 },
 	/* 1 PAWN */
 	{
 		0x0000000, 	0x0000000, 	0x0000000, 	0x0000000, 	0x0000000,
@@ -29,8 +28,8 @@ U32 Movement[20][BOARD_SIZE] = {
 		0x0218000, 	0x0538000, 	0x0a70000, 	0x14e0000,	0x08c0000
 	},
 
-	/*4*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*5*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+	/*4*/{ 0 },
+	/*5*/{ 0 },
 	/* 6=22 KING (Both)*/
 	{
 		0x0000062, 	0x00000e5, 	0x00001ca, 	0x0000394, 	0x0000308,
@@ -39,16 +38,16 @@ U32 Movement[20][BOARD_SIZE] = {
 		0x0310c00, 	0x0729c00, 	0x0e53800, 	0x1ca7000, 	0x1846000,
 		0x0218000, 	0x0538000, 	0x0a70000, 	0x14e0000, 	0x08c0000
 	},
-	/*7*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*8*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*9*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*10*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*11*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*12*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*13*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*14*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*15*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-	/*16*/{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+	/*7*/{ 0 },
+	/*8*/{ 0 },
+	/*9*/{ 0 },
+	/*10*/{ 0 },
+	/*11*/{ 0 },
+	/*12*/{ 0 },
+	/*13*/{ 0 },
+	/*14*/{ 0 },
+	/*15*/{ 0 },
+	/*16*/{ 0 },
 	/*17 黑PAWN*/
 	{
 		0x0000020, 	0x0000040, 	0x0000080, 	0x0000100, 	0x0000200,
@@ -80,19 +79,17 @@ string showchess[] = {
 	"X","b步","b銀","b金","b角","b飛","玉","X",
 	"X","wㄈ","b全","X","b馬","b龍","X","X"
 };
-#define hConsole GetStdHandle(STD_OUTPUT_HANDLE)
-void SetColor(int color = 7)
-{
+static const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+inline void SetColor(int color = 7) {
 	SetConsoleTextAttribute(hConsole, color);
 }
 
 Board::Board() {
 	memset(bitboard, BLANK, 32 * sizeof(int));
-
 }
-Board::~Board() {
 
-}
+Board::~Board() {}
+
 bool Board::Initialize()
 {
 	handcount = 0;
@@ -161,7 +158,8 @@ bool Board::Initialize()
 
 	return true;
 }
-bool Board::Initialize(string board_str){
+
+bool Board::Initialize(string board_str) {
 	stringstream ss;
 	string token;
 	ss << board_str;
@@ -270,161 +268,51 @@ bool Board::Initialize(string board_str){
 	cout << endl;
 	return true;
 }
-void Board::PrintChessBoard()
-{
-	char *rank_name[] = { "A", "B", "C", "D", "E", "F", "G", "H", "I" };
-	int rank_count = 0;
-	int board_count = 0;
-	puts(" ");//*
-	printf("%2s｜", " ");//*
-	printf("%2d", 5);
-	printf("｜");
-	printf("%2d", 4);
-	printf("｜");
-	printf("%2d", 3);
-	printf("｜");
-	printf("%2d", 2);
-	printf("｜");
-	printf("%2d", 1);
-	puts("｜");
-	for (int i = 0; i < 7; i++)
-	{
-		puts("—｜—｜—｜—｜—｜—｜—\t ｜—｜—｜—｜—｜—｜");
-		if (i == 5)
-		{
-			printf("%2s｜", " ");  //*
-			printf("%2d", 5);//*
-			printf("｜");
-			printf("%2d", 4);
-			printf("｜");
-			printf("%2d", 3);
-			printf("｜");
-			printf("%2d", 2);
-			printf("｜");
-			printf("%2d", 1);//*
-			SetColor();
-			puts("｜");
-			puts(" \n");
-		}
-		printf("%2s", rank_name[rank_count]);
-		SetColor();
-		int chess = -1;
-		for (int j = 0; j < 5; j++) //128 = 黑 ; 143 = 白  ;207 = 紅底白字  ; 192 = 紅底黑字
-		{
-			printf("｜");
-			if (board_count < 25) chess = board[board_count];
-			else chess = hand[board_count - 25];
-			switch (chess)
-			{
-			case BLANK:
-				printf("%2s", " ");
-				break;
-			case PAWN: // white pawn1
-				SetColor(143);
-				printf("%2s", "步");
-				break;
-			case SILVER: // white silver2
-				SetColor(143);
-				printf("%2s", "銀");
-				break;
-			case GOLD: // white gold3
-				SetColor(143);
-				printf("%2s", "金");
-				break;
-			case BISHOP: // white bishop4
-				SetColor(143);
-				printf("%2s", "角");
-				break;
-			case ROOK: // white rook5
-				SetColor(143);
-				printf("%2s", "飛");
-				break;
-			case KING: // white king6
-				SetColor(143);//白色字
-				printf("%2s", "玉");
-				break;
-			case PAWN | UPGRADED: // 9 white e_pawn
-				SetColor(207);
-				printf("%2s", "ㄈ");
-				break;
-			case SILVER | UPGRADED: // 10 white e_silver
-				SetColor(207);
-				printf("%2s", "全");
-				break;
-			case BISHOP | UPGRADED: // 12 white e_bishop
-				SetColor(207);
-				printf("%2s", "馬");
-				break;
-			case ROOK | UPGRADED: // 13 white e_rook
-				SetColor(207);
-				printf("%2s", "龍");
-				break;
-				//黑色棋
-			case PAWN | BLACKCHESS: // 10 black pawn
-				SetColor(128);
-				printf("%2s", "步");
-				break;
-			case SILVER | BLACKCHESS: //11black silver
-				SetColor(128);
-				printf("%2s", "銀");
-				break;
-			case GOLD | BLACKCHESS: //12 black gold
-				SetColor(128);
-				printf("%2s", "金");
-				break;
-			case BISHOP | BLACKCHESS: //13 black bishop
-				SetColor(128); //黑色
-				printf("%2s", "角");
-				break;
-			case ROOK | BLACKCHESS: //14 black rook
-				SetColor(128);
-				printf("%2s", "飛");
-				break;
-			case KING | BLACKCHESS: //15 black king
-				SetColor(128);
-				printf("%2s", "王");
-				break;
-			case PAWN | UPGRADED | BLACKCHESS: //16 black e_pawn
-				SetColor(192);
-				printf("%2s", "ㄈ");
-				break;
-			case SILVER | UPGRADED | BLACKCHESS: //17 black e_silver
-				SetColor(192);
-				printf("%2s", "全");
-				break;
-			case BISHOP | UPGRADED | BLACKCHESS: //18 black e_bishop
-				SetColor(192);
-				printf("%2s", "馬");
-				SetColor();
-				break;
-			case ROOK | UPGRADED | BLACKCHESS: //19 black e_rook
-				SetColor(192);
-				printf("%2s", "龍");
-				break;
-			default:
-				break;
-			}
-			SetColor();
-			board_count++;
-		}
-		printf("｜");
-		printf("%2s", rank_name[rank_count++]);//*
-		printf("\t ");
-		int temp = board_count - 1;
-		for (int j = temp - 4; j <= temp; j++)
-		{
-			printf("｜");
-			SetColor(95);
-			printf("%2d", j);
-			SetColor();
-		}
-		printf("｜");
-		puts(" ");		//*
-	}
-	puts(" ");
 
+static const char *rank_name[] = { "Ａ", "Ｂ", "Ｃ", "Ｄ", "Ｅ", "Ｆ", "  ", "Ｇ", "  " };
+static const char *show_chess[] = {
+    "  ", "步", "銀", "金", "角", "飛", "玉", "  ",
+    "  ", "ㄈ", "全", "  ", "馬", "龍", "  ", "  ",
+    "  ", "步", "銀", "金", "角", "飛", "王", "  ",
+    "  ", "ㄈ", "全", "  ", "馬", "龍",
+};
+void Board::PrintChessBoard() {
+    int chess;
+    int rank_count = 0;
+    int board_count = 0;
 
+    SetColor();
+    puts("\n  ｜５｜４｜３｜２｜１｜");
+    for (int i = 0; i < 9; ++i) {
+        puts("—｜—｜—｜—｜—｜—｜—");
+        if (i == 5) puts("  ｜５｜４｜３｜２｜１｜\n");
+
+        printf("%s", rank_name[rank_count]);
+        for (int j = 0; j < 5; ++j, ++board_count) {
+            printf("｜");
+            if (board_count < 25) chess = board[board_count];
+            else if (i == 5) chess = hand[j] ? j + 1 : 0;
+            else if (i == 6) chess = hand[j] == 2 ? j + 1 : 0;
+            else if (i == 7) chess = hand[j] ? j + 17 : 0;
+            else if (i == 8) chess = hand[j] == 2 ? j + 17 : 0;
+            // 12 = 黑 ; 10 = 白 ; 11 = 白升變 ; 13 = 黑升變
+            if (chess & BLACKCHESS) {
+                if (chess & PROMOTE) SetColor(13);
+                else SetColor(12);
+            }
+            else {
+                if (chess & PROMOTE) SetColor(11);
+                else SetColor(10);
+            }
+
+            printf("%s", show_chess[chess]);
+            SetColor();
+        }
+        printf("｜%s\n", rank_name[rank_count++]);
+    }
+    puts("");
 }
+
 bool Board::isGameOver() {
 	return false;
 }
@@ -568,7 +456,7 @@ bool Board::DoMove(Action m_Action)
 		to_pos=(m_Action<<20)>>26,
 		pro=m_Action>>24,
 		chessnumber=(m_Action<<14)>>26,
-		dstchess = (m_Action<<8)>>24,
+		dstchess = (m_Action<<8)>>25,
 		turn = (chessnumber - BLACKCHESS < 0) ? WHITE : BLACK;//board[src]
 
 	//cout << pro <<  " " <<dstchess<< " " << chessnumber<< " "<< to_pos<< " " <<from_pos<< " "  << endl;
@@ -579,6 +467,7 @@ bool Board::DoMove(Action m_Action)
 		int eaten = board[to_pos];
 		bitboard[eaten] = 0;//那顆棋子不見了
 		cout << "[" << showchess[chessnumber] << "] 吃掉 " << "[" << showchess[eaten] << "]" << endl;
+		eaten ^= BLACKCHESS;
 		hand[handcount] = eaten;
 		handcount++;
 	}
@@ -586,7 +475,8 @@ bool Board::DoMove(Action m_Action)
 	bitboard[chessnumber] = dstboard;//更新該棋子自己的位置
 	board[to_pos] = chessnumber;//將board上面目的位置更新為該棋子(編號)
 	board[from_pos] = BLANK;//原本清空
-	occupied[turn] = occupied[turn] ^ (1 << from_pos) | dstboard;//更新該方的occupied
+	occupied[turn] = ((occupied[turn] ^ (1 << from_pos) | dstboard)<<7)>>7;//更新該方的occupied
+	cout << occupied[turn] << endl;;
 	return true;
 }
 bool Human_DoMove(Board &currentboard, int turn)
@@ -640,7 +530,14 @@ bool Human_DoMove(Board &currentboard, int turn)
 				|| chessnumber == (PAWN | BLACKCHESS) || chessnumber == (SILVER | BLACKCHESS) || chessnumber == (BISHOP | BLACKCHESS) || chessnumber == (ROOK | BLACKCHESS))
 			{
 				//是否在敵區內
-				if (((1 << to_pos) & 0x0003ff) > 0 || ((1 << to_pos) & 0x1ff800) > 0)
+				if (chessnumber-16<0&&((1 << to_pos) & 0x0003ff) > 0 )
+				{
+					currentboard.bitboard[chessnumber | UPGRADED] = currentboard.bitboard[chessnumber];
+					currentboard.bitboard[chessnumber] = 0;
+					currentboard.board[from_pos] = chessnumber | UPGRADED;
+					chessnumber |= UPGRADED;
+				}
+				else if (chessnumber - 16>0&& ((1 << to_pos) & 0x1ff800) > 0)
 				{
 					currentboard.bitboard[chessnumber | UPGRADED] = currentboard.bitboard[chessnumber];
 					currentboard.bitboard[chessnumber] = 0;
@@ -649,7 +546,7 @@ bool Human_DoMove(Board &currentboard, int turn)
 				}
 				else
 				{
-					cout << "你在敵區，是在升變沙小" << endl;
+					cout << "你不在敵區，是在升變沙小" << endl;
 					return false;
 				}
 				/*
@@ -674,22 +571,28 @@ bool Human_DoMove(Board &currentboard, int turn)
 			規則三：步兵不能打在自己步兵同行=>二步
 			規則四：步兵不可立即將死>打步詰
 			*/
-			if (chessnumber == PAWN|| chessnumber == (PAWN | BLACKCHESS))
+			if (chessnumber == PAWN || chessnumber == (PAWN | BLACKCHESS))
 			{
 				if (Movement[PAWN][to_pos] == 0)
 				{
 					cout << "Invalid Move!: " << showchess[chessnumber] << " 打入該位置不能移動" << endl;
 					return false;
 				}
-				else {
-					U32 samecolumn = 1<<to_pos;
-					U32 temp = 1<<to_pos;
+				else if (currentboard.board[to_pos] == KING || currentboard.board[to_pos] == (KING | BLACKCHESS))
+				{
+					cout << "Invalid Move!: " << showchess[chessnumber] << " 打步詰" << endl;
+					return false;
+				}
+				else
+				{
+					U32 samecolumn = 1 << to_pos;
+					U32 temp = 1 << to_pos;
 					while (temp)
 					{
-						temp<<= 5;
-						samecolumn |=temp;
+						temp <<= 5;
+						samecolumn |= temp;
 					}
-					temp = 1<<to_pos;
+					temp = 1 << to_pos;
 					while (temp)
 					{
 						temp >>= 5;
@@ -698,20 +601,21 @@ bool Human_DoMove(Board &currentboard, int turn)
 					samecolumn <<= 7;
 					samecolumn >>= 7;
 
-					if ((samecolumn & currentboard.bitboard[chessnumber])>0)
+					if ((samecolumn & currentboard.bitboard[chessnumber]) > 0)
 					{
 						cout << "Invalid Move!: " << showchess[chessnumber] << " 二步" << endl;
 						return false;
 					}
+
+					Action action = 0;
+					action = (pro << 25) | (currentboard.board[to_pos] << 18) | (currentboard.board[from_pos] << 12) | to_pos << 6 | from_pos;
+					//cout << action << endl;
+					currentboard.DoMove(action);
+					return true;
 				}
-				
-			}
-			else if (currentboard.board[to_pos] == KING || currentboard.board[to_pos] == KING | BLACKCHESS)
-			{
-				cout << "Invalid Move!: " << showchess[chessnumber] << " 打步詰" << endl;
-				return false;
-			}
 			
+
+			}
 		}
 		else
 		{
