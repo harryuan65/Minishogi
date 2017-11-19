@@ -10,7 +10,7 @@ typedef unsigned __int32 Action;
 /* TURN*/
 #define TURN_WHITE 0
 #define TURN_BLACK 1
-#define UPGRADED 0x08
+#define PROMOTE 0x08
 #define BLACKCHESS 0x10
 #define EMPTY -1
 
@@ -65,8 +65,8 @@ typedef unsigned __int32 Action;
 #define b_h_pawn				 (blank_board & (~WHITE_CAMP))
 
 /*	mask	*/
-#define rank_mask(pos)   (row_upper[pos] | row_lower[pos])
-#define file_mask(pos)   (column_upper[pos] | column_lower[pos])
+#define row_mask(pos)   (row_upper[pos] | row_lower[pos])
+#define column_mask(pos)   (column_upper[pos] | column_lower[pos])
 #define slope1_mask(pos) (slope1_upper[pos] | slope1_lower[pos])
 #define slope2_mask(pos) (slope2_upper[pos] | slope2_lower[pos])
 
@@ -132,7 +132,7 @@ typedef unsigned __int32 Action;
 #define LIMIT_DEPTH		11
 #define DEPTH_UCHI      3
 #define FIRST           1
-#define COLOR_BOUND       10  // 16->10
+#define COLOR_BOUND       10  
 typedef struct line_t 
 {
 	int pv_count;

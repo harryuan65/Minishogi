@@ -19,21 +19,31 @@ int main()
 	m_Board.Initialize();
 
 	
-	bool playerturn = Human;
+	int playerturn = Human;
 	
 	m_Board.PrintChessBoard();
 	Action a = 0;
-	
+	bool moveok = false;
 	while (!m_Board.isGameOver())
 	{
 		if (playerturn == Human) {
 			
-			Human_DoMove(m_Board, TURN_WHITE);
+			cout << "[現在是白方]" << endl;
+			while (!moveok) {
+				moveok = Human_DoMove(m_Board, TURN_WHITE);
+			};
+			moveok = !moveok;
 		}
 		else
 		{
-			AI_DoMove(m_Board, TURN_BLACK);
+			cout << "[現在是黑方]"<< endl;
+			while (!moveok) {
+				moveok = Human_DoMove(m_Board, TURN_BLACK);
+			};
+			moveok = !moveok;
+			//AI_DoMove(m_Board, TURN_BLACK);
 		}
+		playerturn ^= 1;
 		system("pause");
 		system("cls");
 		m_Board.PrintChessBoard();

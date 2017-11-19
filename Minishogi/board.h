@@ -30,7 +30,7 @@ bool Human_DoMove(Board &currentboard, int isWhiteturn);
 bool AI_DoMove(Board &board, int isWhiteturn);
 
 //Rules
- U32 DstBoard(Board board,int chessnumber,int position,bool isAttack);
+inline U32 DstBoard(Board board,int chessnumber,int from_pos,int to_pos);
 U32 BishopMove(Board board, int pos, int turn);
 U32 RookMove(Board board, int pos, int turn);
 
