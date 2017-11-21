@@ -8,14 +8,13 @@ public:
 	U32 bitboard[32];
 	int board[25];
 	int hand[10];//手牌數量
-	int handcount;
-//	vector<Action> record;
+	vector<Action> record;
 	Board();
 	~Board();
 	bool Initialize();
 	bool Initialize(std::string board_str/*Board &board, int *chessboard*/);
 	bool DoMove(Action m_Action);
-	bool UndoMove(Action m_Action);
+	bool UndoMove();
 	void PrintChessBoard(/*裡面用board來印*/);
 	bool isGameOver();
 	unsigned int Hashing();//同型表的東西
@@ -43,7 +42,8 @@ bool Uchifuzume();
 bool Sennichite();
 
 
-
-
+/*
+hand[] ->move gene, move, Hash 
+*/
 
 #endif 

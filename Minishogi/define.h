@@ -6,6 +6,8 @@ typedef unsigned __int32 U32;
 typedef unsigned __int16 U16;
 typedef unsigned __int8   U8;
 typedef unsigned __int32 Action;
+typedef unsigned char BYTE;
+
 
 /* TURN*/
 #define TURN_WHITE 0
@@ -71,8 +73,13 @@ typedef unsigned __int32 Action;
 #define slope2_mask(pos) (slope2_upper[pos] | slope2_lower[pos])
 
 /*	move mask	*/
-#define SRC_MASK 0x003f
-#define DST_MASK 0x0fc0
+#define SRC_INDEX_MASK 0x003f
+#define DST_INDEX_MASK 0x0fc0
+#define SRC_CHESS_MASK 0x3f000
+#define DST_CHESS_MASK 0xfc0000
+#define BOARD_MASK 0x01ffffff
+#define BLACK_AREA 0x0003ff
+#define WHITE_AREA 0x1ff800
 #define EAT_MASK 0x1000
 #define PRO_MASK 0x2000
 
