@@ -80,8 +80,10 @@ int main()
 			system("cls");
 			m_Board.PrintChessBoard();
 		}
-
-		playerturn ^= 1;
+		else {
+			playerturn ^= 1;
+		}
+		
 
 	}
 	//board_str.clear();
