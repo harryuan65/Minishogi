@@ -6,7 +6,7 @@ class  Board {
 public:
 	U32 occupied[2];
 	U32 bitboard[32];
-	int board[25];
+	int board[35];
 	int hand[10];//¤âµP¼Æ¶q
 	vector<Action> record;
 	Board();

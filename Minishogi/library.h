@@ -20,7 +20,7 @@ enum {
 "X","w£w","b¥þ","X","b°¨","bÀs","X","X"
 
 */
-const BYTE EatToHand[] = {
+const int EatToHand[] = {
 	0, 30, 31, 32, 33, 34, 0, 0,//8, 0-7
 	0, 30, 31,  0, 33, 34, 0, 0,//16, 8-15
 	0, 25, 26, 27, 28, 29, 0, 0,//24, 16-23
@@ -44,9 +44,8 @@ enum {
 	H5, H4, H3, H2, H1, // R, R, B, B, G
 	I5, I4, I3, I2, I1	// G, S, S, P, P
 };
-#define HAND_SIZE  20
 #define BOARD_SIZE 25
-#define CHESS_BOARD_SIZE 45 // 20 + 25
+#define TOTAL_BOARD_SIZE 35
 
 /*	chess	*/
 enum {				
