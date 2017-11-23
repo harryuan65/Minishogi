@@ -9,12 +9,13 @@ public:
 	int board[35];
 	int hand[10];//手牌數量
 	vector<Action> record;
+
 	Board();
 	~Board();
 	bool Initialize();
-	bool Initialize(std::string board_str/*Board &board, int *chessboard*/);
-	bool DoMove(Action m_Action);
-	bool UndoMove();
+	bool Initialize(std::string &board_str/*Board &board, int *chessboard*/);
+	void DoMove(Action m_Action);
+	void UndoMove();
 	void PrintChessBoard(/*裡面用board來印*/);
 	bool isGameOver();
 	unsigned int Hashing();//同型表的東西
@@ -25,13 +26,13 @@ public:
 };
 
 
-bool Human_DoMove(Board &currentboard, int isWhiteturn);
-bool AI_DoMove(Board &board, int isWhiteturn);
+Action Human_DoMove(Board &board, int turn);
+Action AI_DoMove(Board &board, int turn);
 
 //Rules
 inline U32 DstBoard(Board board,int chessnumber,int from_pos,int to_pos);
-U32 BishopMove(Board board, int pos, int turn);
-U32 RookMove(Board board, int pos, int turn);
+U32 BishopMove(Board &board, int pos, int turn);
+U32 RookMove(Board &board, int pos, int turn);
 
 //Generator
 int Negascout();
@@ -40,7 +41,6 @@ int QuietscenceSearch();
 
 bool Uchifuzume();
 bool Sennichite();
-
 
 /*
 hand[] ->move gene, move, Hash 

@@ -58,7 +58,7 @@ enum {
 	ROOK,	//5
 	KING,	//6
 	//7
-	PROMOTE = 8,
+    //8
 	//E_PAWN,//9
 	//E_SILVER,//10
 	//11
@@ -84,13 +84,8 @@ enum {
 	//31
 };
 
-
-
-
 /*	all chess move	*/
 /*	king bit move	*/
-
-
 const U32 king_move[BOARD_SIZE] = {
 	0x0000062, 	0x00000e5, 	0x00001ca, 	0x0000394, 	0x0000308,
 	0x0000c43, 	0x0001ca7, 	0x000394e, 	0x000729c, 	0x0006118,

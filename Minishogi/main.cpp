@@ -1,8 +1,7 @@
-
+#include <bitset>
 #include "board.h"
 #include"head.h"
-void InitializeByInput(Board &b)
-{
+void InitializeByInput(Board &b) {
 	cin.clear();
 	cin.ignore();
 	string board_str;
@@ -19,75 +18,47 @@ void InitializeByInput(Board &b)
 enum {
 	Human,Ai
 };
-int main()
-{
+
+int main() {
 	Board m_Board;
+    Action action;
 	int playerturn = Human;
-	bool moveok = false;
-	int def = -1;
+	int choice;
 	//1 2 3 4 5 6 17 18 19 20 21 22 1 2 3 4 5 6 17 18 19 20 21 22 0 0
 	cout << "自訂棋盤?0:1 = ";
-	while (def != 0&&def != 1)	{
-		cin >> def;
-	}
-	if (def == 0)
-	{
-		m_Board.Initialize();
-	}
-	else
-	{
-		InitializeByInput(m_Board);
-	}
-
+    while (cin >> choice && choice != 0 && choice != 1);
+	if (choice) InitializeByInput(m_Board);
 
 	m_Board.PrintChessBoard();
-	while (!m_Board.isGameOver())
-	{
+	while (!m_Board.isGameOver()) {
 		if (playerturn == Human) {
-			
 			cout << "[現在是白方]" << endl;
-			while (!moveok) {
-				moveok = Human_DoMove(m_Board, TURN_WHITE);
-			};
-			moveok = !moveok;
-				
+            while (!(action = Human_DoMove(m_Board, playerturn)));
+
+            cout << "Action: " << bitset<25>(action) << endl;
+            m_Board.DoMove(action);
 		}
-		else
-		{
+		else {
 			cout << "[現在是黑方]"<< endl;
-			while (!moveok) {
-				moveok = Human_DoMove(m_Board, TURN_BLACK);
-			};
-			moveok = !moveok;
+			while (!(action = Human_DoMove(m_Board, playerturn)));
+
+            cout << "Action: " << bitset<25>(action) << endl;
+            m_Board.DoMove(action);
 			//AI_DoMove(m_Board, TURN_BLACK);
 		}
-
-		system("pause");
-		system("cls");
 		m_Board.PrintChessBoard();
 
-
 		cout << "是否要UndoMove?:";
-		int c = -1;
-		while (c != 0 && c != 1)
-		{
-			cin >> c;
-		}
-		if (c == 1)
-		{
+        while (cin >> choice && choice != 0 && choice != 1);
+
+		if (choice) {
 			m_Board.UndoMove();
-			system("pause");
-			system("cls");
 			m_Board.PrintChessBoard();
 		}
 		else {
 			playerturn ^= 1;
 		}
-		
-
 	}
-	//board_str.clear();
-	
-	
+
 	return 0;
 }

@@ -14,9 +14,7 @@ typedef unsigned char BYTE;
 #define TURN_BLACK 1
 #define PROMOTE 0x08
 #define BLACKCHESS 0x10
-#define EMPTY -1
-
-
+#define EMPTY 0
 
 
 /*	attack	*/
@@ -78,8 +76,8 @@ typedef unsigned char BYTE;
 #define SRC_CHESS_MASK 0x3f000
 #define DST_CHESS_MASK 0xfc0000
 #define BOARD_MASK 0x01ffffff
-#define BLACK_AREA 0x0003ff
-#define WHITE_AREA 0x1ff800
+#define BLACK_AREA 0x1f
+#define WHITE_AREA 0x1f00000
 #define EAT_MASK 0x1000
 #define PRO_MASK 0x2000
 
@@ -134,8 +132,8 @@ typedef unsigned char BYTE;
 #define PUT_PAWN_BACK 1
 
 /*	search	*/
-#define INF				1000000
-#define CHECKMATE		10000
+#define INF				100000
+#define CHECKMATE		32767
 #define LIMIT_DEPTH		11
 #define DEPTH_UCHI      3
 #define FIRST           1
