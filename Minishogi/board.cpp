@@ -529,7 +529,7 @@ bool Board::DoMove(Action m_Action)
 		if (dstChess != BLANK)//要去的地方有敵隊棋子=>吃掉
 		{
 			occupied[!turn] ^= dstboard; //清空被吃掉那個位置 哪種顏色的棋子被吃 就更新那顏色的occupied
-			bitboard[dstChess] = BLANK;//那顆棋子不見了
+			bitboard[dstChess] ^= dstboard;//那顆棋子不見了*-*************************
 
 			cout << "[";
 			SetColor(128 + 15 * (!turn)); //!WHITE = ->143
@@ -541,9 +541,11 @@ bool Board::DoMove(Action m_Action)
 			SetColor();
 			cout << "]" << endl;
 
-			dstChess ^= BLACKCHESS;
-
-			board[EatToHand[dstChess]]++;
+			if (dstChess != KING &&dstChess != (KING | BLACKCHESS))
+			{
+				dstChess ^= BLACKCHESS;
+				board[EatToHand[dstChess]]++;
+			}
 		}
 		board[srcIndex] = BLANK;//原本清空
 		occupied[turn] = (occupied[turn] ^ (1 << srcIndex) | dstboard) & BOARD_MASK;//更新該方的occupied
@@ -608,8 +610,9 @@ bool Board::UndoMove()
 		}
 
 		if (dstChess != 0) {//還原吃子
-			board[EatToHand[dstChess^BLACKCHESS]]--; //被吃掉的，從(相異色)的手牌放回去
-			board[dstIndex] = dstChess; //放回去被吃的棋
+			if (dstChess != KING && dstChess != (KING | BLACKCHESS)) {
+				board[EatToHand[dstChess^BLACKCHESS]]--; //被吃掉的，從(相異色)的手牌放回去
+			}board[dstIndex] = dstChess; //放回去被吃的棋
 			bitboard[dstChess] |= 1 << dstIndex; //單子位置回復
 			occupied[!turn] |= 1 << dstIndex;
 		}
