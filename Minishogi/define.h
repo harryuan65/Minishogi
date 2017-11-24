@@ -16,53 +16,10 @@ typedef unsigned char BYTE;
 #define BLACKCHESS 0x10
 #define EMPTY 0
 
-
-/*	attack	*/
-#define w_king_attack(pos)       (king_move[pos]     & board.occupied[BLACK])
-#define w_gold_attack(pos)       (w_gold_move[pos]   & board.occupied[BLACK])
-#define w_silver_attack(pos)     (w_silver_move[pos] & board.occupied[BLACK])
-#define w_pawn_attack(pos)       (w_pawn_move[pos]   & board.occupied[BLACK])
-#define w_bishop_attack(pos)     (BishopMove(board, pos, WHITE) & board.occupied[BLACK])
-#define w_rook_attack(pos)	     (RookMove(board, pos, WHITE)   & board.occupied[BLACK])
-#define w_e_silver_attack(pos)   (w_gold_move[pos]   & board.occupied[BLACK])
-#define w_e_pawn_attack(pos)     (w_gold_move[pos]   & board.occupied[BLACK])
-#define w_e_bishop_attack(pos)   ((BishopMove(board, pos, WHITE) | king_move[pos]) & board.occupied[BLACK])
-#define w_e_rook_attack(pos)	 ((RookMove(board, pos, WHITE)   | king_move[pos]) & board.occupied[BLACK])
-#define b_king_attack(pos)       (king_move[pos]     & board.occupied[WHITE])
-#define b_gold_attack(pos)       (b_gold_move[pos]   & board.occupied[WHITE])
-#define b_silver_attack(pos)     (b_silver_move[pos] & board.occupied[WHITE])
-#define b_pawn_attack(pos)       (b_pawn_move[pos]   & board.occupied[WHITE])
-#define b_bishop_attack(pos)     (BishopMove(board, pos, BLACK) & board.occupied[WHITE])
-#define b_rook_attack(pos)       (RookMove(board, pos, BLACK)   & board.occupied[WHITE])
-#define b_e_silver_attack(pos)   (b_gold_move[pos]   & board.occupied[WHITE])
-#define b_e_pawn_attack(pos)     (b_gold_move[pos]   & board.occupied[WHITE])
-#define b_e_bishop_attack(pos)   ((BishopMove(board, pos, BLACK) | king_move[pos]) & board.occupied[WHITE])
-#define b_e_rook_attack(pos)	 ((RookMove(board, pos, BLACK)   | king_move[pos]) & board.occupied[WHITE])
-
 /*	move	*/
-#define blank_board              (~(board.occupied[BLACK] | board.occupied[WHITE]) & 0x1ffffff)
-#define w_king_movement(pos)     (king_move[pos]     & blank_board)
-#define w_gold_movement(pos)     (w_gold_move[pos]   & blank_board)
-#define w_silver_movement(pos)   (w_silver_move[pos] & blank_board)
-#define w_pawn_movement(pos)     (w_pawn_move[pos]   & blank_board)
-#define w_bishop_movement(pos)   (BishopMove(board, pos, WHITE) & blank_board)
-#define w_rook_movement(pos)     (RookMove(board, pos, WHITE)   & blank_board)
-#define w_e_silver_movement(pos) (w_gold_move[pos]   & blank_board)
-#define w_e_pawn_movement(pos)   (w_gold_move[pos]   & blank_board)
-#define w_e_bishop_movement(pos) ((BishopMove(board, pos, WHITE) | king_move[pos]) & blank_board)
-#define w_e_rook_movement(pos)   ((RookMove(board, pos, WHITE)   | king_move[pos]) & blank_board)
-#define b_king_movement(pos)     (king_move[pos]     & blank_board)
-#define b_gold_movement(pos)     (b_gold_move[pos]   & blank_board)
-#define b_silver_movement(pos)   (b_silver_move[pos] & blank_board)
-#define b_pawn_movement(pos)     (b_pawn_move[pos]   & blank_board)
-#define b_bishop_movement(pos)   (BishopMove(board, pos, BLACK) & blank_board)
-#define b_rook_movement(pos)     (RookMove(board, pos, BLACK)   & blank_board)
-#define b_e_silver_movement(pos) (b_gold_move[pos]   & blank_board)
-#define b_e_pawn_movement(pos)   (b_gold_move[pos]   & blank_board)
-#define b_e_bishop_movement(pos) ((BishopMove(board, pos, BLACK) | king_move[pos]) & blank_board)
-#define b_e_rook_movement(pos)   ((RookMove(board, pos, BLACK)   | king_move[pos]) & blank_board)
-#define w_h_pawn				 (blank_board & (~BLACK_CAMP))
-#define b_h_pawn				 (blank_board & (~WHITE_CAMP))
+#define blank_board (~(board.occupied[BLACK] | board.occupied[WHITE]) & 0x1ffffff)
+#define w_h_pawn    (blank_board & (~BLACK_CAMP))
+#define b_h_pawn    (blank_board & (~WHITE_CAMP))
 
 /*	mask	*/
 #define row_mask(pos)   (row_upper[pos] | row_lower[pos])
@@ -75,11 +32,10 @@ typedef unsigned char BYTE;
 #define DST_INDEX_MASK 0x0fc0
 #define SRC_CHESS_MASK 0x3f000
 #define DST_CHESS_MASK 0xfc0000
+#define PRO_MASK 0x1000000
 #define BOARD_MASK 0x01ffffff
 #define BLACK_AREA 0x1f
 #define WHITE_AREA 0x1f00000
-#define EAT_MASK 0x1000
-#define PRO_MASK 0x2000
 
 // max move number including attack (21) and move (29)
 // and the hand chess (112) (23 * 4 + 20)

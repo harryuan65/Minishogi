@@ -33,19 +33,33 @@ int main() {
 	while (!m_Board.isGameOver()) {
 		if (playerturn == Human) {
 			cout << "[現在是白方]" << endl;
+
+            /* 測試用 */
+            Action moveList[128] = { 0 };
+            int cnt = 0;
+            MoveGenerator(m_Board, moveList, cnt, playerturn);
+            cout << "movable : " << cnt << endl;
             while (!(action = Human_DoMove(m_Board, playerturn)));
 
             cout << "Action: " << bitset<25>(action) << endl;
-            m_Board.DoMove(action);
+            /* 測試用 */
 		}
 		else {
 			cout << "[現在是黑方]"<< endl;
+
+            /* 測試用 */
+            Action moveList[128] = { 0 };
+            int cnt = 0;
+            MoveGenerator(m_Board, moveList, cnt, playerturn);
+            cout << "movable : " << cnt << endl;
 			while (!(action = Human_DoMove(m_Board, playerturn)));
 
             cout << "Action: " << bitset<25>(action) << endl;
-            m_Board.DoMove(action);
+            /* 測試用 */
+
 			//AI_DoMove(m_Board, TURN_BLACK);
 		}
+        m_Board.DoMove(action);
 		m_Board.PrintChessBoard();
 
 		cout << "是否要UndoMove?:";

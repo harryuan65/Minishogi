@@ -30,17 +30,18 @@ Action Human_DoMove(Board &board, int turn);
 Action AI_DoMove(Board &board, int turn);
 
 //Rules
-inline U32 DstBoard(Board board,int chessnumber,int from_pos,int to_pos);
-U32 BishopMove(Board &board, int pos, int turn);
-U32 RookMove(Board &board, int pos, int turn);
+inline U32 Movable(const Board &board, const int srcIndex);
+U32 RookMove(const Board &board, const int pos);
+U32 BishopMove(const Board &board, const int pos);
 
 //Generator
 int Negascout();
-bool MobeGenerator();
 int QuietscenceSearch();
 
 bool Uchifuzume();
 bool Sennichite();
+
+void MoveGenerator(const Board &board, Action *movelist, int &start, const int turn);
 
 /*
 hand[] ->move gene, move, Hash 

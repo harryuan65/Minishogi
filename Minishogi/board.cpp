@@ -2,79 +2,79 @@
 #include <bitset>
 #include <Windows.h>
 
-U32 Movement[20][BOARD_SIZE] = {
-	/* 0 */{ 0 },
-	/* 1 PAWN */
-	{
-		0x0000000, 	0x0000000, 	0x0000000, 	0x0000000, 	0x0000000,
-		0x0000001, 	0x0000002, 	0x0000004, 	0x0000008, 	0x0000010,
-		0x0000020, 	0x0000040, 	0x0000080, 	0x0000100,	0x0000200,
-		0x0000400, 	0x0000800, 	0x0001000, 	0x0002000,	0x0004000,
-		0x0008000, 	0x0010000, 	0x0020000, 	0x0040000,	0x0080000
-	},
-	/* 2 SILVER */
-	{
-		0x0000040, 	0x00000a0, 	0x0000140, 	0x0000280, 	0x0000100,
-		0x0000803, 	0x0001407, 	0x000280e, 	0x000501c, 	0x0002018,
-		0x0010060, 	0x00280e0, 	0x00501c0, 	0x00a0380,	0x0040300,
-		0x0200c00, 	0x0501c00, 	0x0a03800, 	0x1407000,	0x0806000,
-		0x0018000, 	0x0038000, 	0x0070000, 	0x00e0000,	0x00c0000
-	}
-	,
-	/* 3 GOLD */
-	{
-		0x0000022, 	0x0000045, 	0x000008a, 	0x0000114, 	0x0000208,
-		0x0000443, 	0x00008a7, 	0x000114e, 	0x000229c, 	0x0004118,
-		0x0008860, 	0x00114e0, 	0x00229c0, 	0x0045380,	0x0082300,
-		0x0110c00, 	0x0229c00, 	0x0453800, 	0x08a7000,	0x1046000,
-		0x0218000, 	0x0538000, 	0x0a70000, 	0x14e0000,	0x08c0000
-	},
+U32 RookMove(const Board &board, const int pos) {
+    // upper (find LSB) ; lower (find MSB)
+    U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
+    U32 rank, file;
+    U32 upper, lower;
 
-	/*4*/{ 0 },
-	/*5*/{ 0 },
-	/* 6=22 KING (Both) */
-	{
-		0x0000062, 	0x00000e5, 	0x00001ca, 	0x0000394, 	0x0000308,
-		0x0000c43, 	0x0001ca7, 	0x000394e, 	0x000729c, 	0x0006118,
-		0x0018860, 	0x00394e0, 	0x00729c0, 	0x00e5380, 	0x00c2300,
-		0x0310c00, 	0x0729c00, 	0x0e53800, 	0x1ca7000, 	0x1846000,
-		0x0218000, 	0x0538000, 	0x0a70000, 	0x14e0000, 	0x08c0000
-	},
-	/*7*/{ 0 },
-	/*8*/{ 0 },
-	/*9*/{ 0 },
-	/*10*/{ 0 },
-	/*11*/{ 0 },
-	/*12*/{ 0 },
-	/*13*/{ 0 },
-	/*14*/{ 0 },
-	/*15*/{ 0 },
-	/*16*/{ 0 },
-	/* 17 黑PAWN */
-	{
-		0x0000020, 	0x0000040, 	0x0000080, 	0x0000100, 	0x0000200,
-		0x0000400, 	0x0000800, 	0x0001000, 	0x0002000, 	0x0004000,
-		0x0008000, 	0x0010000, 	0x0020000, 	0x0040000,	0x0080000,
-		0x0100000, 	0x0200000, 	0x0400000, 	0x0800000,	0x1000000,
-		0x0000000, 	0x0000000, 	0x0000000, 	0x0000000,	0x0000000
-	},
-	/* 18 黑SILVER */
-	{
-		0x0000060, 	0x00000e0, 	0x00001c0, 	0x0000380, 	0x0000300,
-		0x0000c02, 	0x0001c05, 	0x000380a, 	0x0007014, 	0x0006008,
-		0x0018040, 	0x00380a0, 	0x0070140, 	0x00e0280,	0x00c0100,
-		0x0300800, 	0x0701400, 	0x0e02800, 	0x1c05000,	0x1802000,
-		0x0010000, 	0x0028000, 	0x0050000, 	0x00a0000,	0x0040000
-	},
-	/* 19 黑GOLD */
-	{
-		0x0000062, 	0x00000e5, 	0x00001ca, 	0x0000394, 	0x0000308,
-		0x0000c41, 	0x0001ca2, 	0x0003944, 	0x0007288, 	0x0006110,
-		0x0018820, 	0x0039440, 	0x0072880, 	0x00e5100,	0x00c2200,
-		0x0310400, 	0x0728800, 	0x0e51000, 	0x1ca2000,	0x1844000,
-		0x0208000, 	0x0510000, 	0x0a20000, 	0x1440000,	0x0880000
-	},
-};
+    // row
+    upper = (occupied & row_upper[pos]) | HIGHTEST_BOARD_POS;
+    lower = (occupied & row_lower[pos]) | LOWEST_BOARD_POS;
+
+    upper = (upper & (~upper + 1)) << 1;
+    lower = 1 << BitScanRev(lower);
+
+    rank = (upper - lower) & row_mask(pos);
+
+    // column
+    upper = (occupied & column_upper[pos]) | HIGHTEST_BOARD_POS;
+    lower = (occupied & column_lower[pos]) | LOWEST_BOARD_POS;
+
+    upper = (upper & (~upper + 1)) << 1;
+    lower = 1 << BitScanRev(lower);
+
+    file = (upper - lower) & column_mask(pos);
+
+    return rank | file;
+}
+
+U32 BishopMove(const Board &board, const int pos) {
+    // upper (find LSB) ; lower (find MSB)
+    U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
+    U32 slope1, slope2;
+    U32 upper, lower;
+
+    // slope1 "/"
+    upper = (occupied & slope1_upper[pos]) | HIGHTEST_BOARD_POS;
+    lower = (occupied & slope1_lower[pos]) | LOWEST_BOARD_POS;
+
+    upper = (upper & (~upper + 1)) << 1;
+    lower = 1 << BitScanRev(lower);
+
+    slope1 = (upper - lower) & slope1_mask(pos);
+
+    // slope2 "\"
+    upper = (occupied & slope2_upper[pos]) | HIGHTEST_BOARD_POS;
+    lower = (occupied & slope2_lower[pos]) | LOWEST_BOARD_POS;
+
+    upper = (upper & (~upper + 1)) << 1;
+    lower = 1 << BitScanRev(lower);
+
+    slope2 = (upper - lower) & slope2_mask(pos);
+
+    return slope1 | slope2;
+}
+
+inline U32 Movable(const Board &board, const int srcIndex) {
+    int srcChess = board.board[srcIndex];
+
+    if ((srcChess & 15) == BISHOP) {
+        if (srcChess & PROMOTE)
+            return BishopMove(board, srcIndex) | Movement[KING][srcIndex];
+        return BishopMove(board, srcIndex);
+    }
+    else if ((srcChess & 15) == ROOK) {
+        if (srcChess & PROMOTE)
+            return RookMove(board, srcIndex) | Movement[KING][srcIndex];
+        return RookMove(board, srcIndex);
+    }
+    else if (srcChess & PROMOTE) {
+        return Movement[GOLD | (srcChess & BLACKCHESS)][srcIndex];
+    }
+    return Movement[srcChess][srcIndex];
+}
+
 string showchess[] = {
 	"X","步","銀","金","角","飛","玉","X",
 	"X","ㄈ","全","X","馬","龍","X","X",
@@ -84,114 +84,6 @@ string showchess[] = {
 const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 inline void SetColor(int color = 8) {
 	SetConsoleTextAttribute(hConsole, color);
-}
-
-//Rules
-U32 RookMove(Board &board, int pos, int turn) {
-	// upper (find LSB) ; lower (find MSB)
-	U32 ret = 0;
-	U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
-	U32 rank, file;
-	U32 upper, lower;
-
-	// row
-	upper = (occupied & row_upper[pos]) | HIGHTEST_BOARD_POS;
-	lower = (occupied & row_lower[pos]) | LOWEST_BOARD_POS;
-
-	upper = (upper & (~upper + 1)) << 1;
-    lower = 1 << BitScanRev(lower);
-
-	rank = (upper - lower) & row_mask(pos);
-
-	// column
-	upper = (occupied & column_upper[pos]) | HIGHTEST_BOARD_POS;
-	lower = (occupied & column_lower[pos]) | LOWEST_BOARD_POS;
-
-	upper = (upper & (~upper + 1)) << 1;
-    lower = 1 << BitScanRev(lower);
-
-	file = (upper - lower) & column_mask(pos);
-
-	ret = rank | file;
-	ret &= (turn == WHITE) ? ret ^ board.occupied[WHITE] \
-		: ret ^ board.occupied[BLACK];
-	return ret;
-}
-
-U32 BishopMove(Board &board, int pos, int turn) {
-	// upper (find LSB) ; lower (find MSB)
-	U32 ret = 0;
-	U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
-	U32 slope1, slope2;
-	U32 upper, lower;
-
-	// slope1 "/"
-	upper = (occupied & slope1_upper[pos]) | HIGHTEST_BOARD_POS;
-	lower = (occupied & slope1_lower[pos]) | LOWEST_BOARD_POS;
-
-    upper = (upper & (~upper + 1)) << 1;
-	lower = 1 << BitScanRev(lower);
-
-	slope1 = (upper - lower) & slope1_mask(pos);
-
-	// slope2 "\"
-	upper = (occupied & slope2_upper[pos]) | HIGHTEST_BOARD_POS;
-	lower = (occupied & slope2_lower[pos]) | LOWEST_BOARD_POS;
-
-    upper = (upper & (~upper + 1)) << 1;
-    lower = 1 << BitScanRev(lower);
-
-	slope2 = (upper - lower) & slope2_mask(pos);
-
-	ret = slope1 | slope2;
-	ret = (turn == WHITE) ? ret & (ret ^ board.occupied[WHITE]) \
-		: ret & (ret ^ board.occupied[BLACK]);
-	return ret;
-}
-
-inline U32 DstBoard(Board board, int srcChess, int srcIndex, int dstIndex) {
-	U32 TargetBoard = 1 << dstIndex;
-	bool turn = srcChess > BLACKCHESS;
-
-	switch (srcChess) {
-	case BISHOP:
-		return (BishopMove(board, srcIndex, turn) & TargetBoard);
-	case BISHOP|BLACKCHESS:
-		return (BishopMove(board, srcIndex, turn) & TargetBoard);
-	case ROOK:
-		return  (RookMove(board, srcIndex, turn) & TargetBoard);
-	case ROOK|BLACKCHESS:
-		return  (RookMove(board, srcIndex, turn) & TargetBoard);
-	case PAWN | PROMOTE:
-		return (Movement[GOLD][srcIndex] & TargetBoard);
-	case SILVER | PROMOTE:
-		return (Movement[GOLD][srcIndex] & TargetBoard);
-	case BISHOP | PROMOTE:
-		return ((BishopMove(board, srcIndex, turn) | Movement[KING][srcIndex]) & TargetBoard);
-	case ROOK | PROMOTE:
-		return ((RookMove(board, srcIndex, turn) | Movement[KING][srcIndex]) & TargetBoard);
-	case PAWN | PROMOTE | BLACKCHESS:
-		return (Movement[GOLD | BLACKCHESS][srcIndex] & TargetBoard);
-	case SILVER | PROMOTE | BLACKCHESS:
-		return (Movement[GOLD | BLACKCHESS][srcIndex] & TargetBoard);
-	case BISHOP | PROMOTE | BLACKCHESS:
-		return ((BishopMove(board, srcIndex, turn) | Movement[KING][srcIndex]) & TargetBoard);
-	case ROOK | PROMOTE | BLACKCHESS:
-		return ((RookMove(board, srcIndex, turn) | Movement[KING][srcIndex]) & TargetBoard);
-	case KING | BLACKCHESS://因為這個傢伙的Movement跟KING一樣 就不特別創到22個
-		return (Movement[KING][srcIndex] & TargetBoard);
-	default:
-		/*
-		PAWN   bPAWN
-		SILVER bSILVER
-		GOLD   bGOLD
-		*/
-        if (board.bitboard[srcChess] == EMPTY) {
-			cout << "Invalid Move:chess# " << srcChess << " not exist\n";
-			return EMPTY;
-		}
-           return Movement[srcChess][srcIndex] & TargetBoard;
-	}
 }
 
 Board::Board() { Initialize(); }
@@ -439,7 +331,6 @@ void Board::PrintChessBoard() {
 	cout << "｜" << endl;
 
 	puts("—｜—｜—｜—｜—｜—｜—");
-
 }
 bool Board::isGameOver() {
     if (bitboard[KING] == 0) {
@@ -452,6 +343,7 @@ bool Board::isGameOver() {
 	}
 	return false;
 }
+
 void Board::DoMove(const Action action) {
     record.push_back(action);
     // 0 board[dst] board[src] dst src
@@ -463,8 +355,8 @@ void Board::DoMove(const Action action) {
         turn = srcChess > BLACKCHESS,
         dstboard = 1 << dstIndex;
 
-	if (srcChess == 0) {
-		cout << "Invalid Move: No chess at " << srcIndex << endl;
+	if (!srcChess) {
+		cerr << "Invalid Move: No chess at " << srcIndex << endl;
 		return;
 	}
 	if (srcIndex < BOARD_SIZE) { // 移動
@@ -483,7 +375,7 @@ void Board::DoMove(const Action action) {
 	}
 	else { // 打入
 		occupied[turn] ^= dstboard; // 打入場上的位置
-		bitboard[srcChess] ^= dstboard; // 打入該位置的手排
+		bitboard[srcChess] ^= dstboard; // 打入該手排的位置
 		board[EatToHand[srcIndex]]--; // 減少該手牌
 	}
 	board[dstIndex] = srcChess; // 放置到目的
@@ -517,7 +409,7 @@ void Board::UndoMove() {
 	}
 	else { // 之前是打入
         occupied[turn] ^= dstboard; // 取消打入場上的位置
-        bitboard[srcChess] ^= dstboard; // 取消打入該位置的手排
+        bitboard[srcChess] ^= dstboard; // 取消打入該手排的位置
         board[EatToHand[srcChess]]++; // 收回該手牌
 	}
     board[dstIndex] = dstChess; // 還原目的棋
@@ -608,7 +500,7 @@ Action Human_DoMove(Board &board, int turn) {
 		}
 
         //將該位置可走的步法跟目的步法 & 比對，產生該棋的board結果，不合法就會是0
-		if (!DstBoard(board, srcChess, srcIndex, dstIndex)) {
+		if (!(Movable(board, srcIndex) & (1 << dstIndex))) {
 			cout << "Invalid Move!:invalid "<<showchess[srcChess]<<" move." << endl;
 			return 0;
 		}
@@ -625,9 +517,38 @@ Action AI_DoMove(Board &board, int turn) {
 
 //Generator ;Search
 int Negascout() { return 0; };
-bool MobeGenerator() { return true; };
 int QuietscenceSearch() { return 0; };
 
 //Rules
 bool Uchifuzume() { return true; };
 bool Sennichite() { return true; };
+
+
+void MoveGenerator(const Board &board, Action *movelist, int &start, const int turn) {
+    U32 srcboard, dstboard, tmpboard, src, dst;
+    for (int i = 0; i < 10; i++) {
+        srcboard = board.bitboard[MoveOrdering[i] | (turn << 4)];
+        while (srcboard) {
+            src = BitScan(srcboard);
+            srcboard ^= 1 << src;
+            dstboard = Movable(board, src); // 一顆棋所有的走步範圍
+            dstboard &= (dstboard ^ board.occupied[turn]); // 把我方排除掉
+            while (dstboard) {
+                dst = BitScan(dstboard);
+                dstboard ^= 1 << dst;
+                /* TODO: promote */
+                movelist[(start)++] = (board.board[dst] << 18) | (board.board[src] << 12) | (dst << 6) | src;
+            }
+        }
+    }
+}
+
+/* TODO: 未完成 */
+U32 Promotable(int src, int dst, int turn) {
+    if (turn == WHITE ?
+        // 一般移動 || 吃子移動
+        (src < BOARD_SIZE && dst < 5) || (src < 5 && dst < BOARD_SIZE) :
+        (src < BOARD_SIZE && dst > 19) || (src > 19 && src < BOARD_SIZE && dst < BOARD_SIZE))
+        return PRO_MASK;
+    return 0;
+}
