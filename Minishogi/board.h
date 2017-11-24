@@ -4,25 +4,25 @@
 
 class  Board {
 public:
-	U32 occupied[2];
-	U32 bitboard[32];
-	int board[35];
-	int hand[10];//手牌數量
-	vector<Action> record;
+    U32 occupied[2];
+    U32 bitboard[32];
+    int board[35];
+    int hand[10];//手牌數量
+    vector<Action> record;
 
-	Board();
-	~Board();
-	bool Initialize();
-	bool Initialize(std::string &board_str/*Board &board, int *chessboard*/);
-	void DoMove(Action m_Action);
-	void UndoMove();
-	void PrintChessBoard(/*裡面用board來印*/);
-	bool isGameOver();
-	unsigned int Hashing();//同型表的東西
-	int Evaluate();//評價函數
-	bool SavePlaybook();//棋譜，回傳成功
-	bool SaveBoard(std::string filename);
-	bool LoadBoard(std::string filename);
+    Board();
+    ~Board();
+    bool Initialize();
+    bool Initialize(std::string &board_str/*Board &board, int *chessboard*/);
+    void DoMove(Action m_Action);
+    void UndoMove();
+    void PrintChessBoard(/*裡面用board來印*/);
+    bool isGameOver();
+    unsigned int Hashing();//同型表的東西
+    int Evaluate();//評價函數
+    bool SavePlaybook();//棋譜，回傳成功
+    bool SaveBoard(std::string filename);
+    bool LoadBoard(std::string filename);
 };
 
 
@@ -41,7 +41,8 @@ int QuietscenceSearch();
 bool Uchifuzume();
 bool Sennichite();
 
-void MoveGenerator(const Board &board, Action *movelist, int &start, const int turn);
+void MoveGenerator(const Board &board, const int turn, Action *movelist, int &start);
+void HandGenerator(const Board &board, const int turn, Action *movelist, int &start);
 
 /*
 hand[] ->move gene, move, Hash 
