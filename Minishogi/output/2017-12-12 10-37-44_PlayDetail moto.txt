@@ -1,0 +1,266 @@
+#2017-12-12 10-37-44
+---------------- Step 0 ----------------
+▼飛▼角▼銀▼金▼玉
+ ．  ．  ．  ． ▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金△銀△角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[△ Turn]
+Action : E3D4 
+PV: (depth | turn | action | my evaluate)
+0 : △E3D4       0
+1 : ▼A2B2       0
+2 : △D4C5       0
+3 : ▼B1C1       0
+4 : △E2D3       0
+5 : ▼C1D1       0
+6 : △E1E2       0
+7 : ▼B2C1       0
+8 : △E2A2+   -738
+Search Report :
+Total search nodes      :    9152657
+Failed-high nodes       :    5670970
+Quie search nodes       :          0
+Avg scout search branch :       5.98761
+Cut illgal branch       :    1576991
+Search time             :          2.13
+---------------- Step 1 ----------------
+▼飛▼角▼銀▼金▼玉
+ ．  ．  ．  ． ▼步
+ ．  ．  ．  ．  ． 
+△步△銀 ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[▼ Turn]
+---------------- Step 2 ----------------
+▼飛▼角▼銀 ． ▼玉
+ ．  ．  ． ▼金▼步
+ ．  ．  ．  ．  ． 
+△步△銀 ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[△ Turn]
+Action : D4C5 
+PV: (depth | turn | action | my evaluate)
+0 : △D4C5       0
+1 : ▼B2B3       0
+2 : △E4D4       0
+3 : ▼B3B4       0
+4 : △C5B4   -2167
+5 : ▼A3B4     247
+6 : △E2D3    -247
+7 : ▼A4B3     247
+8 : △D3B1    -506
+Search Report :
+Total search nodes      :   12201266
+Failed-high nodes       :    8242934
+Quie search nodes       :          0
+Avg scout search branch :       5.92037
+Cut illgal branch       :    1995654
+Search time             :          2.69
+---------------- Step 3 ----------------
+▼飛▼角▼銀 ． ▼玉
+ ．  ．  ． ▼金▼步
+△銀 ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[▼ Turn]
+---------------- Step 4 ----------------
+▼飛▼角 ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+△銀 ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[△ Turn]
+Action : C5B4 
+PV: (depth | turn | action | my evaluate)
+0 : △C5B4       0
+1 : ▼A4B5       0
+2 : △B4A5+  -3791
+3 : ▼B5E2+    342
+4 : △E1E2   -3791
+5 : ▼F2B4    3964
+6 : △E4D4   -3964
+7 : ▼B4A5    1921
+8 : △E2B2   -4088
+Search Report :
+Total search nodes      :    5914411
+Failed-high nodes       :    3434639
+Quie search nodes       :          0
+Avg scout search branch :       6.10308
+Cut illgal branch       :    1008330
+Search time             :          1.25
+---------------- Step 5 ----------------
+▼飛▼角 ．  ． ▼玉
+ ． △銀▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[▼ Turn]
+---------------- Step 6 ----------------
+▼飛 ．  ．  ． ▼玉
+▼角△銀▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+[△ Turn]
+Action : B4A5+
+PV: (depth | turn | action | my evaluate)
+0 : △B4A5+  -3791
+1 : ▼B5E2+    342
+2 : △E1E2   -3791
+3 : ▼F2C3    3964
+4 : △E4D4   -3964
+5 : ▼C3D4    1797
+6 : △E5D4   -4552
+7 : ▼B2C3    4552
+8 : △D4C5   -4552
+Search Report :
+Total search nodes      :    1842949
+Failed-high nodes       :     753567
+Quie search nodes       :          0
+Avg scout search branch :       9.82773
+Cut illgal branch       :     298547
+Search time             :          0.35
+---------------- Step 7 ----------------
+△全 ．  ．  ． ▼玉
+▼角 ． ▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角1飛
+[▼ Turn]
+---------------- Step 8 ----------------
+△全 ．  ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． ▼馬△飛
+▼0步0銀0金1角0飛
+△0步0銀0金0角1飛
+[△ Turn]
+Action : E1E2 
+PV: (depth | turn | action | my evaluate)
+0 : △E1E2   -3791
+1 : ▼B1C1    3791
+2 : △G2D4   -3618
+3 : ▼B2C3    3618
+4 : △G1A3   -3290
+5 : ▼A1B1    3290
+6 : △D4C5   -3290
+7 : ▼C3D4    3290
+8 : △E4D4   -5457
+Search Report :
+Total search nodes      :   29081213
+Failed-high nodes       :   25976465
+Quie search nodes       :          0
+Avg scout search branch :       8.83043
+Cut illgal branch       :    3972666
+Search time             :          5.28
+---------------- Step 9 ----------------
+△全 ．  ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步0銀0金1角0飛
+△0步0銀0金1角1飛
+[▼ Turn]
+---------------- Step 10 ----------------
+△全 ．  ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+ ．  ． ▼角 ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步0銀0金0角0飛
+△0步0銀0金1角1飛
+[△ Turn]
+Action : G2D4 
+PV: (depth | turn | action | my evaluate)
+0 : △G2D4   -3791
+1 : ▼B2A2    3791
+2 : △D4C3   -6546
+3 : ▼B3C3    3791
+4 : △G2E1   -3618
+5 : ▼C3D2    3618
+6 : △E2D2   -5538
+7 : ▼F2C3    5711
+8 : △D2D4   -5711
+Search Report :
+Total search nodes      :    2859022
+Failed-high nodes       :    1768180
+Quie search nodes       :          0
+Avg scout search branch :       9.80483
+Cut illgal branch       :     439751
+Search time             :          0.51
+---------------- Step 11 ----------------
+△全 ．  ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+ ．  ． ▼角 ．  ． 
+△步△角 ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步0銀0金0角0飛
+△0步0銀0金0角1飛
+[▼ Turn]
+---------------- Step 12 ----------------
+▼角 ．  ．  ． ▼玉
+ ．  ． ▼銀▼金▼步
+ ．  ．  ．  ．  ． 
+△步△角 ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步1銀0金0角0飛
+△0步0銀0金0角1飛
+[△ Turn]
+Action : D4B2 
+PV: (depth | turn | action | my evaluate)
+0 : △D4B2   -3915
+1 : ▼A1A2    3915
+2 : △G1A3   -3587
+Search Report :
+Total search nodes      :    4772580
+Failed-high nodes       :     679371
+Quie search nodes       :          0
+Avg scout search branch :        10.953
+Cut illgal branch       :    1069360
+Search time             :          0.85
+---------------- Step 13 ----------------
+▼角 ．  ．  ． ▼玉
+ ．  ． ▼銀△角▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步1銀0金0角0飛
+△0步0銀1金0角1飛
+[▼ Turn]
+---------------- Step 14 ----------------
+▼角 ．  ． ▼玉 ． 
+ ．  ． ▼銀△角▼步
+ ．  ．  ．  ．  ． 
+△步 ．  ．  ．  ． 
+△王△金 ． △飛 ． 
+▼0步1銀0金0角0飛
+△0步0銀1金0角1飛
+[△ Turn]
+Action : G1A3 
+PV: (depth | turn | action | my evaluate)
+0 : △G1A3   -3587
+Search Report :
+Total search nodes      :   43651446
+Failed-high nodes       :   14485275
+Quie search nodes       :          0
+Avg scout search branch :       11.4295
+Cut illgal branch       :    6766323
+Search time             :          7.22
