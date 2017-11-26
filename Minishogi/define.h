@@ -8,6 +8,17 @@ typedef unsigned __int8   U8;
 typedef unsigned __int32 Action;
 typedef unsigned char BYTE;
 
+struct TranspositNode {
+	TranspositNode() {}
+	TranspositNode(int score, bool isExact, int depth, Action action) {
+		bestScore = score;
+		bestAction = (isExact << 31) | (depth << 25) | action;
+	}
+
+	unsigned short bestScore;
+	Action bestAction;
+};
+
 /* SIZE */
 #define BOARD_SIZE 25
 #define TOTAL_BOARD_SIZE 35
@@ -29,12 +40,20 @@ typedef unsigned char BYTE;
 #define slope2_mask(pos) (slope2_upper[pos] | slope2_lower[pos])
 
 /*    move mask    */
+#define ACTION_TO_SRCINDEX(action) action & 0x003f
+#define ACTION_TO_DSTINDEX(action) (action & 0x0fc0) >> 6
+#define ACTION_TO_SRCCHESS(action) (action & 0x3f000) >> 12
+#define ACTION_TO_DSTCHESS(action) (action & 0xfc0000) >> 18
+#define ACTION_TO_DEPTH(action)    (action & 0x7e0000) >> 24
+#define ACTION_TO_ISEXACT(action)  action >> 31
+
 #define SRC_INDEX_MASK 0x003f
 #define DST_INDEX_MASK 0x0fc0
 #define SRC_CHESS_MASK 0x3f000
 #define DST_CHESS_MASK 0xfc0000
 #define PRO_MASK 0x1000000
 #define BOARD_MASK 0x01ffffff
+#define ACTION_MASK 0x01ffffff
 
 // max move number including attack (21) and move (29)
 // and the hand chess (112) (23 * 4 + 20)
@@ -72,8 +91,5 @@ typedef unsigned char BYTE;
 #define LIMIT_DEPTH     11
 #define DEPTH_UCHI      3
 #define COLOR_BOUND     10
-
-#define max(a, b) ((a > b) ? a : b)
-#define min(a, b) ((a < b) ? a : b)
 
 #endif

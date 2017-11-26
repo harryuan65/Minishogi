@@ -9,8 +9,14 @@ using namespace std;
 #include <direct.h>
 #include <sstream>
 #include <vector>
+#include <map>
+#include <bitset>
+#include <algorithm>
+#include <Windows.h>
 #include "define.h"
 #include "library.h"
+#include "board.h"
+#include "AI.h"
 #include "bitscan.h"
 
 

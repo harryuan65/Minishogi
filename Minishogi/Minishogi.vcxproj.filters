@@ -24,6 +24,9 @@
     <ClCompile Include="board.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
+    <ClCompile Include="AI.cpp">
+      <Filter>資源檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="library.h">
@@ -39,6 +42,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="board.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="AI.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
