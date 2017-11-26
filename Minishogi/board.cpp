@@ -8,7 +8,7 @@
 
 U32 RookMove(const Board &board, const int pos) {
     // upper (find LSB) ; lower (find MSB)
-    U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
+    U32 occupied = board.occupied[WHITE_TURN] | board.occupied[BLACK_TURN];
     U32 rank, file;
     U32 upper, lower;
 
@@ -35,7 +35,7 @@ U32 RookMove(const Board &board, const int pos) {
 
 U32 BishopMove(const Board &board, const int pos) {
     // upper (find LSB) ; lower (find MSB)
-    U32 occupied = board.occupied[WHITE] | board.occupied[BLACK];
+    U32 occupied = board.occupied[WHITE_TURN] | board.occupied[BLACK_TURN];
     U32 slope1, slope2;
     U32 upper, lower;
 
@@ -79,11 +79,6 @@ inline U32 Movable(const Board &board, const int srcIndex) {
     return Movement[srcChess][srcIndex];
 }
 
-const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-inline void SetColor(int color = 8) {
-    SetConsoleTextAttribute(hConsole, color);
-}
-
 vector<U32> Board::ZOBRIST_TABLE[35];
 
 Board::Board() { 
@@ -102,6 +97,7 @@ Board::Board() {
 	}
 	Initialize(); 
 }
+
 Board::~Board() {}
 
 void Board::CalZobristNumber() {
@@ -148,8 +144,8 @@ bool Board::Initialize() {
     //memset(hand, BLANK, 10 * sizeof(int));
     record.clear();
 
-    occupied[WHITE] = WHITE_INIT;
-    occupied[BLACK] = BLACK_INIT;
+    occupied[WHITE_TURN] = WHITE_INIT;
+    occupied[BLACK_TURN] = BLACK_INIT;
 
     bitboard[PAWN] = W_PAWN_INIT;
     bitboard[SILVER] = W_SILVER_INIT;
@@ -220,7 +216,6 @@ bool Board::Initialize(string &board_str) {
 }
 
 void Board::PrintChessBoard(bool turn) {
-	cout << endl;
 	cout << "---It's player " << turn << " turn!---" << endl;
 	/* Print Other Hand */
 	cout << "  ｜";
@@ -308,7 +303,8 @@ void Board::PrintChessBoard(bool turn) {
 	cout << "Black Hashcode : " << GetHashcode(1) << endl;
 }
 
-bool Board::isGameOver() {
+//TODO : 改成IsCheckMate 很難做
+bool Board::IsGameOver() {
     if (bitboard[KING] == 0) {
         cout << "*****[黑方獲勝]*****" << endl;
         return true;
@@ -322,12 +318,12 @@ bool Board::isGameOver() {
 
 void Board::DoMove(const Action action) {
     // 0 board[dst] board[src] dst src
-    U32 srcIndex = (action & SRC_INDEX_MASK),
-        dstIndex = (action & DST_INDEX_MASK) >> 6,
+    U32 srcIndex = ACTION_TO_SRCINDEX(action),
+        dstIndex = ACTION_TO_DSTINDEX(action),
         srcChess = BLANK,
         dstChess = BLANK,
-        pro = action >> 24,
         dstboard = 1 << dstIndex;
+	bool isPro = ACTION_TO_ISPRO(action);
 
     if (srcIndex < BOARD_SIZE) { // 移動
         srcChess = board[srcIndex];
@@ -342,7 +338,7 @@ void Board::DoMove(const Action action) {
         occupied[srcChess > BLACKCHESS] ^= (1 << srcIndex) | dstboard; // 更新該方場上狀況
         bitboard[srcChess] ^= 1 << srcIndex; // 移除該方手排原有位置
 
-        if (pro) 
+        if (isPro) 
 			srcChess ^= PROMOTE; // 升變
         bitboard[srcChess] ^= dstboard; // 更新該方手排至目的位置
         board[srcIndex] = BLANK; // 原本清空
@@ -364,10 +360,10 @@ void Board::UndoMove() {
     Action redo = record.back();
     record.pop_back();
     // 0 board[dst] board[src] dst src
-    U32 srcIndex = (redo & SRC_INDEX_MASK),
-        dstIndex = (redo & DST_INDEX_MASK) >> 6,
-        srcChess = (redo & SRC_CHESS_MASK) >> 12,
-        dstChess = (redo & DST_CHESS_MASK) >> 18,
+    U32 srcIndex = ACTION_TO_SRCINDEX(redo),
+        dstIndex = ACTION_TO_DSTINDEX(redo),
+        srcChess = ACTION_TO_SRCCHESS(redo),
+        dstChess = ACTION_TO_DSTCHESS(redo),
         pro = redo >> 24,
         turn = srcChess > BLACKCHESS,
         dstboard = 1 << dstIndex;
@@ -398,11 +394,13 @@ void Board::UndoMove() {
     board[dstIndex] = dstChess; // 還原目的棋
 }
 
-//TODO:
-int Board::Evaluate(bool turn) {
+int Board::GetEvaluate(bool turn) {
 	int score = 0;
 	for (int i = 0; i < 25; i++) {
-		//score += CHESS_SCORE
+		score += CHESS_SCORE[board[i]];
+	}
+	for (int i = 25; i < 35; i++) {
+		score += HAND_SCORE[i - 25] * board[i];
 	}
 	return score;
 }
@@ -509,9 +507,7 @@ Action Human_DoMove(Board &board, int turn) {
 
 Action AI_DoMove(Board &board, int turn) {
 	cout << "AI 思考中..." << endl;
-	Action action = IDAS(board, turn);
-	board.DoMove(action);
-    return action;
+    return IDAS(board, turn);
 }
 
 //Rules
@@ -540,7 +536,7 @@ void MoveGenerator(const Board &board, const int turn, Action *movelist, int &st
 
 void HandGenerator(const Board &board, const int turn, Action *movelist, int &start) {
     U32 srcboard = blank_board, dstboard,
-        src = (turn == BLACK ? 25 : 30), dst,
+        src = (turn == BLACK_TURN ? 25 : 30), dst,
         srcChess = (src < 40 ? BLACKCHESS : 0), nifu = 0;
 
     if (board.board[src]) { // 步
@@ -552,7 +548,7 @@ void HandGenerator(const Board &board, const int turn, Action *movelist, int &st
         }
 
         /* TODO: 打步詰  (暫時規定王的前方不能打入) */
-        if (turn == BLACK) nifu |= board.bitboard[KING] >> 5;
+        if (turn == BLACK_TURN) nifu |= board.bitboard[KING] >> 5;
         else nifu |= board.bitboard[KING | BLACKCHESS] << 5;
 
         dstboard = srcboard & ~((turn ? WHITE_CAMP : BLACK_CAMP) | nifu);

@@ -5,7 +5,7 @@
 map<U32, TranspositNode> transpositTable;
 
 Action IDAS(Board& board, bool turn) {
-	Action bestAction;
+	Action bestAction = 0;
 	for (int d = IDAS_START_DEPTH; d <= IDAS_END_DEPTH; d++) {
 		cout << "IDAS Searching " << d << " Depth" << endl; //LOG:
 		NegaScout(board, INT_MIN, INT_MAX, d, turn, false);
@@ -37,12 +37,13 @@ int NegaScout(Board& board, int alpha, int beta, int depth, bool turn, bool isFa
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
-		vector<Action> moveList;
+		Action moveList[MAX_MOVE_NUM];
+		int cnt;
 		/* Generate Function */
 		//TODO : moveGene 全部
 
 		/* 對所有移動可能做搜尋 */
-		for (int j = 0; j < moveList.size(); j++) {
+		for (int j = 0; j < cnt; j++) {
 			/* Set up a null window */
 			nwAlpha = max(alpha, bestScore);
 
@@ -69,18 +70,20 @@ int NegaScout(Board& board, int alpha, int beta, int depth, bool turn, bool isFa
 			}
 		}
 	}
-	UpdateTransposit(board.GetHashcode(turn), bestScore, true, depth, bestAction);
+	if (bestScore != INT_MIN)
+		UpdateTransposit(board.GetHashcode(turn), bestScore, true, depth, bestAction);
 	return bestScore;
 }
 
+//TODO : 改成negascout 加同形表?
 int QuiescenceSearch(Board& board, int alpha, int beta, bool turn) {
-	vector<Action> moveList;
-	int bestScore = INT_MIN;
+	Action moveList[MAX_MOVE_NUM];
+	int cnt, bestScore = INT_MIN;
 	//TODO : moveGene 吃掉 將軍 解將軍
 
-	for (Action action : moveList) {
-		if ((action & DST_CHESS_MASK) >> 18 || SEE((action & DST_INDEX_MASK) >> 6, turn ^ 1) > 0) {
-			board.DoMove(action);
+	for (int i = 0; i < cnt; i++) {
+		if (ACTION_TO_DSTCHESS(moveList[i]) || SEE(ACTION_TO_DSTINDEX(moveList[i]), turn ^ 1) > 0) {
+			board.DoMove(moveList[i]);
 			bestScore = max(bestScore, -QuiescenceSearch(board, max(-beta, bestScore), -alpha, turn ^ 1));
 			board.UndoMove();
 			if (bestScore >= beta)

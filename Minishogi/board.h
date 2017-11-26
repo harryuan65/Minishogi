@@ -16,7 +16,6 @@ public:
     U32 occupied[2];
     U32 bitboard[32];
     int board[35];
-    //int hand[10];//手牌數量
     vector<Action> record;
 
     Board();
@@ -26,8 +25,8 @@ public:
     void DoMove(Action m_Action);
     void UndoMove();
 	void PrintChessBoard(bool turn);
-    bool isGameOver();
-	int Evaluate(bool turn);
+    bool IsGameOver();
+	int GetEvaluate(bool turn);
     bool SavePlaybook();//棋譜，回傳成功
     bool SaveBoard(std::string filename);
     bool LoadBoard(std::string filename);

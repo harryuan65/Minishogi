@@ -1,10 +1,12 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
 
-/*    player    */
-enum {
-    WHITE = 0, BLACK = 1
-};
+/*    Print     */
+const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+inline void SetColor(int color = 8) {
+	SetConsoleTextAttribute(hConsole, color);
+}
 
 const char CHESS_WORD[][3] = {
 	"  ","步","銀","金","角","飛","王","  ",
@@ -13,24 +15,11 @@ const char CHESS_WORD[][3] = {
 	"  ","ㄈ","全","  ","馬","龍"
 };
 
-const int EAT_CHESS2INDEX[] = {
-	0, 30, 31, 32, 33, 34, 0, 0,// 24, 16-23
-	0, 30, 31,  0, 33, 34, 0, 0,// 32  24-29
-    0, 25, 26, 27, 28, 29, 0, 0,//  8,  0- 7
-    0, 25, 26,  0, 28, 29       // 16,  8-15
-};
+/*    Player Turn    */
+#define WHITE_TURN 0
+#define BLACK_TURN 1
 
-/*const int HandToChess[] = {
-    0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0,
-	1,  2,  3,  4,  5,
-    17, 18, 19, 20, 21,
-};*/
-
-/*    board    */
+/*    Board    */
 enum {
     // initialize board
     A5, A4, A3, A2, A1,
@@ -48,7 +37,14 @@ enum {
     I5, I4, I3, I2, I1    // G, S, S, P, P
 };
 
-/*    chess    */
+const int EAT_CHESS2INDEX[] = {
+	0, 30, 31, 32, 33, 34, 0, 0,// 24, 16-23
+	0, 30, 31,  0, 33, 34, 0, 0,// 32  24-29
+	0, 25, 26, 27, 28, 29, 0, 0,//  8,  0- 7
+	0, 25, 26,  0, 28, 29       // 16,  8-15
+};
+
+/*    Chess    */
 enum {
     BLANK,   //0
     PAWN,    //1
@@ -84,17 +80,19 @@ enum {
     //31
 };
 
-/* Evaluate Value */
+/*     Evaluate Value     */
 const int CHESS_SCORE[] = {
 	0, 107, 810, 907, 1291, 1670, SHRT_MAX, 0,
 	0, 895, 933,   0, 1985, 2408, 0, 0,
 	0, -107, -810, -907, -1291, -1670, SHRT_MIN, 0,
 	0, -895, -933,    0, -1985, -2408
 };
+
 const int HAND_SCORE[] = {
 	152, 1110, 1260, 1464, 1998
 };
 
+/*    Move Gene    */
 const U32 MoveOrdering[] = {
     KING, ROOK | PROMOTE, BISHOP | PROMOTE, ROOK, BISHOP,
     GOLD, SILVER | PROMOTE, SILVER, PAWN | PROMOTE, PAWN,
