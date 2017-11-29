@@ -1,5 +1,6 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
+#include "head.h"
 
 /*    Print     */
 const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -30,18 +31,18 @@ enum {
 
     //initialize white_hand
     F5, F4, F3, F2, F1, // R, R, B, B, G
-    G5, G4, G3, G2, G1,    // G, S, S, P, P
+    G5, G4, G3, G2, G1, // G, S, S, P, P
 
     //initialize black_hand
     H5, H4, H3, H2, H1, // R, R, B, B, G
     I5, I4, I3, I2, I1    // G, S, S, P, P
 };
 
-const int EAT_CHESS2INDEX[] = {
-	0, 30, 31, 32, 33, 34, 0, 0,// 24, 16-23
-	0, 30, 31,  0, 33, 34, 0, 0,// 32  24-29
-	0, 25, 26, 27, 28, 29, 0, 0,//  8,  0- 7
-	0, 25, 26,  0, 28, 29       // 16,  8-15
+const int EATCHESS_TO_INDEX[] = {
+	-1, 31, 32, 33, 34, 35, 36, -1, // 24, 16-23
+	-1, 31, 32, -1, 34, 35, -1, -1, // 32  24-29
+	-1, 25, 26, 27, 28, 29, 30, -1, //  8,  0- 7
+	-1, 25, 26, -1, 28, 29          // 16,  8-15
 };
 
 /*    Chess    */
@@ -81,26 +82,28 @@ enum {
 };
 
 /*     Evaluate Value     */
+//王死了就會回傳-CHECKMATE 無需王的子力
 const int CHESS_SCORE[] = {
-	0, 107, 810, 907, 1291, 1670, SHRT_MAX, 0,
-	0, 895, 933,   0, 1985, 2408, 0, 0,
-	0, -107, -810, -907, -1291, -1670, SHRT_MIN, 0,
+	0,  107,  810,  907,  1291,  1670, 0, 0,
+	0,  895,  933,    0,  1985,  2408, 0, 0,
+	0, -107, -810, -907, -1291, -1670, 0, 0,
 	0, -895, -933,    0, -1985, -2408
 };
 
 const int HAND_SCORE[] = {
-	152, 1110, 1260, 1464, 1998
+	152, 1110, 1260, 1464, 1998, 0,
+	-152, -1110, -1260, -1464, -1998, 0
 };
 
 /*    Move Gene    */
 const U32 MoveOrdering[] = {
-    KING, ROOK | PROMOTE, BISHOP | PROMOTE, ROOK, BISHOP,
-    GOLD, SILVER | PROMOTE, SILVER, PAWN | PROMOTE, PAWN,
+    ROOK | PROMOTE, BISHOP | PROMOTE, ROOK, BISHOP,
+    GOLD, SILVER | PROMOTE, SILVER, PAWN | PROMOTE, PAWN, KING
 };
 
 const bool Promotable[] = {
-    false, false, false, true, true,
-    false, false, true, false, true,
+    false, false, true, true,
+    false, false, true, false, true, false
 };
 
 const U32 Movement[][BOARD_SIZE] = {
