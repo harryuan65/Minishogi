@@ -1,6 +1,6 @@
 #include "AI.h"
-#define IDAS_START_DEPTH 3
-#define IDAS_END_DEPTH   3
+#define IDAS_START_DEPTH 5
+#define IDAS_END_DEPTH   7
 
 typedef void(*genmove)(const Board &, const int, Action *, int &);
 static const genmove move_func[] = { MoveGenerator, HandGenerator };
@@ -26,15 +26,15 @@ int NegaScout(Board& board, int alpha, int beta, int depth, bool turn, bool isFa
 	int bestScore = -INT_MAX;
 	int n = beta; 
 	TranspositNode tNode;
-	if (ReadTransposit(board.GetHashcode(turn), tNode)) {
+	if (!isFailHigh && ReadTransposit(board.GetHashcode(turn), tNode)) {
 		if (ACTION_TO_DEPTH(tNode.bestAction) >= depth && ACTION_TO_ISEXACT(tNode.bestAction))
 			return tNode.bestScore;
-		/*else {
+		else {
 			bestScore = tNode.bestScore;
 			alpha = tNode.bestScore;
 			n = alpha + 1;
 			bestAction = tNode.bestAction & ACTION_MASK;
-		}*/
+		}
 	}
 	/* 終止盤面 */
 	if (depth == 0) {
@@ -53,7 +53,7 @@ int NegaScout(Board& board, int alpha, int beta, int depth, bool turn, bool isFa
 			int score = -NegaScout(board, -n, -alpha, depth - 1, turn ^ 1, isFailHigh);
 			if (score > bestScore) {
 				// depth<3(因為結果差異不大) || score>=beta(因為發生cutoff) || n==beta(因為first node不用null window)
-				if (depth < 3 || score >= beta || n == beta) {
+				if (/*depth < 3 ||*/ score >= beta || n == beta) {
 					bestScore = score;
 				}
 				else {
