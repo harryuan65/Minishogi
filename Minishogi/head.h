@@ -4,17 +4,16 @@
 using namespace std;
 #include <iostream>
 #include <stdlib.h>
+#include <string>
 #include <assert.h>
 #include <time.h>
 #include <direct.h>
-#include <string>
 #include <sstream>
 #include <vector>
 #include <map>
 #include <bitset>
 #include <algorithm>
 #include <Windows.h>
-#include <random>
 #include "define.h"
 #include "library.h"
 #include "board.h"
