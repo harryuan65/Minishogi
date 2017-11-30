@@ -91,7 +91,7 @@ int QuiescenceSearch(Board& board, int alpha, int beta, bool turn) {
 		}
 	}
 	if (bestScore == INT_MIN) {
-		return board.Evaluate(turn);
+		return board.GetEvaluate(turn);
 	}
 	return bestScore;
 }
