@@ -1,5 +1,6 @@
 #ifndef _DEFINE_
 #define _DEFINE_
+#include <Windows.h>
 
 typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
@@ -10,21 +11,22 @@ typedef unsigned char BYTE;
 
 struct TranspositNode {
 	TranspositNode() {}
-	TranspositNode(int score, bool isExact, int depth, Action action) {
-		bestScore = score;
-		bestAction = (isExact << 31) | (depth << 25) | action;
+	TranspositNode(int score, bool isExact, bool turn, int depth, Action action) {
+		bestScore = min(max(score, SHRT_MIN), SHRT_MAX);
+		bestAction = (isExact << 31) | (turn << 30) | (depth << 25) | action;
 	}
 
 	short bestScore;
 	Action bestAction;
 };
 
-#define HUMAN_CTRL 0
-#define AI_CTRL    1
+#define HUMAN_CTRL   0
+#define AI_CTRL      1
+#define OTHERAI_CTRL 2
 
 /*     SIZE     */
 #define BOARD_SIZE 25
-#define TOTAL_BOARD_SIZE 35
+#define TOTAL_BOARD_SIZE 37
 
 /*     TURN     */
 #define TURN_WHITE 0
@@ -48,13 +50,10 @@ struct TranspositNode {
 #define ACTION_TO_SRCCHESS(action) (action & 0x0003f000) >> 12
 #define ACTION_TO_DSTCHESS(action) (action & 0x00fc0000) >> 18
 #define ACTION_TO_ISPRO(action)     action & 0x01000000
-#define ACTION_TO_DEPTH(action)    (action & 0x7e000000) >> 25
+#define ACTION_TO_DEPTH(action)    (action & 0x3e000000) >> 25
+#define ACTION_TO_TURN(action)     (action << 1) >> 31
 #define ACTION_TO_ISEXACT(action)  action >> 31
 
-//#define SRC_INDEX_MASK 0x003f
-//#define DST_INDEX_MASK 0x0fc0
-//#define SRC_CHESS_MASK 0x3f000
-//#define DST_CHESS_MASK 0xfc0000
 #define PRO_MASK 0x1000000
 #define BOARD_MASK 0x01ffffff
 #define ACTION_MASK 0x01ffffff

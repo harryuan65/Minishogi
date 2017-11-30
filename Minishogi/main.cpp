@@ -1,4 +1,4 @@
-// NEED DEBUG : Zobrist Hashing ¦Pºc, ¦P§Îªíªº¦ì¤¸Âà´«, Domove, Undomove
+ï»¿// NEED DEBUG : Zobrist Hashing åŒæ§‹, åŒå½¢è¡¨çš„ä½å…ƒè½‰æ›, Domove, Undomove
 #include "head.h"
 
 void InitializeByInput(Board &b) {
@@ -25,19 +25,18 @@ int main() {
 	HWND hwnd;
 
 	for (;;) {
-		cout << "½Ğ¿ï¾Ü¹ï¤â:\n(0)ª±®avs¹q¸£\n(1)¹q¸£vsª±®a\n(2)ª±®a¹ï¥´\n(3)¹q¸£¹ï¥´\n(4)¹q¸£¹ï¥´ ¥»¾÷vs¨ä¥Lµ{¦¡\n(5)¹q¸£¹ï¥´ ¨ä¥Lµ{¦¡vs¥»¾÷\n";
+		cout << "è«‹é¸æ“‡å°æ‰‹:\n(0)ç©å®¶vsé›»è…¦\n(1)é›»è…¦vsç©å®¶\n(2)ç©å®¶å°æ‰“\n(3)é›»è…¦å°æ‰“\n(4)é›»è…¦å°æ‰“ æœ¬æ©Ÿvså…¶ä»–ç¨‹å¼\n(5)é›»è…¦å°æ‰“ å…¶ä»–ç¨‹å¼vsæœ¬æ©Ÿ\n";
 		cin >> gameMode;
 		if (gameMode == 4 || gameMode == 5) {
-			cout << "§Aªºhwnd¬O " << (int)GetConsoleWindow() << endl;
-			cout << "½Ğ¿é¤J¥Ø¼Ğµ{¦¡ªºhwnd : ";
+			cout << "ä½ çš„hwndæ˜¯ " << (int)GetConsoleWindow() << endl;
+			cout << "è«‹è¼¸å…¥ç›®æ¨™ç¨‹å¼çš„hwnd : ";
 			scanf("%d", &hwnd);
 		}
-		switch (gameMode)
-		{
-		case 0: case 5:
+		switch (gameMode) {
+		case 0:
 			player[0] = HUMAN_CTRL; player[1] = AI_CTRL;
 			break;
-		case 1: case 4:
+		case 1: 
 			player[0] = AI_CTRL; player[1] = HUMAN_CTRL;
 			break;
 		case 2:
@@ -46,19 +45,26 @@ int main() {
 		case 3:
 			player[0] = AI_CTRL; player[1] = AI_CTRL;
 			break;
+		case 4:
+			player[0] = AI_CTRL; player[1] = OTHERAI_CTRL;
+			break;
+		case 5:
+			player[0] = OTHERAI_CTRL; player[1] = AI_CTRL;
+			break;
 		default:
 			continue;
 		}
 		break;
 	}
 
-    int choice;
-    cout << "¬O§_¨Ï¥Î¦Û­q´Ñ½L? : (0/1)\n";
-    while (cin >> choice && choice != 0 && choice != 1);
+    int choice = 0;
+    //cout << "æ˜¯å¦ä½¿ç”¨è‡ªè¨‚æ£‹ç›¤? : (0/1)\n";
+    //while (cin >> choice && choice != 0 && choice != 1);
     if (choice) InitializeByInput(m_Board);
 
     while (!m_Board.IsGameOver()) {
         Action moveList[128] = { 0 };
+		/* Debug : Move gene */
         /*int cnt = 0;
         MoveGenerator(m_Board, playerturn, moveList, cnt);
         cout << "Move cnt : " << cnt << "\n";
@@ -70,25 +76,39 @@ int main() {
         if (player[playerturn] == HUMAN_CTRL) {
             while (!(action = Human_DoMove(m_Board, playerturn)));
         }
-        else {
+        else if (player[playerturn] == AI_CTRL) {
 			if (!(action = AI_DoMove(m_Board, playerturn))) {
 				cout << "Error : AI can't gene a action";
 				system("pause");
 			}
+			cout << "AI Action : " << (ACTION_TO_SRCINDEX(action)) << " " << (ACTION_TO_DSTINDEX(action)) << (ACTION_TO_ISEXACT(action) ? "+" : "") << endl;
+			/*if (gameMode == 4 || gameMode == 5) {
+				stringstream ss;
+				ss << action;
+				for (int i = 0; i < ss.str().length(); i++) {
+					PostMessage(hwnd, WM_KEYDOWN, ss.str()[i], 0);
+				}
+				PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
+			}*/
+			//cout << "\a" << endl; //ã³ãƒ¼
         }
+		/*else {
+			cin >> action;
+		}*/
         m_Board.DoMove(action);
 
-		cout << "¬O§_Undo? : (0/1)\n";
+		/* Debug : Undo */
+		/*cout << "æ˜¯å¦Undo? : (0/1)\n";
 		while (cin >> choice && choice != 0 && choice != 1);
 		if (choice) {
 			m_Board.UndoMove();
 			continue;
-		}
+		}*/
 
         playerturn ^= 1;
     }
-
-	cout << "Game Over!";
+	m_Board.PrintChessBoard(0);
+	cout << "Game Over!" << endl;
 	system("pause");
     return 0;
 }
