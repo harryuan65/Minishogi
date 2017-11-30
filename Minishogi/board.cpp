@@ -11,7 +11,7 @@ vector<U32> Board::ZOBRIST_TABLE[37];
 Board::Board() { 
 	/* Make Zobrsit Table */
 	if (ZOBRIST_TABLE[0].size() == 0) {
-		srand(11);
+		srand(14);
 		for (int i = 0; i < 25; i++) {
 			ZOBRIST_TABLE[i] = vector<U32>(30);
 		}
@@ -142,7 +142,7 @@ bool Board::Initialize(string &board_str) {
     return true;
 }
 
-void Board::PrintChessBoard(bool turn) {
+void Board::PrintChessBoard(bool turn) const {
 	cout << "-----It's player " << turn << " turn!-----" << endl;
 	/* Print Other Hand */
 	cout << "  ｜";
@@ -232,7 +232,7 @@ void Board::DoMove(const Action action) {
 		CalZobristNumber(srcIndex, dstIndex, isPro ? srcChess^PROMOTE : srcChess, srcChess);
     }
     else { // 打入
-		srcChess = srcIndex > 30 ? srcIndex - 14 : srcIndex - 24;//HandToChess[srcIndex];
+		srcChess = srcIndex > 30 ? srcIndex - 14 : srcIndex - 24;
 		CalZobristNumber(srcIndex, dstIndex, board[srcIndex], srcChess);
         occupied[(srcChess > BLACKCHESS)] ^= dstboard; // 打入場上的位置
         bitboard[srcChess] ^= dstboard; // 打入該手排的位置
@@ -245,7 +245,7 @@ void Board::DoMove(const Action action) {
 }
 
 void Board::UndoMove() {
-	Action redo = record.back(); //record[record.size() - 1];
+	Action redo = record.back();
     record.pop_back();
     // 0 board[dst] board[src] dst src
 	int srcIndex = ACTION_TO_SRCINDEX(redo),
@@ -281,7 +281,7 @@ void Board::UndoMove() {
     board[dstIndex] = dstChess; // 還原目的棋
 }
 
-int Board::GetEvaluate(bool turn) {
+int Board::GetEvaluate(bool turn) const {
 	int score = 0;
 	for (int i = 0; i < 25; i++) {
 		score += CHESS_SCORE[board[i]];
@@ -290,6 +290,19 @@ int Board::GetEvaluate(bool turn) {
 		score += HAND_SCORE[i - 25] * board[i];
 	}
 	return turn ? -score : score;
+}
+
+//TODO : 仍然無法避免全部的循環
+bool Board::IsSennichite(Action action) {
+	if (ACTION_TO_SRCINDEX(record[record.size() - 1]) ==
+		ACTION_TO_DSTINDEX(record[record.size() - 3]) &&
+		ACTION_TO_DSTINDEX(record[record.size() - 1]) ==
+		ACTION_TO_SRCINDEX(record[record.size() - 3]) &&
+		ACTION_TO_SRCINDEX(record[record.size() - 2]) == ACTION_TO_DSTINDEX(action) &&
+		ACTION_TO_DSTINDEX(record[record.size() - 2]) == ACTION_TO_SRCINDEX(action)) {
+		return true;
+	}
+	return false;
 }
 
 int ConvertInput(int row, int col, int turn) {
@@ -395,7 +408,6 @@ Action Human_DoMove(Board &board, int turn) {
 Action AI_DoMove(Board &board, int turn) {
 	cout << "AI 思考中..." << endl;
 	Action action = IDAS(board, turn);
-	PrintPV(board, turn);
 	return action;
 }
 
@@ -475,8 +487,6 @@ inline U32 Movable(const Board &board, const int srcIndex) {
 }
 
 bool Uchifuzume() { return true; };
-
-bool Sennichite() { return true; };
 
 /* Move Gene */
 void MoveGenerator(const Board &board, const int turn, Action *movelist, int &start) {

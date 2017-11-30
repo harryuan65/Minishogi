@@ -5,7 +5,7 @@
 class Board {
 private:
 	static vector<U32> ZOBRIST_TABLE[37];
-	static const int ZOBRIST_SEED = 10;
+	//static const int ZOBRIST_SEED = 10;
 	U32 m_whiteHashcode;
 	U32 m_blackHashcode;
 
@@ -24,14 +24,30 @@ public:
     bool Initialize(string &board_str);
     void DoMove(Action m_Action);
     void UndoMove();
-	void PrintChessBoard(bool turn);
+	void PrintChessBoard(bool turn) const;
     bool IsGameOver();
-	int GetEvaluate(bool turn);
+	int GetEvaluate(bool turn) const;
 	bool SaveResult();
     bool SavePlaybook(); //棋譜，回傳成功
     bool SaveBoard(string filename);
     bool LoadBoard(string filename);
-	inline U32 GetHashcode(bool turn) { return turn ? m_blackHashcode : m_whiteHashcode; }
+	bool IsSennichite(Action action);
+	inline U64 GetHashcode(bool turn) const { 
+		return turn ? ((m_blackHashcode << 32) | m_whiteHashcode) : ((m_whiteHashcode << 32) | m_blackHashcode);
+	}
+	inline bool CheckChessCount() {
+		int count = 0;
+		for (int i = 0; i < 25; i++) {
+			count += (bool)board[i];
+		}
+		for (int i = 25; i < 37; i++) {
+			count += board[i];
+		}
+		if (count != 12) {
+			return false;
+		}
+		return true;
+	}
 };
 
 Action Human_DoMove(Board &board, int turn);
@@ -43,7 +59,6 @@ U32 RookMove(const Board &board, const int pos);
 U32 BishopMove(const Board &board, const int pos);
 
 bool Uchifuzume();
-bool Sennichite();
 
 /* Move Gene */
 void MoveGenerator(const Board &board, const int turn, Action *movelist, int &start);

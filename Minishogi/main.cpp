@@ -81,20 +81,20 @@ int main() {
 				cout << "Error : AI can't gene a action";
 				system("pause");
 			}
-			cout << "AI Action : " << (ACTION_TO_SRCINDEX(action)) << " " << (ACTION_TO_DSTINDEX(action)) << (ACTION_TO_ISEXACT(action) ? "+" : "") << endl;
-			/*if (gameMode == 4 || gameMode == 5) {
+			if (gameMode == 4 || gameMode == 5) {
 				stringstream ss;
 				ss << action;
+				cout << "Send:" << ss.str() << endl;
 				for (int i = 0; i < ss.str().length(); i++) {
 					PostMessage(hwnd, WM_KEYDOWN, ss.str()[i], 0);
 				}
 				PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
-			}*/
+			}
 			//cout << "\a" << endl; //びー
         }
-		/*else {
+		else {
 			cin >> action;
-		}*/
+		}
         m_Board.DoMove(action);
 
 		/* Debug : Undo */

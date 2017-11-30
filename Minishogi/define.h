@@ -45,14 +45,14 @@ struct TranspositNode {
 #define slope2_mask(pos) (slope2_upper[pos] | slope2_lower[pos])
 
 /*    move mask    */
-#define ACTION_TO_SRCINDEX(action)  action & 0x0000003f
-#define ACTION_TO_DSTINDEX(action) (action & 0x00000fc0) >> 6
-#define ACTION_TO_SRCCHESS(action) (action & 0x0003f000) >> 12
-#define ACTION_TO_DSTCHESS(action) (action & 0x00fc0000) >> 18
-#define ACTION_TO_ISPRO(action)     action & 0x01000000
-#define ACTION_TO_DEPTH(action)    (action & 0x3e000000) >> 25
-#define ACTION_TO_TURN(action)     (action << 1) >> 31
-#define ACTION_TO_ISEXACT(action)  action >> 31
+#define ACTION_TO_SRCINDEX(action)  (action & 0x0000003f)
+#define ACTION_TO_DSTINDEX(action) ((action & 0x00000fc0) >> 6)
+#define ACTION_TO_SRCCHESS(action) ((action & 0x0003f000) >> 12)
+#define ACTION_TO_DSTCHESS(action) ((action & 0x00fc0000) >> 18)
+#define ACTION_TO_ISPRO(action)     (action & 0x01000000)
+#define ACTION_TO_DEPTH(action)    ((action & 0x3e000000) >> 25)
+#define ACTION_TO_TURN(action)     ((action << 1) >> 31)
+#define ACTION_TO_ISEXACT(action)   (action >> 31)
 
 #define PRO_MASK 0x1000000
 #define BOARD_MASK 0x01ffffff
