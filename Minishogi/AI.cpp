@@ -17,8 +17,9 @@ Action IDAS(Board& board, bool turn) {
 	/*for (int i = 0; i < pv.pv_count; i++) {
 		PrintAction(pv.pv[i]);
 	}*/
+	SaveTransposit();
 	PrintPV(board, turn, IDAS_END_DEPTH);
-
+	
 	Action action = transpositTable[board.GetHashcode(turn)].bestAction;
 	if (ACTION_TO_TURN(action) != turn) {
 		return IsomorphismAction(action);
@@ -27,6 +28,8 @@ Action IDAS(Board& board, bool turn) {
 }
 
 int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth, bool turn, bool isFailHigh) {
+	static int count = 0; //DEBUG
+	static int total = 0; //DEBUG
 	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS]) {
 		//mPVAction->pv_count = 0;
 		return -CHECKMATE;
@@ -50,11 +53,9 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 			if (ACTION_TO_TURN(tNode.bestAction) != turn) {
 				moveList[0] = IsomorphismAction(moveList[0]);
 			}
-			//if (board.board[ACTION_TO_SRCINDEX(moveList[0])] != BLANK &&
-			//	((board.board[ACTION_TO_SRCINDEX(moveList[0])] & BLACKCHESS) >> 4) == turn) {
-				cnt++;
-				isLoad = true;
-			//}
+			cnt++;
+			total++;
+			isLoad = true;
 		}
 	}
 	/* 終止盤面 */
@@ -76,6 +77,7 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 			}
 			if (i == cnt - 1) {
 				j = 1;
+				count++;
 			}
 		}
 	}
@@ -104,7 +106,6 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 				//memcpy(mPVAction->pv + 1, tmpPVAction.pv, tmpPVAction.pv_count * sizeof(Action));
 				//mPVAction->pv_count = tmpPVAction.pv_count + 1;
 			}
-
 		}
 		board.UndoMove();
 		if (!board.CheckChessCount()) {
@@ -113,7 +114,6 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 		}
 		/* Beta Cut off */
 		if (bestScore >= beta) {
-			UpdateTransposit(board.GetHashcode(turn), bestScore, false, turn, depth, bestAction);
 			return bestScore;
 		}
 	}
@@ -186,6 +186,39 @@ void UpdateTransposit(U64 hashcode, int score, bool isExact, bool turn, int dept
 		transpositTable[hashcode] = TranspositNode(score, isExact, turn, depth, action);
 }
 
+void SaveTransposit() {
+	//transpositTable[999999999] = TranspositNode(500, 1, 1, 5, 999); //DEBUG
+	FILE *file = fopen(TRANSPOSIT_PATH, "wb");
+	printf("Saving %s\n", TRANSPOSIT_PATH);
+	fprintf(file, "%d ", transpositTable.size());
+	//fprintf(file, "%d\n", Board.ZOBRIST_SEED);
+	for (auto node : transpositTable) {
+		fwrite(&node.first, sizeof(node.first), 1, file);
+		fwrite(&node.second, sizeof(node.second), 1, file);
+	}
+	fclose(file);
+}
+
+bool LoadTransposit() {
+	FILE *file = fopen(TRANSPOSIT_PATH, "rb");
+	U32 size;
+	if (file != NULL) {
+		transpositTable.clear();
+		printf("Loading %s\n", TRANSPOSIT_PATH);
+		fprintf(file, "%d ", size);
+		for (int i = 0; i < size; i++) {
+			U64 key;
+			TranspositNode node; 
+			//fscanf(file, "%llu%d", &key, &entry.age)
+			//transpositTable[key] = node;
+		}
+		fclose(file);
+		return true;
+	}
+	printf("Failed to load %s\n", TRANSPOSIT_PATH);
+	return false;
+}
+
 //註: 不處理Chess ID
 Action IsomorphismAction(Action action) {
 	int srcIndex = ACTION_TO_SRCINDEX(action),
@@ -202,11 +235,11 @@ Action IsomorphismAction(Action action) {
 		srcIndex = 24 - srcIndex;
 		dstIndex = 24 - dstIndex;
 	}
-	return (dstIndex << 6) | srcIndex;
+	return ACTION_TO_ISPRO(action) | (dstIndex << 6) | srcIndex;
 }
 
 void PrintPV(Board& board, bool turn, int depth) {
-	U32 hashcode;
+	U64 hashcode;
 	int i = 0;
 	bool moverTurn = turn;
 	for (i = 0; i < depth; i++) {

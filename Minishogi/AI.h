@@ -1,7 +1,7 @@
 ﻿#ifndef _AI_
 #define _AI_
 #include "head.h"
-
+#define TRANSPOSIT_PATH "transposit_table.txt"
 
 /*typedef struct line_t
 {
@@ -19,6 +19,8 @@ int SEE(Board& board, int dstIndex, bool turn);
 /* Transposition Table */
 bool ReadTransposit(U64 hashcode, TranspositNode& bestNode);
 void UpdateTransposit(U64 hashcode, int score, bool isExact, bool turn, int depth, Action action);
+void SaveTransposit();
+bool LoadTransposit();
 
 /* History Heuristic */
 //void SortByHistoryTable(vector<Action>& moveList);

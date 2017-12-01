@@ -5,14 +5,14 @@
 class Board {
 private:
 	static vector<U32> ZOBRIST_TABLE[37];
-	//static const int ZOBRIST_SEED = 10;
-	U32 m_whiteHashcode;
-	U32 m_blackHashcode;
+	U64 m_whiteHashcode;
+	U64 m_blackHashcode;
 
 	void CalZobristNumber();
 	void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
 
 public:
+	static const int ZOBRIST_SEED = 15;
     U32 occupied[2];
     U32 bitboard[32];
     int board[37];
@@ -33,7 +33,8 @@ public:
     bool LoadBoard(string filename);
 	bool IsSennichite(Action action);
 	inline U64 GetHashcode(bool turn) const { 
-		return turn ? ((m_blackHashcode << 32) | m_whiteHashcode) : ((m_whiteHashcode << 32) | m_blackHashcode);
+		return turn ? (m_blackHashcode << 32) | m_whiteHashcode : (m_whiteHashcode << 32) | m_blackHashcode;
+			//m_blackHashcode : m_whiteHashcode;
 	}
 	inline bool CheckChessCount() {
 		int count = 0;

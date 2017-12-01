@@ -11,7 +11,7 @@ vector<U32> Board::ZOBRIST_TABLE[37];
 Board::Board() { 
 	/* Make Zobrsit Table */
 	if (ZOBRIST_TABLE[0].size() == 0) {
-		srand(14);
+		srand(ZOBRIST_SEED);
 		for (int i = 0; i < 25; i++) {
 			ZOBRIST_TABLE[i] = vector<U32>(30);
 		}
@@ -20,7 +20,8 @@ Board::Board() {
 		}
 		for (int i = 0; i < 37; i++)
 			for (int j = 0; j < ZOBRIST_TABLE[i].size(); j++)
-				ZOBRIST_TABLE[i][j] = rand() | rand() << 16;
+				ZOBRIST_TABLE[i][j] = rand() | (rand() << 16);
+		//rand() ^ (rand()<<8) ^ (rand()<<16);
 	}
 	Initialize(); 
 }

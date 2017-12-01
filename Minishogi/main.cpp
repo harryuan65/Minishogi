@@ -23,7 +23,8 @@ int main() {
 	int player[2];
 	int gameMode;
 	HWND hwnd;
-
+	//SaveTransposit();
+	//LoadTransposit();
 	for (;;) {
 		cout << "請選擇對手:\n(0)玩家vs電腦\n(1)電腦vs玩家\n(2)玩家對打\n(3)電腦對打\n(4)電腦對打 本機vs其他程式\n(5)電腦對打 其他程式vs本機\n";
 		cin >> gameMode;
