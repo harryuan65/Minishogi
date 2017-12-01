@@ -28,8 +28,8 @@ Action IDAS(Board& board, bool turn) {
 }
 
 int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth, bool turn, bool isFailHigh) {
-	static int count = 0; //DEBUG
-	static int total = 0; //DEBUG
+	//static int count = 0; //DEBUG
+	//static int total = 0; //DEBUG
 	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS]) {
 		//mPVAction->pv_count = 0;
 		return -CHECKMATE;
@@ -54,7 +54,7 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 				moveList[0] = IsomorphismAction(moveList[0]);
 			}
 			cnt++;
-			total++;
+			//total++;
 			isLoad = true;
 		}
 	}
@@ -77,7 +77,7 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 			}
 			if (i == cnt - 1) {
 				j = 1;
-				count++;
+				//count++;
 			}
 		}
 	}
@@ -114,10 +114,10 @@ int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth,
 		}
 		/* Beta Cut off */
 		if (bestScore >= beta) {
+			UpdateTransposit(board.GetHashcode(turn), bestScore, false, turn, depth, bestAction);
 			return bestScore;
 		}
 	}
-	cnt = 0;
 	UpdateTransposit(board.GetHashcode(turn), bestScore, true, turn, depth, bestAction);
 	return bestScore;
 }
