@@ -1,19 +1,18 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
-#include "head.h"
 
 /*    Print     */
 const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 inline void SetColor(int color = 8) {
-	SetConsoleTextAttribute(hConsole, color);
+    SetConsoleTextAttribute(hConsole, color);
 }
 
 const char CHESS_WORD[][3] = {
-	"  ","步","銀","金","角","飛","王","  ",
-	"  ","ㄈ","全","  ","馬","龍","  ","  ",
-	"  ","步","銀","金","角","飛","玉","  ",
-	"  ","ㄈ","全","  ","馬","龍"
+    "  ","步","銀","金","角","飛","王","  ",
+    "  ","ㄈ","全","  ","馬","龍","  ","  ",
+    "  ","步","銀","金","角","飛","玉","  ",
+    "  ","ㄈ","全","  ","馬","龍"
 };
 
 /*    Player Turn    */
@@ -31,103 +30,95 @@ enum {
 
     //initialize white_hand
     F5, F4, F3, F2, F1, // R, R, B, B, G
-    G5, G4, G3, G2, G1, // G, S, S, P, P
+    G5, G4, G3, G2, G1,    // G, S, S, P, P
 
     //initialize black_hand
     H5, H4, H3, H2, H1, // R, R, B, B, G
     I5, I4, I3, I2, I1    // G, S, S, P, P
 };
 
-const int EATCHESS_TO_INDEX[] = {
-	-1, 31, 32, 33, 34, 35, 36, -1, // 24, 16-23
-	-1, 31, 32, -1, 34, 35, -1, -1, // 32  24-29
-	-1, 25, 26, 27, 28, 29, 30, -1, //  8,  0- 7
-	-1, 25, 26, -1, 28, 29          // 16,  8-15
+const int EatToHand[] = {
+    0, 25, 26, 27, 28, 29, 35, 0,//  8,  0- 7
+    0, 25, 26,  0, 28, 29,  0, 0,// 16,  8-15
+    0, 30, 31, 32, 33, 34, 36, 0,// 24, 16-23
+    0, 30, 31,  0, 33, 34,  0, 0,// 32  24-29
+};
+
+const int HandToChess[] = {
+     0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,
+    17, 18, 19, 20, 21,
+     1,  2,  3,  4,  5,
+    22,  6,
 };
 
 /*    Chess    */
 enum {
-    BLANK,   //0
-    PAWN,    //1
-    SILVER,  //2
-    GOLD,    //3
-    BISHOP,  //4
-    ROOK,    //5
-    KING,    //6
-    //7
-    //8
-    //E_PAWN,//9
-    //E_SILVER,//10
-    //11
-    //E_BISHOP,//12
-    //E_ROOK,//13
-    //14
-    //15
-    //16
-    //bPAWN //17
-    //bSILVER,18
-    //bGOLD,19
-    //bBISHOP,20
-    //bROOK,21
-    //bKING,22
-    //23
-    //24
-    //b_E_PAWN,25
-    //b_E_SILVER,26
-    //27
-    //b_E_BISHOP,28
-    //b_E_ROOK,29
-    //30
-    //31
+    BLANK = 0,
+    // 1     2     3      4      5      6
+    PAWN, SILVER, GOLD, BISHOP, ROOK, KING
 };
 
 /*     Evaluate Value     */
-//王死了就會回傳-CHECKMATE 無需王的子力
 const int CHESS_SCORE[] = {
-	0,  107,  810,  907,  1291,  1670, 0, 0,
-	0,  895,  933,    0,  1985,  2408, 0, 0,
-	0, -107, -810, -907, -1291, -1670, 0, 0,
-	0, -895, -933,    0, -1985, -2408
+    0, -107, -810, -907, -1291, -1670, -CHECKMATE, 0,
+    0, -895, -933,    0, -1985, -2408, 0, 0,
+    0,  107,  810,  907,  1291,  1670, CHECKMATE, 0,
+    0,  895,  933,    0,  1985,  2408, 0, 0,
 };
 
 const int HAND_SCORE[] = {
-	152, 1110, 1260, 1464, 1998, 0,
-	-152, -1110, -1260, -1464, -1998, 0
+	 152,  1110,  1260,  1464,  1998,
+    -152, -1110, -1260, -1464, -1998
+};
+
+/*    Attack Gene    */
+const U32 AttackOrdering[] = {
+    PAWN, SILVER, GOLD, PAWN | PROMOTE, SILVER | PROMOTE,
+    BISHOP, ROOK, BISHOP | PROMOTE, ROOK | PROMOTE, KING
+};
+
+const bool A_Promotable[] = {
+    true, true, false, false, false,
+    true, true, false, false, false,
 };
 
 /*    Move Gene    */
 const U32 MoveOrdering[] = {
-    ROOK | PROMOTE, BISHOP | PROMOTE, ROOK, BISHOP,
-    GOLD, SILVER | PROMOTE, SILVER, PAWN | PROMOTE, PAWN, KING
+    ROOK | PROMOTE, BISHOP | PROMOTE, ROOK, BISHOP, SILVER | PROMOTE,
+    PAWN | PROMOTE, GOLD, SILVER, PAWN, KING
 };
 
-const bool Promotable[] = {
-    false, false, true, true,
-    false, false, true, false, true, false
+const bool M_Promotable[] = {
+    false, false, true, true, false,
+    false, false, true, true, false,
 };
 
 const U32 Movement[][BOARD_SIZE] = {
     /* 0 */{ 0 },
     /* 1 PAWN */
     {
-        0x0000000,     0x0000000,     0x0000000,     0x0000000,     0x0000000,
-        0x0000001,     0x0000002,     0x0000004,     0x0000008,     0x0000010,
+        0x0000000,     0x0000000,     0x0000000,     0x0000000,    0x0000000,
+        0x0000001,     0x0000002,     0x0000004,     0x0000008,    0x0000010,
         0x0000020,     0x0000040,     0x0000080,     0x0000100,    0x0000200,
         0x0000400,     0x0000800,     0x0001000,     0x0002000,    0x0004000,
         0x0008000,     0x0010000,     0x0020000,     0x0040000,    0x0080000
     },
     /* 2 SILVER */
     {
-        0x0000040,     0x00000a0,     0x0000140,     0x0000280,     0x0000100,
-        0x0000803,     0x0001407,     0x000280e,     0x000501c,     0x0002018,
+        0x0000040,     0x00000a0,     0x0000140,     0x0000280,    0x0000100,
+        0x0000803,     0x0001407,     0x000280e,     0x000501c,    0x0002018,
         0x0010060,     0x00280e0,     0x00501c0,     0x00a0380,    0x0040300,
         0x0200c00,     0x0501c00,     0x0a03800,     0x1407000,    0x0806000,
         0x0018000,     0x0038000,     0x0070000,     0x00e0000,    0x00c0000
     },
     /* 3 GOLD */
     {
-        0x0000022,     0x0000045,     0x000008a,     0x0000114,     0x0000208,
-        0x0000443,     0x00008a7,     0x000114e,     0x000229c,     0x0004118,
+        0x0000022,     0x0000045,     0x000008a,     0x0000114,    0x0000208,
+        0x0000443,     0x00008a7,     0x000114e,     0x000229c,    0x0004118,
         0x0008860,     0x00114e0,     0x00229c0,     0x0045380,    0x0082300,
         0x0110c00,     0x0229c00,     0x0453800,     0x08a7000,    0x1046000,
         0x0218000,     0x0538000,     0x0a70000,     0x14e0000,    0x08c0000

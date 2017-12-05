@@ -18,9 +18,6 @@
     <ClCompile Include="main.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>
-    <ClCompile Include="bitscan.cpp">
-      <Filter>資源檔</Filter>
-    </ClCompile>
     <ClCompile Include="board.cpp">
       <Filter>資源檔</Filter>
     </ClCompile>

@@ -1,155 +1,229 @@
 #include "AI.h"
-#define IDAS_START_DEPTH 5
-#define IDAS_END_DEPTH   9
 
-typedef void(*genmove)(const Board &, const int, Action *, int &);
-static const genmove move_func[] = { MoveGenerator, HandGenerator };
+U64 nodes;
+U64 failed_nodes;
+U64 leave_nodes;
+U32 pvEvaluate;
+U32 max_move[3] = { 0 };
 
-static map<U64, TranspositNode> transpositTable;
-//line pv;
+typedef void(*genmove)(Board &, Action *, U32 &);
+static const genmove move_func[] = { AttackGenerator, MoveGenerator, HandGenerator };
+
+map<U32, TranspositNode> transpositTable;
 
 Action IDAS(Board& board, bool turn) {
-	for (int d = IDAS_START_DEPTH; d <= IDAS_END_DEPTH; d++) {
-		cout << "IDAS Searching " << d << " Depth" << endl; //LOG:
-		cout << "Leave Evaluate : " << NegaScout(/*&pv,*/ board, -INT_MAX, INT_MAX, d, turn, false) << endl;
-	}
-	// Check PV
-	/*for (int i = 0; i < pv.pv_count; i++) {
-		PrintAction(pv.pv[i]);
-	}*/
-	SaveTransposit();
-	PrintPV(board, turn, IDAS_END_DEPTH);
-	
-	Action action = transpositTable[board.GetHashcode(turn)].bestAction;
-	if (ACTION_TO_TURN(action) != turn) {
-		return IsomorphismAction(action);
-	}
-	return action & ACTION_MASK;
+    PV pv;
+    cout << "IDAS Searching " << IDAS_END_DEPTH << " Depth" << endl; //LOG:
+	pvEvaluate = NegaScout(pv, board, -INT_MAX, INT_MAX, IDAS_END_DEPTH, turn, false);
+    printf("\n");
+	for (U32 i = 0; i < pv.count; ++i)
+		printf("%d %2d -> %2d\n", i, ACTION_TO_SRCINDEX(pv.action[i]), ACTION_TO_DSTINDEX(pv.action[i]));
+
+    if (pv.count == 0) return 0;
+	return pv.action[0];
 }
 
-int NegaScout(/*line *mPVAction,*/ Board& board, int alpha, int beta, int depth, bool turn, bool isFailHigh) {
-	//static int count = 0; //DEBUG
-	//static int total = 0; //DEBUG
-	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS]) {
-		//mPVAction->pv_count = 0;
-		return -CHECKMATE;
-	}
-	Action bestAction;
-	Action moveList[MAX_MOVE_NUM];
-	int cnt = 0;
-	int bestScore = -INT_MAX;
-	int n = beta; 
-	TranspositNode tNode;
-	//line tmpPVAction;
-	bool isLoad = false;
-	if (!isFailHigh && ReadTransposit(board.GetHashcode(turn), tNode)) {
-		if (ACTION_TO_DEPTH(tNode.bestAction) >= depth && ACTION_TO_ISEXACT(tNode.bestAction) && !board.IsSennichite(tNode.bestAction)) {
-			//mPVAction->pv[0] = tNode.bestAction;
-			//mPVAction->pv_count = 0;
-			return tNode.bestScore;
-		}
-		else if (tNode.bestScore > alpha){
-			moveList[0] = tNode.bestAction & ACTION_MASK;
-			if (ACTION_TO_TURN(tNode.bestAction) != turn) {
-				moveList[0] = IsomorphismAction(moveList[0]);
-			}
-			cnt++;
-			//total++;
-			isLoad = true;
-		}
-	}
-	/* 終止盤面 */
-	if (depth == 0) {
-		//mPVAction->pv_count = 0;
-		return -QuiescenceSearch(board, alpha, beta, turn ^ 1);
-	}
+int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bool isFailHigh) {
+    ++nodes;
+    failed_nodes += isFailHigh;
+    // using fail soft with negamax:
+    // terminal
+    if (depth == 0) {
+        leave_nodes += !isFailHigh;
+        pv.count = 0;
+        return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
+    }
 
-	/* 分三個步驟搜尋 [攻擊 移動 打入] */
-	for (int i = 0; i < 2; i++) {
-		move_func[i](board, turn, moveList, cnt);
-	}
-	int j = 0;
-	if (isLoad) {
-		for (int i = 1; i < cnt; i++) {
-			if (moveList[i] == moveList[0]) {
-				j = 0;
-				break;
-			}
-			if (i == cnt - 1) {
-				j = 1;
-				//count++;
-			}
-		}
-	}
-	/* 對所有移動可能做搜尋 */
-	for (; j < cnt; j++) {
-		board.DoMove(moveList[j]);
-		if (board.record[board.record.size() - 1] != board.record[board.record.size() - 5]) {
-			if (!board.CheckChessCount()) {
-				board.PrintChessBoard(turn);
-				cout << "有棋子消失了" << endl;
-			}
-			int score = -NegaScout(/*&tmpPVAction,*/ board, -n, -alpha, depth - 1, turn ^ 1, isFailHigh);
-			if (score > bestScore) {
-				// depth<3(因為結果差異不大) || score>=beta(因為發生cutoff) || n==beta(因為first node不用null window)
-				if (/*depth < 3 ||*/ score >= beta || n == beta) {
-					bestScore = score;
-				}
-				else {
-					bestScore = -NegaScout(/*&tmpPVAction, */board, -beta, -score, depth - 1, turn ^ 1, true);
-				}
-				bestAction = moveList[j];
-				alpha = bestScore;
-				n = alpha + 1;
+    int bestScore = -INT_MAX;
+    int n = beta;
+    PV tempPV;
+    U32 accCnt = 0;
+    /* 分三個步驟搜尋 [攻擊 移動 打入] */
+    for (int i = 0; i < 3; i++) {
+        Action moveList[MAX_MOVE_NUM];
+        U32 cnt = 0;
+        move_func[i](board, moveList, cnt);
+        accCnt += cnt;
+        //if (cnt > max_move[i])
+        //    printf("%d %d:%d ", board.GetTurn(), i, (max_move[i] = cnt));
 
-				//mPVAction->pv[0] = bestAction;
-				//memcpy(mPVAction->pv + 1, tmpPVAction.pv, tmpPVAction.pv_count * sizeof(Action));
-				//mPVAction->pv_count = tmpPVAction.pv_count + 1;
-			}
-		}
-		board.UndoMove();
-		if (!board.CheckChessCount()) {
-			board.PrintChessBoard(turn);
-			cout << "有棋子消失了" << endl;
-		}
-		/* Beta Cut off */
-		if (bestScore >= beta) {
-			UpdateTransposit(board.GetHashcode(turn), bestScore, false, turn, depth, bestAction);
-			return bestScore;
-		}
+        for (U32 j = 0; j < cnt; ++j) {
+			if (board.IsSennichite(moveList[j]) &&
+				!board.IsStillChecking(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j])))
+				continue;
+
+            /* Search Depth */
+            board.DoMove(moveList[j]);
+            //if (board.IsChecking()) cout << "Do\n";
+            int score = -NegaScout(tempPV, board, -n, -alpha, depth - 1, turn ^ 1, isFailHigh);
+            if (score > bestScore) {
+                if (depth < 3 || score >= beta || n == beta)
+                    bestScore = score;
+                else
+                    bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, turn ^ 1, true);
+
+                pv.action[0] = moveList[j];
+                memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+                pv.count = tempPV.count + 1;
+            }
+            //if (board.IsChecking()) cout << "Undo\n";
+            board.UndoMove();
+            if (bestScore >= beta) return bestScore; // cut off
+            n = max(alpha, bestScore) + 1; // set up a null window
+        }
+    }
+	if (!accCnt) {
+		pv.count = 0;
+		leave_nodes += !isFailHigh;
+		return -CHECKMATE - depth * 10;
 	}
-	UpdateTransposit(board.GetHashcode(turn), bestScore, true, turn, depth, bestAction);
-	return bestScore;
+    return bestScore;
 }
+
+
+//int NegaScout(PV &pv, Board& board, int alpha, int beta, int depth, bool turn, bool isFailHigh) {
+//	nodes++;
+//	failed_nodes += isFailHigh;
+//
+//	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS]) {
+//        leave_nodes += !isFailHigh;
+//		pv.count = 0;
+//        return -CHECKMATE;
+//    }
+//
+//	/*TranspositNode tNode;
+//	if (ReadTransposit(board.GetHashcode(turn), tNode)) {
+//		if (ACTION_TO_DEPTH(tNode.bestAction) >= depth)
+//			return tNode.bestScore;
+//		else {
+//			nw = tNode.bestScore;
+//		}
+//	}*/
+//	/* 終止盤面 */
+//	if (depth == 0) {
+//        leave_nodes += !isFailHigh;
+//		pv.count = 0;
+//		return QuiescenceSearch(board, alpha, beta, turn);
+//	}
+//
+//	int bestScore = INT_MIN;
+//	int nw = beta;  // Null Window Alpha
+//	PV tempPV;
+//
+//	/* 分三個步驟搜尋 [攻擊 移動 打入] */
+//	for (int i = 0; i < 3; i++) {
+//		Action moveList[MAX_MOVE_NUM];
+//		int cnt = 0;
+//		/* Generate Function */
+//		//TODO : moveGene 全部
+//        move_func[i](board, moveList, cnt);
+//
+//		/* 對所有移動可能做搜尋 */
+//		for (int j = 0; j < cnt; j++) {
+//
+//			/* Search Depth */
+//            board.DoMove(moveList[j]);
+//
+//            //int score = -NegaScout(pv, board, -nw, -alpha, depth - 1, turn ^ 1, isFailHigh);
+//            //if (score > bestScore) {
+//            //    // depth<3(因為結果差異不大) || score>=beta(因為發生cutoff) || n==beta(因為first node不用null window)
+//            //    if (depth < 3 || score >= beta || nw == beta) {
+//            //        bestScore = score;
+//            //    }
+//            //    else {
+//            //        bestScore = -NegaScout(pv, board, -beta, -score, depth - 1, turn ^ 1, true);
+//            //    }
+//            //    pv.action[0] = moveList[j];
+//            //    memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+//            //    pv.count = tempPV.count + 1;
+//            //    alpha = bestScore;
+//            //    nw = alpha + 1;
+//            //}
+//
+//			int score = -NegaScout(tempPV, board, -nw, -max(alpha, bestScore), depth - 1, turn ^ 1, isFailHigh);
+//			if (score > bestScore) {
+//				// depth<3(因為結果差異不大) || score>=beta(因為發生cutoff) || nw==beta(因為1st node不用null window)
+//				if (score >= beta || depth < 3 || nw == beta) {
+//					bestScore = score;
+//				}
+//				else {
+//					/* 發生Failed-High */
+//					bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, turn ^ 1, true);
+//				}
+//
+//                pv.action[0] = moveList[j];
+//                memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+//                pv.count = tempPV.count + 1;
+//			}
+//            board.UndoMove();
+//
+//			/* Beta Cut off */
+//			if (bestScore >= beta) {
+//				//UpdateTransposit(board.GetHashcode(turn), bestScore, false, depth, pv.action[0]);
+//				return bestScore;
+//			}
+//			/* Set up a null window */
+//			nw = max(alpha, bestScore) + 1;
+//		}
+//	}
+//    //if (bestScore != INT_MIN)
+//		//UpdateTransposit(board.GetHashcode(turn), bestScore, true, depth, pv.action[0]);
+//	return bestScore;
+//}
+
+int QuiescenceSearch(Board& board, int alpha, int beta, int turn) {
+    // terminal
+    ++nodes;
+    if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS])
+        return -CHECKMATE;
+
+    int bestScore = board.Evaluate();
+    if (bestScore >= beta) return bestScore;
+
+    int n = beta;
+    U32 moveList[MAX_MOVE_NUM] = { BLANK };
+    U32 cnt = 0;
+    AttackGenerator(board, moveList, cnt);
+
+    for (U32 i = 0; i < cnt; i++) {
+        board.DoMove(moveList[i]);
+        int score = -QuiescenceSearch(board, -n, -max(alpha, bestScore), 1 - turn);
+
+        if (score > bestScore)
+            bestScore = ((n == beta) || (score >= beta)) ? score : \
+            - QuiescenceSearch(board, -beta, -score + 1, 1 - turn);
+
+        board.UndoMove();
+        if (bestScore >= beta) return bestScore; // cut off
+        n = max(alpha, bestScore) + 1; // set up a null window
+    }
+    return bestScore;
+}
+
 
 //TODO : 改成negascout 加同形表?
-int QuiescenceSearch(Board& board, int alpha, int beta, bool turn) {
-	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS])
-		return -CHECKMATE;
+//int QuiescenceSearch(Board& board, int alpha, int beta, bool turn) {
+//	int bestScore = board.Evaluate();
+//	if (bestScore >= beta) return bestScore;
+//
+//	Action moveList[MAX_MOVE_NUM];
+//	int cnt = 0;
+//	//TODO : moveGene 吃掉 將軍 解將軍
+//
+//	for (int i = 0; i < cnt; i++) {
+//		if (ACTION_TO_DSTCHESS(moveList[i]) || SEE(ACTION_TO_DSTINDEX(moveList[i]), turn ^ 1) > 0) {
+//			board.DoMove(moveList[i]);
+//			bestScore = max(bestScore, -QuiescenceSearch(board, max(-beta, bestScore), -alpha, turn ^ 1));
+//			board.UndoMove();
+//			if (bestScore >= beta)
+//				return bestScore;
+//		}
+//	}
+//	
+//	return bestScore;
+//}
 
-	Action moveList[MAX_MOVE_NUM];
-	int cnt = 0, bestScore = -INT_MAX;
-	//TODO : moveGene 吃掉 將軍 解將軍
-
-	for (int i = 0; i < cnt; i++) {
-		if (ACTION_TO_DSTCHESS(moveList[i]) || SEE(board, ACTION_TO_DSTINDEX(moveList[i]), turn ^ 1) > 0) {
-			board.DoMove(moveList[i]);
-			bestScore = max(bestScore, -QuiescenceSearch(board, max(-beta, bestScore), -alpha, turn ^ 1));
-			board.UndoMove();
-			if (bestScore >= beta)
-				return bestScore;
-		}
-	}
-	if (bestScore == -INT_MAX) {
-		return board.GetEvaluate(turn);
-	}
-	return bestScore;
-}
-
-int SEE(Board& board, int dstIndex, bool turn) {
-	if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS])
-		return -CHECKMATE;
-
+int SEE(int dstIndex, int turn) {
 	vector<int> myMoveChess, opMoveChess;
 	int exchangeScore = 0;
 	//TODO : 
@@ -159,7 +233,7 @@ int SEE(Board& board, int dstIndex, bool turn) {
 	if (myMoveChess.size() == 0)
 		return 0;
 
-	for (int i = 0; i < opMoveChess.size(); i++) {
+	for (U32 i = 0; i < opMoveChess.size(); i++) {
 		exchangeScore += CHESS_SCORE[opMoveChess[i]];
 		if (i < myMoveChess.size()) {
 			exchangeScore += CHESS_SCORE[myMoveChess[i]];
@@ -171,7 +245,7 @@ int SEE(Board& board, int dstIndex, bool turn) {
 	return exchangeScore;
 }
 
-bool ReadTransposit(U64 hashcode, TranspositNode& bestNode) {
+bool ReadTransposit(U32 hashcode, TranspositNode& bestNode) {
 	if (transpositTable.find(hashcode) != transpositTable.end()) {
 		bestNode = transpositTable[hashcode];
 		//TODO: if board.IsMovable(bestNode.bestAction) collision avoid
@@ -180,82 +254,9 @@ bool ReadTransposit(U64 hashcode, TranspositNode& bestNode) {
 	return false;
 }
 
-void UpdateTransposit(U64 hashcode, int score, bool isExact, bool turn, int depth, Action action) {
-	if (transpositTable.find(hashcode) == transpositTable.end() ||
-		(transpositTable.find(hashcode) != transpositTable.end() && depth >= ACTION_TO_DEPTH(transpositTable[hashcode].bestAction)))
-		transpositTable[hashcode] = TranspositNode(score, isExact, turn, depth, action);
-}
-
-void SaveTransposit() {
-	//transpositTable[999999999] = TranspositNode(500, 1, 1, 5, 999); //DEBUG
-	FILE *file = fopen(TRANSPOSIT_PATH, "wb");
-	printf("Saving %s\n", TRANSPOSIT_PATH);
-	fprintf(file, "%d ", transpositTable.size());
-	//fprintf(file, "%d\n", Board.ZOBRIST_SEED);
-	for (auto node : transpositTable) {
-		fwrite(&node.first, sizeof(node.first), 1, file);
-		fwrite(&node.second, sizeof(node.second), 1, file);
-	}
-	fclose(file);
-}
-
-bool LoadTransposit() {
-	FILE *file = fopen(TRANSPOSIT_PATH, "rb");
-	U32 size;
-	if (file != NULL) {
-		transpositTable.clear();
-		printf("Loading %s\n", TRANSPOSIT_PATH);
-		fprintf(file, "%d ", size);
-		for (int i = 0; i < size; i++) {
-			U64 key;
-			TranspositNode node; 
-			//fscanf(file, "%llu%d", &key, &entry.age)
-			//transpositTable[key] = node;
-		}
-		fclose(file);
-		return true;
-	}
-	printf("Failed to load %s\n", TRANSPOSIT_PATH);
-	return false;
-}
-
-//註: 不處理Chess ID
-Action IsomorphismAction(Action action) {
-	int srcIndex = ACTION_TO_SRCINDEX(action),
-		dstIndex = ACTION_TO_DSTINDEX(action);
-	if (srcIndex > 24) {
-		srcIndex = srcIndex > 30 ? srcIndex - 6 : srcIndex + 6;
-		dstIndex = 24 - dstIndex;
-	}
-	else if (dstIndex > 24) {
-		srcIndex = 24 - srcIndex;
-		dstIndex = dstIndex > 30 ? dstIndex - 6 : dstIndex + 6;
-	}
-	else {
-		srcIndex = 24 - srcIndex;
-		dstIndex = 24 - dstIndex;
-	}
-	return ACTION_TO_ISPRO(action) | (dstIndex << 6) | srcIndex;
-}
-
-void PrintPV(Board& board, bool turn, int depth) {
-	U64 hashcode;
-	int i = 0;
-	bool moverTurn = turn;
-	for (i = 0; i < depth; i++) {
-		hashcode = board.GetHashcode(turn);
-		printf("Hashcode : %11llu Evaluate : %6d\n", hashcode, board.GetEvaluate(moverTurn));
-		if (transpositTable.find(hashcode) == transpositTable.end()){
-			cout << "ERROR : Can't Find Action" << endl;
-			break; 
-		}
-		TranspositNode node = transpositTable[hashcode];
-		PrintAction(node.bestAction);
-		board.DoMove(node.bestAction & ACTION_MASK);
-		turn ^= 1;
-	}
-	printf("Hashcode : %11llu Evaluate : %6d\n", board.GetHashcode(turn), board.GetEvaluate(moverTurn));
-	for (; i > 0; i--) {
-		board.UndoMove();
+void UpdateTransposit(U32 hashcode, int score, bool isExact, U32 depth, Action action) {
+	map<U32, TranspositNode>::iterator it = transpositTable.find(hashcode);
+	if (it != transpositTable.end() && depth >= ACTION_TO_DEPTH(it->second.bestAction)) {
+		it->second = TranspositNode(score, isExact, depth, action);
 	}
 }

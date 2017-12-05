@@ -1,69 +1,64 @@
+#pragma once
 #ifndef _BOARD_
 #define _BOARD_
-#include "head.h"
+#include"head.h"
 
 class Board {
 private:
-	static vector<U32> ZOBRIST_TABLE[37];
-	U64 m_whiteHashcode;
-	U64 m_blackHashcode;
+    U32 turn;
+    U32 checking;
+    U32 nonBlockable;
 
-	void CalZobristNumber();
-	void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
+    static vector<U32> ZOBRIST_TABLE[TOTAL_BOARD_SIZE];
+    static const int ZOBRIST_SEED = 10;
+    U32 m_whiteHashcode;
+    U32 m_blackHashcode;
+
+    void CalZobristNumber();
+    void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
 
 public:
-	static const int ZOBRIST_SEED = 15;
     U32 occupied[2];
     U32 bitboard[32];
-    int board[37];
+    int board[TOTAL_BOARD_SIZE];
     vector<Action> record;
+    vector<U32> checkstate;
 
     Board();
     ~Board();
-    bool Initialize();
-    bool Initialize(string &board_str);
+    void Initialize();
+    void Initialize(const char *str);
     void DoMove(Action m_Action);
     void UndoMove();
-	void PrintChessBoard(bool turn) const;
     bool IsGameOver();
-	int GetEvaluate(bool turn) const;
-	bool SaveResult();
-    bool SavePlaybook(); //棋譜，回傳成功
-    bool SaveBoard(string filename);
-    bool LoadBoard(string filename);
+    int Evaluate();
+    void PrintChessBoard();
+    bool SavePlaybook();//棋譜，回傳成功
+    bool SaveBoard(const char* filename);
+    bool LoadBoard(const char* filename);
+
 	bool IsSennichite(Action action);
-	inline U64 GetHashcode(bool turn) const { 
-		return turn ? (m_blackHashcode << 32) | m_whiteHashcode : (m_whiteHashcode << 32) | m_blackHashcode;
-			//m_blackHashcode : m_whiteHashcode;
-	}
-	inline bool CheckChessCount() {
-		int count = 0;
-		for (int i = 0; i < 25; i++) {
-			count += (bool)board[i];
-		}
-		for (int i = 25; i < 37; i++) {
-			count += board[i];
-		}
-		if (count != 12) {
-			return false;
-		}
-		return true;
-	}
+	bool IsStillChecking(const int src, const int dst);
+    inline bool IsChecking() { return checking; }
+    inline bool IsChecking() const { return checking; }
+    inline bool IsnonBlockable() { return nonBlockable; }
+    inline bool IsnonBlockable() const { return nonBlockable; }
+    inline U32 GetTurn() { return turn; }
+    inline U32 GetTurn() const { return turn; }
+    inline U32 GetHashcode(bool turn) { return turn ? m_blackHashcode : m_whiteHashcode; }
 };
 
-Action Human_DoMove(Board &board, int turn);
-Action AI_DoMove(Board &board, int turn);
+Action Human_DoMove(Board &board);
+Action AI_DoMove(Board &board);
 
-/* Move Rules */
+//Rules
 inline U32 Movable(const Board &board, const int srcIndex);
 U32 RookMove(const Board &board, const int pos);
 U32 BishopMove(const Board &board, const int pos);
 
-bool Uchifuzume();
-
-/* Move Gene */
-void MoveGenerator(const Board &board, const int turn, Action *movelist, int &start);
-void HandGenerator(const Board &board, const int turn, Action *movelist, int &start);
+void AttackGenerator(Board &board, Action *movelist, U32 &start);
+void MoveGenerator(Board &board, Action *movelist, U32 &start);
+void HandGenerator(Board &board, Action *movelist, U32 &start);
 
 /*
 hand[] ->move gene, move, Hash 
