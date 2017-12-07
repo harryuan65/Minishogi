@@ -1,6 +1,6 @@
 #ifndef _HEAD_
 #define _HEAD_
-#define WINDOWS_7 //WINDOWS_10
+#define WINDOWS_10 //WINDOWS_10
 using namespace std;
 #include <iostream>
 #include <stdlib.h>
