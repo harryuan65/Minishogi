@@ -38,7 +38,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
     int n = beta;
     PV tempPV;
     U32 accCnt = 0;
-    /* ¤À¤T­Ó¨BÆJ·j´M [§ğÀ» ²¾°Ê ¥´¤J] */
+    /* åˆ†ä¸‰å€‹æ­¥é©Ÿæœå°‹ [æ”»æ“Š ç§»å‹• æ‰“å…¥] */
     for (int i = 0; i < 3; i++) {
         Action moveList[MAX_MOVE_NUM];
         U32 cnt = 0;
@@ -55,7 +55,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
             /* Search Depth */
             board.DoMove(moveList[j]);
             //if (board.IsChecking()) cout << "Do\n";
-            int score = -NegaScout(tempPV, board, -n, -alpha, depth - 1, turn ^ 1, isFailHigh);
+            int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, turn ^ 1, isFailHigh);
             if (score > bestScore) {
                 if (depth < 3 || score >= beta || n == beta)
                     bestScore = score;
@@ -99,7 +99,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
 //			nw = tNode.bestScore;
 //		}
 //	}*/
-//	/* ²×¤î½L­± */
+//	/* çµ‚æ­¢ç›¤é¢ */
 //	if (depth == 0) {
 //        leave_nodes += !isFailHigh;
 //		pv.count = 0;
@@ -110,15 +110,15 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
 //	int nw = beta;  // Null Window Alpha
 //	PV tempPV;
 //
-//	/* ¤À¤T­Ó¨BÆJ·j´M [§ğÀ» ²¾°Ê ¥´¤J] */
+//	/* åˆ†ä¸‰å€‹æ­¥é©Ÿæœå°‹ [æ”»æ“Š ç§»å‹• æ‰“å…¥] */
 //	for (int i = 0; i < 3; i++) {
 //		Action moveList[MAX_MOVE_NUM];
 //		int cnt = 0;
 //		/* Generate Function */
-//		//TODO : moveGene ¥ş³¡
+//		//TODO : moveGene å…¨éƒ¨
 //        move_func[i](board, moveList, cnt);
 //
-//		/* ¹ï©Ò¦³²¾°Ê¥i¯à°µ·j´M */
+//		/* å°æ‰€æœ‰ç§»å‹•å¯èƒ½åšæœå°‹ */
 //		for (int j = 0; j < cnt; j++) {
 //
 //			/* Search Depth */
@@ -126,7 +126,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
 //
 //            //int score = -NegaScout(pv, board, -nw, -alpha, depth - 1, turn ^ 1, isFailHigh);
 //            //if (score > bestScore) {
-//            //    // depth<3(¦]¬°µ²ªG®t²§¤£¤j) || score>=beta(¦]¬°µo¥Ícutoff) || n==beta(¦]¬°first node¤£¥Înull window)
+//            //    // depth<3(å› ç‚ºçµæœå·®ç•°ä¸å¤§) || score>=beta(å› ç‚ºç™¼ç”Ÿcutoff) || n==beta(å› ç‚ºfirst nodeä¸ç”¨null window)
 //            //    if (depth < 3 || score >= beta || nw == beta) {
 //            //        bestScore = score;
 //            //    }
@@ -142,12 +142,12 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
 //
 //			int score = -NegaScout(tempPV, board, -nw, -max(alpha, bestScore), depth - 1, turn ^ 1, isFailHigh);
 //			if (score > bestScore) {
-//				// depth<3(¦]¬°µ²ªG®t²§¤£¤j) || score>=beta(¦]¬°µo¥Ícutoff) || nw==beta(¦]¬°1st node¤£¥Înull window)
+//				// depth<3(å› ç‚ºçµæœå·®ç•°ä¸å¤§) || score>=beta(å› ç‚ºç™¼ç”Ÿcutoff) || nw==beta(å› ç‚º1st nodeä¸ç”¨null window)
 //				if (score >= beta || depth < 3 || nw == beta) {
 //					bestScore = score;
 //				}
 //				else {
-//					/* µo¥ÍFailed-High */
+//					/* ç™¼ç”ŸFailed-High */
 //					bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, turn ^ 1, true);
 //				}
 //
@@ -201,14 +201,14 @@ int QuiescenceSearch(Board& board, int alpha, int beta, int turn) {
 }
 
 
-//TODO : §ï¦¨negascout ¥[¦P§Îªí?
+//TODO : æ”¹æˆnegascout åŠ åŒå½¢è¡¨?
 //int QuiescenceSearch(Board& board, int alpha, int beta, bool turn) {
 //	int bestScore = board.Evaluate();
 //	if (bestScore >= beta) return bestScore;
 //
 //	Action moveList[MAX_MOVE_NUM];
 //	int cnt = 0;
-//	//TODO : moveGene ¦Y±¼ ±N­x ¸Ñ±N­x
+//	//TODO : moveGene åƒæ‰ å°‡è» è§£å°‡è»
 //
 //	for (int i = 0; i < cnt; i++) {
 //		if (ACTION_TO_DSTCHESS(moveList[i]) || SEE(ACTION_TO_DSTINDEX(moveList[i]), turn ^ 1) > 0) {
