@@ -1,10 +1,14 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
+#include <string.h>
+#include <sstream>
+#include <Windows.h>
+using namespace std;
 
 /*    Print     */
 const HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-inline void SetColor(int color = 8) {
+inline void SetColor(int color = 7) {
     SetConsoleTextAttribute(hConsole, color);
 }
 
@@ -15,27 +19,17 @@ const char CHESS_WORD[][3] = {
     "  ","ㄈ","全","  ","馬","龍"
 };
 
+const char SAVE_CHESS_WORD[][5] = {
+	" ． ","△步","△銀","△金","△角","△飛","△王","    ",
+	"    ","△ㄈ","△全","    ","△馬","△龍","    ","    ",
+	"    ","▼步","▼銀","▼金","▼角","▼飛","▼玉","    ",
+	"    ","▼ㄈ","▼全","    ","▼馬","▼龍"
+};
+
 /*    Player Turn    */
 #define WHITE_TURN 0
 #define BLACK_TURN 1
 
-/*    Board    */
-enum {
-    // initialize board
-    A5, A4, A3, A2, A1,
-    B5, B4, B3, B2, B1,
-    C5, C4, C3, C2, C1,
-    D5, D4, D3, D2, D1,
-    E5, E4, E3, E2, E1,
-
-    //initialize white_hand
-    F5, F4, F3, F2, F1, // R, R, B, B, G
-    G5, G4, G3, G2, G1,    // G, S, S, P, P
-
-    //initialize black_hand
-    H5, H4, H3, H2, H1, // R, R, B, B, G
-    I5, I4, I3, I2, I1    // G, S, S, P, P
-};
 
 const int EatToHand[] = {
     0, 25, 26, 27, 28, 29, 35, 0,//  8,  0- 7
@@ -60,6 +54,59 @@ enum {
     BLANK = 0,
     // 1     2     3      4      5      6
     PAWN, SILVER, GOLD, BISHOP, ROOK, KING
+};
+
+inline int Input2Index(char row, char col) {
+	row = toupper(row);
+	if ('A' <= row && row <= 'G' && '1' <= col && col <= '5') {
+		return (row - 'A') * 5 + '5' - col;
+	}
+	return -1;
+}
+
+inline string Index2Input(int index) {
+	if (0 <= index && index < 35) {
+		stringstream ss;
+		ss << (char)('A' + index / 5) << (char)('5' - index % 5);
+		return ss.str();
+	}
+	return "";
+}
+
+inline void PrintAction(ostream &os, Action action) {
+	os << Index2Input(ACTION_TO_SRCINDEX(action));
+	os << Index2Input(ACTION_TO_DSTINDEX(action));
+	os << (ACTION_TO_ISPRO(action) ? "+" : " ");
+}
+
+struct TranspositNode {
+	TranspositNode() {}
+	TranspositNode(int score, bool isExact, int depth, Action action) {
+		bestScore = score;
+		bestAction = (isExact << 31) | (depth << 25) | action;
+	}
+
+	short bestScore;
+	Action bestAction;
+};
+
+struct PV {
+	Action action[IDAS_END_DEPTH];
+	int evaluate[IDAS_END_DEPTH];
+	int count = 0;
+	int leafEvaluate;
+
+	void Print(ostream& os, bool turn) {
+		os << "PV: (depth | turn | action | my evaluate)" << endl;
+		for (U32 i = 0; i < count; ++i) {
+			os << i << " : " << ((turn + i) % 2 ? "▼" : "△");
+			PrintAction(os, action[i]);
+			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
+		}
+		if (leafEvaluate <= -CHECKMATE) {
+			os << count << " : " << ((turn + count) % 2 ? "▼" : "△") << "Lose" << endl;
+		}
+	}
 };
 
 /*     Evaluate Value     */

@@ -1,8 +1,12 @@
 #ifndef _HEAD_
 #define _HEAD_
-#define WINDOWS_10 //WINDOWS_10
+#define WINDOWS_7 //WINDOWS_10
+#define _CRT_SECURE_NO_WARNINGS
 using namespace std;
+
 #include <iostream>
+#include <conio.h>
+#include <iomanip>
 #include <fstream>
 #include <stdlib.h>
 #include <string>
@@ -15,15 +19,16 @@ using namespace std;
 #include <algorithm>
 #include <Windows.h>
 
+struct TranspositNode;
+struct PV;
+class Board;
+
 #include "define.h"
 #include "library.h"
-#include "board.h"
-#include "AI.h"
+#include "Observer.h"
 #include "bitscan.h"
+#include "board.h"
+#include "MoveGene.h"
+#include "AI.h"
 
-extern U64 nodes;
-extern U64 failed_nodes;
-extern U64 leave_nodes;
-extern U32 pvEvaluate;
-extern U64 nnnn;
 #endif

@@ -5,18 +5,8 @@ typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
 typedef unsigned __int16 U16;
 typedef unsigned __int8   U8;
-typedef unsigned __int32 Action;
-
-struct TranspositNode {
-    TranspositNode() {}
-    TranspositNode(int score, bool isExact, int depth, Action action) {
-        bestScore = score;
-        bestAction = (isExact << 31) | (depth << 25) | action;
-    }
-
-    short bestScore;
-    Action bestAction;
-};
+//typedef unsigned __int32 Action;
+using Action = unsigned __int32;
 
 #define HUMAN_CTRL 0
 #define AI_CTRL    1
@@ -82,8 +72,4 @@ struct TranspositNode {
 #define CHECKMATE       SHRT_MAX
 #define DEPTH_UCHI      3
 
-struct PV {
-    Action action[IDAS_END_DEPTH];
-    unsigned int count = 0;
-};
 #endif

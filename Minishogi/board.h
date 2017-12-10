@@ -1,21 +1,24 @@
-#pragma once
 #ifndef _BOARD_
 #define _BOARD_
-#include"head.h"
+#include "head.h"
+
+//不要問L是做什麼 你會怕
+#define BOARD_PATH   "board//"
+#define LBOARD_PATH L"board//"
+#define KIFU_PATH    "output//"
+#define LKIFU_PATH  L"output//"
 
 class Board {
 private:
-    U32 turn;
-    U32 checking;
-    U32 nonBlockable;
-
     static vector<U32> ZOBRIST_TABLE[TOTAL_BOARD_SIZE];
     static const int ZOBRIST_SEED = 10;
+
+    bool m_turn;
+	int m_evaluate;
     U32 m_whiteHashcode;
     U32 m_blackHashcode;
-
-    void CalZobristNumber();
-    void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
+    U32 checking;
+    U32 nonBlockable;
 
 public:
     U32 occupied[2];
@@ -31,37 +34,25 @@ public:
     void DoMove(Action m_Action);
     void UndoMove();
     bool IsGameOver();
-    int Evaluate();
-    void PrintChessBoard();
-    bool SavePlaybook();//棋譜，回傳成功
-    bool SaveBoard(const char* filename);
-    bool LoadBoard(const char* filename);
+    int Evaluate(); //之後改成類似zobrist的方式
+    void PrintChessBoard() const;
+	void PrintNoncolorBoard(ostream &os) const;
+	//void CalEvaluate();
+	//void CalZobristNumber();
+	//void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
+    bool SaveBoard(const string filename, const string comment) const;
+    bool LoadBoard(const string filename, int &offset);
+	bool SaveKifu(const string filename, const string comment) const;
 
-	bool IsSennichite(Action action);
+	bool IsSennichite(Action action) const;
 	bool IsStillChecking(const int src, const int dst);
-    inline bool IsChecking() { return checking; }
     inline bool IsChecking() const { return checking; }
-    inline bool IsnonBlockable() { return nonBlockable; }
     inline bool IsnonBlockable() const { return nonBlockable; }
-    inline U32 GetTurn() { return turn; }
-    inline U32 GetTurn() const { return turn; }
-    inline U32 GetHashcode(bool turn) { return turn ? m_blackHashcode : m_whiteHashcode; }
+    inline bool GetTurn() const { return m_turn; }
+	inline int GetEvaluate(bool turn) const {return turn ? -m_evaluate : m_evaluate; }
+    inline U32 GetHashcode(bool turn) const { return turn ? m_blackHashcode : m_whiteHashcode; }
 };
 
-Action Human_DoMove(Board &board);
-Action AI_DoMove(Board &board);
-
-//Rules
-inline U32 Movable(const Board &board, const int srcIndex);
-U32 RookMove(const Board &board, const int pos);
-U32 BishopMove(const Board &board, const int pos);
-
-void AttackGenerator(Board &board, Action *movelist, U32 &start);
-void MoveGenerator(Board &board, Action *movelist, U32 &start);
-void HandGenerator(Board &board, Action *movelist, U32 &start);
-
-/*
-hand[] ->move gene, move, Hash 
-*/
+ostream & operator<<(ostream &os, const Board &board);
 
 #endif 
