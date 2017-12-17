@@ -33,7 +33,7 @@ int main() {
 	char buffer[80];
 	time_t rawtime;
 	time(&rawtime);
-	strftime(buffer, sizeof(buffer), "%Y-%m-%d %I-%M-%S", localtime(&rawtime));
+	strftime(buffer, sizeof(buffer), "%Y-%m-%d %H-%M-%S", localtime(&rawtime));
 	currTimeStr = buffer;
 
     for (;;) {
