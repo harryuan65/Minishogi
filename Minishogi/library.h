@@ -91,8 +91,8 @@ struct TranspositNode {
 };
 
 struct PV {
-	Action action[IDAS_END_DEPTH];
-	int evaluate[IDAS_END_DEPTH];
+	Action action[MAX_DEPTH];
+	int evaluate[MAX_DEPTH];
 	int count = 0;
 	int leafEvaluate;
 
@@ -103,17 +103,17 @@ struct PV {
 			PrintAction(os, action[i]);
 			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
 		}
-		if (leafEvaluate <= -CHECKMATE) {
-			os << count << " : " << ((turn + count) % 2 ? "¡¿" : "¡µ") << "Lose" << endl;
+		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
+			os << count << " : " << ((turn + count) % 2 ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << endl;
 		}
 	}
 };
 
 /*     Evaluate Value     */
 const int CHESS_SCORE[] = {
-    0, -107, -810, -907, -1291, -1670, -CHECKMATE, 0,
+    0, -107, -810, -907, -1291, -1670, 0, 0,
     0, -895, -933,    0, -1985, -2408, 0, 0,
-    0,  107,  810,  907,  1291,  1670, CHECKMATE, 0,
+    0,  107,  810,  907,  1291,  1670, 0, 0,
     0,  895,  933,    0,  1985,  2408, 0, 0,
 };
 

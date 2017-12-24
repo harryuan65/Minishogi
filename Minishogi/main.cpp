@@ -33,12 +33,12 @@ int main() {
 	char buffer[80];
 	time_t rawtime;
 	time(&rawtime);
-	strftime(buffer, sizeof(buffer), "%Y-%m-%d %I-%M-%S", localtime(&rawtime));
+	strftime(buffer, sizeof(buffer), "%Y-%m-%d %H-%M-%S", localtime(&rawtime));
 	currTimeStr = buffer;
 
     for (;;) {
         cout << "請選擇對手:\n(0)玩家vs電腦\n(1)電腦vs玩家\n(2)玩家對打\n(3)電腦對打\n(4)電腦對打 本機vs其他程式\n"; //(5)電腦對打 其他程式vs本機\n
-		gameMode = getche() - '0';
+		gameMode = getchar() - '0';
         switch (gameMode)
         {
         case 0:
@@ -64,17 +64,24 @@ int main() {
         }
         break;
     }
-	cout << "\n從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
-	isCustomBoard = getche() != '0';
-	cout << "\n執行時匯出cmd畫面?\n";
-	Observer::isAutoSaveDetail = getche() != '0';
-	cout << "\n結束時匯出棋譜?\n";
-	Observer::isAutoSaveKifu = getche() != '0';
+	cin.ignore();
+	cout << "輸入搜尋的深度\n";
+	cin >> Observer::depth;
+	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
+	isCustomBoard = getchar() != '0';
+	cin.ignore();
+	cout << "執行時匯出cmd畫面?\n";
+	Observer::isAutoSaveDetail = getchar() != '0';
+	cin.ignore();
+	cout << "結束時匯出棋譜?\n";
+	Observer::isAutoSaveKifu = getchar() != '0';
+	cin.ignore();
 	if (gameMode != 2) {
-		cout << "\n結束時匯出AI平均效能?\n";
-		Observer::isAutoSaveAIReport = getche() != '0';
+		cout << "結束時匯出AI平均效能?\n";
+		Observer::isAutoSaveAIReport = getchar() != '0';
+		cin.ignore();
 	}
-	cout << "\n確定要開始? ";
+	cout << "確定要開始? ";
 	system("pause");
 
     /*int choice;
@@ -138,7 +145,7 @@ int main() {
 
 				pv.Print(cout, m_Board.GetTurn());
 				Observer::PrintReport(cout);
-				if (Observer::searchTime > 20) cout << "\a"; //很吵
+				//if (Observer::searchTime > 60) cout << "\a"; //很吵
 			}
 			else {
 				cin >> action;
@@ -159,6 +166,7 @@ int main() {
 			m_Board.DoMove(action);
 		}
 
+		Observer::GameOver(m_Board.GetTurn(), m_Board.record);
 		cout << "Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win!\n";
 		if (Observer::isAutoSaveKifu) {
 			if (isCustomBoard) {
@@ -168,7 +176,6 @@ int main() {
 				m_Board.SaveKifu(currTimeStr + "_Kifu.txt", currTimeStr);
 			}
 		}
-		Observer::GameOver(m_Board.GetTurn());
 	} while (isCustomBoard);
 	if (Observer::isAutoSaveAIReport)
 		SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);

@@ -1,6 +1,7 @@
 #ifndef _HEAD_
 #define _HEAD_
 #define WINDOWS_7 //WINDOWS_10
+//#define PERFECT_ENDGAME_PV
 #define _CRT_SECURE_NO_WARNINGS
 using namespace std;
 

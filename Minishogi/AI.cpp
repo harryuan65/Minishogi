@@ -8,24 +8,25 @@ static const genmove move_func[] = { AttackGenerator, MoveGenerator, HandGenerat
 map<U32, TranspositNode> transpositTable;
 
 Action IDAS(Board& board, bool turn, PV &pv) {
-    cout << "IDAS Searching " << IDAS_END_DEPTH << " Depth..." << endl;
-	pv.leafEvaluate = NegaScout(pv, board, -INT_MAX, INT_MAX, IDAS_END_DEPTH, turn, false);
+    cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
+	pv.leafEvaluate = NegaScout(pv, board, -CHECKMATE, CHECKMATE, Observer::depth, turn, false);
+	cout << "pvleaf : " << pv.leafEvaluate << endl;
     if (pv.count == 0 || pv.leafEvaluate <= -CHECKMATE)
 		return 0;
 	return pv.action[0];
 }
 
-int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bool isFailHigh) {
-	Observer::totalNode++; //如果進入寧靜搜尋要-- 不然會重複計數
-	Observer::failedHighNode += isFailHigh;
-    // using fail soft with negamax:
-    // terminal
+int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bool isResearch) {
+	Observer::totalNode++;
+	Observer::researchNode += isResearch;
+
     if (depth == 0) {
         pv.count = 0;
-        return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
+		Observer::totalNode--; //不然會重複計數
+		return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
     }
 
-    int bestScore = -INT_MAX;
+    int bestScore = -CHECKMATE;
     int n = beta;
     PV tempPV;
     U32 accCnt = 0;
@@ -36,31 +37,37 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
         U32 cnt = 0;
         move_func[i](board, moveList, cnt);
         accCnt += cnt;
-        //if (cnt > max_move[i])
-        //    printf("%d %d:%d ", board.GetTurn(), i, (max_move[i] = cnt));
 
         for (U32 j = 0; j < cnt; ++j) {
-			if (board.IsSennichite(moveList[j]) &&
-				!board.IsStillChecking(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j])))
+			if (board.IsSennichite(moveList[j]) ||
+				board.IsStillChecking(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))) {
+				accCnt--;
 				continue;
+			}
 
             /* Search Depth */
             board.DoMove(moveList[j]);
-            //if (board.IsChecking()) cout << "Do\n";
-            int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, turn ^ 1, isFailHigh);
+            int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, turn ^ 1, isResearch);
             if (score > bestScore) {
                 if (depth < 3 || score >= beta || n == beta)
                     bestScore = score;
                 else
                     bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, turn ^ 1, true);
-
+				// Save PV
                 pv.action[0] = moveList[j];
 				pv.evaluate[0] = board.Evaluate();
                 memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
 				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
                 pv.count = tempPV.count + 1;
             }
-            //if (board.IsChecking()) cout << "Undo\n";
+			else if (n == beta && score == -CHECKMATE) {
+				// Save PV
+				pv.action[0] = moveList[j];
+				pv.evaluate[0] = board.Evaluate();
+				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+				pv.count = tempPV.count + 1;
+			}
             board.UndoMove();
 			if (bestScore >= beta) {
 				Observer::scoutSearchBranch += accCnt + j;
@@ -71,27 +78,60 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, int turn, bo
     }
 	if (!accCnt) {
 		pv.count = 0;
-		return -CHECKMATE - depth * 10;
+#ifdef PERFECT_ENDGAME_PV
+		return -CHECKMATE - 10 * depth;
+#else
+		return -CHECKMATE;
+#endif
 	}
 	Observer::scoutSearchBranch += accCnt;
     return bestScore;
 }
 
 int QuiescenceSearch(Board& board, int alpha, int beta, int turn) {
-    // terminal
 	Observer::totalNode++;
 	Observer::quieNode++;
-    if (!board.bitboard[KING] || !board.bitboard[KING | BLACKCHESS])
-        return -CHECKMATE;
 
-    int bestScore = board.Evaluate();
-    if (bestScore >= beta) return bestScore;
+    //int bestScore = board.Evaluate();
+    //if (bestScore >= beta) return bestScore;
 
+	int bestScore = -CHECKMATE;
     int n = beta;
-    U32 moveList[MAX_MOVE_NUM] = { BLANK };
-    U32 cnt = 0;
-    AttackGenerator(board, moveList, cnt);
+	U32 accCnt = 0;
 
+	/* 分三個步驟搜尋 [攻擊 移動 打入] */
+	for (int i = 0; i < 3; i++) {
+		Action moveList[MAX_MOVE_NUM];
+		U32 cnt = 0;
+		move_func[i](board, moveList, cnt);
+		accCnt += cnt;
+
+		for (U32 j = 0; j < cnt; ++j) {
+			if (board.IsSennichite(moveList[j]) ||
+				board.IsStillChecking(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))
+				/*|| !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE > 0)*/) {
+				accCnt--;
+				continue;
+			}
+
+			/* Search Depth */
+			board.DoMove(moveList[j]);
+			int score = -QuiescenceSearch(board, -n, -max(alpha, bestScore), 1 - turn);
+			if (score > bestScore) {
+				if (score >= beta || n == beta)
+					bestScore = score;
+				else
+					bestScore = -QuiescenceSearch(board, -beta, -score + 1, 1 - turn);
+			}
+			board.UndoMove();
+			if (bestScore >= beta) {
+				return bestScore; // cut off
+			}
+			n = max(alpha, bestScore) + 1; // set up a null window
+		}
+	}
+    /*U32 cnt = 0;
+	AttackGenerator(board, moveList, cnt);
     for (U32 i = 0; i < cnt; i++) {
         board.DoMove(moveList[i]);
         int score = -QuiescenceSearch(board, -n, -max(alpha, bestScore), 1 - turn);
@@ -105,7 +145,8 @@ int QuiescenceSearch(Board& board, int alpha, int beta, int turn) {
 			return bestScore; // cut off
 		}
         n = max(alpha, bestScore) + 1; // set up a null window
-    }
+    }*/
+	if (!accCnt) return -CHECKMATE;
     return bestScore;
 }
 

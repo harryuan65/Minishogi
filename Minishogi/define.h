@@ -5,8 +5,7 @@ typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
 typedef unsigned __int16 U16;
 typedef unsigned __int8   U8;
-//typedef unsigned __int32 Action;
-using Action = unsigned __int32;
+typedef unsigned __int32 Action;
 
 #define HUMAN_CTRL 0
 #define AI_CTRL    1
@@ -65,11 +64,12 @@ using Action = unsigned __int32;
 #define LOWEST_BOARD_POS   0x0000001
 
 /* search depth */
-#define IDAS_START_DEPTH 11
-#define IDAS_END_DEPTH   8
+//#define IDAS_START_DEPTH 11
+//#define IDAS_END_DEPTH   10
+#define MAX_DEPTH 18
 
 /*    search    */
-#define CHECKMATE       SHRT_MAX
+#define CHECKMATE       SHRT_MAX //SHRT_MAX INT_MAX
 #define DEPTH_UCHI      3
 
 #endif
