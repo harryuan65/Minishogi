@@ -104,7 +104,7 @@ namespace Observer {
 		os << "White win rate          : " << setw(10) << (int)(whiteWinNum * 100 / gameNum) << "%\n";
 		os << "Black win rate          : " << setw(10) << 100 - (int)(whiteWinNum * 100 / gameNum) << "%\n";
 		for (int i = 0; i < winner.size(); i++) {
-			os << "Round " << i + 1 << " : " << (winner[i] ? "¡µ" : "¡¿") << " Win! " << setw(8) << std::hex << kifuHash[i] << std::dec << "\n";
+			os << "Round " << setw(3) << i << " : " << (winner[i] ? "¡¿" : "¡µ") << " Win! " << setw(8) << std::hex << kifuHash[i] << std::dec << "\n";
 		}
 
 		os << "Average Report (Divide Search nums) :\n";

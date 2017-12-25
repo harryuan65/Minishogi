@@ -109,7 +109,7 @@ int QuiescenceSearch(Board& board, int alpha, int beta, int turn) {
 		for (U32 j = 0; j < cnt; ++j) {
 			if (board.IsSennichite(moveList[j]) ||
 				board.IsStillChecking(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))
-				/*|| !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE > 0)*/) {
+				/*|| !我是否被將軍 || !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE >= 0)*/) {
 				accCnt--;
 				continue;
 			}

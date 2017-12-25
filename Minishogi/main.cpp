@@ -153,7 +153,7 @@ int main() {
 
 			if (Observer::isAutoSaveDetail) {
 				if (isCustomBoard) {
-					SavePlayDetail(currTimeStr + "_PlayDetail_" + (char)(Observer::gameNum + '0') + ".txt", currTimeStr, m_Board, action, pv);
+					SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
 				}
 				else {
 					SavePlayDetail(currTimeStr + "_PlayDetail.txt", currTimeStr, m_Board, action, pv);
@@ -166,19 +166,19 @@ int main() {
 			m_Board.DoMove(action);
 		}
 
-		Observer::GameOver(m_Board.GetTurn(), m_Board.record);
 		cout << "Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win!\n";
 		if (Observer::isAutoSaveKifu) {
 			if (isCustomBoard) {
-				m_Board.SaveKifu(currTimeStr + "_Kifu_" + (char)(Observer::gameNum + '0') + ".txt", currTimeStr);
+				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt", currTimeStr);
 			}
 			else {
 				m_Board.SaveKifu(currTimeStr + "_Kifu.txt", currTimeStr);
 			}
 		}
+		Observer::GameOver(!m_Board.GetTurn(), m_Board.record);
+		if (Observer::isAutoSaveAIReport)
+			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
 	} while (isCustomBoard);
-	if (Observer::isAutoSaveAIReport)
-		SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
 	Observer::PrintAvgReport(cout);
 
 	cout << "\a\a\a"; //終わり　びびびー
