@@ -68,18 +68,18 @@ int main() {
 	cout << "輸入搜尋的深度\n";
 	cin >> Observer::depth;
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
-    isCustomBoard = false;// = getchar() != '0';
-	//cin.ignore();
+	isCustomBoard = getchar() != '0';
+	cin.ignore();
 	cout << "執行時匯出cmd畫面?\n";
-    Observer::isAutoSaveDetail = false;// = getchar() != '0';
-	//cin.ignore();
+	Observer::isAutoSaveDetail = getchar() != '0';
+	cin.ignore();
 	cout << "結束時匯出棋譜?\n";
-    Observer::isAutoSaveKifu = false;// = getchar() != '0';
-	//cin.ignore();
+	Observer::isAutoSaveKifu = getchar() != '0';
+	cin.ignore();
 	if (gameMode != 2) {
 		cout << "結束時匯出AI平均效能?\n";
-        Observer::isAutoSaveAIReport = false;// = getchar() != '0';
-		//cin.ignore();
+		Observer::isAutoSaveAIReport = getchar() != '0';
+		cin.ignore();
 	}
 	cout << "確定要開始? ";
 	system("pause");
