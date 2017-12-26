@@ -17,15 +17,12 @@ private:
 	int m_evaluate;
     U32 m_whiteHashcode;
     U32 m_blackHashcode;
-    U32 checking;
-    U32 nonBlockable;
 
 public:
     U32 occupied[2];
     U32 bitboard[32];
     int board[TOTAL_BOARD_SIZE];
     vector<Action> record;
-    vector<U32> checkstate;
 
     Board();
     ~Board();
@@ -34,7 +31,8 @@ public:
     void DoMove(Action m_Action);
     void UndoMove();
     bool IsGameOver();
-    int Evaluate(); //之後改成類似zobrist的方式
+    // 已經是了 而且真的蠻快的 (12/21)
+    inline int Evaluate() { return m_turn ? m_evaluate : -m_evaluate; };
     void PrintChessBoard() const;
 	void PrintNoncolorBoard(ostream &os) const;
 	//void CalEvaluate();
@@ -45,11 +43,8 @@ public:
 	bool SaveKifu(const string filename, const string comment) const;
 
 	bool IsSennichite(Action action) const;
-	bool IsStillChecking(const int src, const int dst);
-    inline bool IsChecking() const { return checking; }
-    inline bool IsnonBlockable() const { return nonBlockable; }
+	bool IsCheckAfter(const int src, const int dst);
     inline bool GetTurn() const { return m_turn; }
-	inline int GetEvaluate(bool turn) const {return turn ? -m_evaluate : m_evaluate; }
     inline U32 GetHashcode(bool turn) const { return turn ? m_blackHashcode : m_whiteHashcode; }
 };
 

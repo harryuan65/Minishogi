@@ -99,12 +99,12 @@ struct PV {
 	void Print(ostream& os, bool turn) {
 		os << "PV: (depth | turn | action | my evaluate)" << endl;
 		for (U32 i = 0; i < count; ++i) {
-			os << i << " : " << ((turn + i) % 2 ? "¡¿" : "¡µ");
+			os << i << " : " << (((turn + i) & 1) ? "¡¿" : "¡µ");
 			PrintAction(os, action[i]);
 			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
 		}
 		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
-			os << count << " : " << ((turn + count) % 2 ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << endl;
+			os << count << " : " << (((turn + count) & 1) ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << endl;
 		}
 	}
 };

@@ -91,7 +91,7 @@ void AttackGenerator(Board &board, Action *movelist, U32 &start) {
 
 				//if (kingpos && !(Movement[KING][dst] & kingpos)) continue;
 				//if (board.IsChecking() && 
-				//if (board.IsStillChecking(src, dst)) continue;
+				//if (board.IsCheckAfter(src, dst)) continue;
 				pro = (A_Promotable[i] && ((1 << src | 1 << dst) & ENEMYCAMP(board.GetTurn()))) ? PRO_MASK : 0;
 				movelist[start++] = pro | (dst << 6) | src;
 			}
@@ -117,7 +117,7 @@ void MoveGenerator(Board &board, Action *movelist, U32 &start) {
 
 				//if (kingpos && !(Movement[KING][dst] & kingpos)) continue;
 				//if (board.IsChecking() && 
-				//if (board.IsStillChecking(src, dst)) continue;
+				//if (board.IsCheckAfter(src, dst)) continue;
 				pro = (M_Promotable[i] && ((1 << src | 1 << dst) & ENEMYCAMP(board.GetTurn()))) ? PRO_MASK : 0;
 				movelist[start++] = pro | (dst << 6) | src;
 			}
@@ -139,7 +139,7 @@ void HandGenerator(Board &board, Action *movelist, U32 &start) {
 	while (dstboard) {
 		dst = BitScan(dstboard);
 		dstboard ^= 1 << dst;
-		//if (board.IsStillChecking(src, dst)) continue;
+		//if (board.IsCheckAfter(src, dst)) continue;
 		srcboard |= 1 << dst;
 	}
 	/*if (board.IsChecking()) {

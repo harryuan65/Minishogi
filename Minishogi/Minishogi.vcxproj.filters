@@ -15,20 +15,20 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>資源檔</Filter>
+    <ClCompile Include="AI.cpp">
+      <Filter>原始程式檔</Filter>
     </ClCompile>
     <ClCompile Include="board.cpp">
-      <Filter>資源檔</Filter>
+      <Filter>原始程式檔</Filter>
     </ClCompile>
-    <ClCompile Include="AI.cpp">
-      <Filter>資源檔</Filter>
-    </ClCompile>
-    <ClCompile Include="Observer.cpp">
-      <Filter>資源檔</Filter>
+    <ClCompile Include="main.cpp">
+      <Filter>原始程式檔</Filter>
     </ClCompile>
     <ClCompile Include="MoveGene.cpp">
-      <Filter>資源檔</Filter>
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="Observer.cpp">
+      <Filter>原始程式檔</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

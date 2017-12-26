@@ -28,9 +28,7 @@ void Board::Initialize(const char *s) {
     memset(board, BLANK, TOTAL_BOARD_SIZE * sizeof(int));
     record.clear();
     m_turn = WHITE_TURN; // 先手是白
-    checkstate.clear();
-    checking = 0;
-    nonBlockable = 0;
+    m_evaluate = 0;
 
     stringstream input(s);
     int i = 0, chess;
@@ -127,6 +125,7 @@ bool Board::IsGameOver() {
     return false;
 }
 
+
 void Board::DoMove(const Action action) {
     // 0 board[dst] board[src] dst src
     U32 srcIndex = ACTION_TO_SRCINDEX(action),
@@ -140,53 +139,32 @@ void Board::DoMove(const Action action) {
         srcChess = board[srcIndex];
         if (dstChess = board[dstIndex]) { // 吃
             occupied[m_turn ^ 1] ^= dstboard; // 更新對方場上狀況
-            bitboard[dstChess] ^= dstboard; // 更新對方手排
-            board[EatToHand[dstChess]]++; // 轉為該方手排
+            bitboard[dstChess] ^= dstboard; // 更新對方手牌
+            board[EatToHand[dstChess]]++; // 轉為該方手牌
+            m_evaluate += HAND_SCORE[EatToHand[dstChess] - 25] - CHESS_SCORE[dstChess];
         }
 
         occupied[m_turn] ^= (1 << srcIndex) | dstboard; // 更新該方場上狀況
-        bitboard[srcChess] ^= 1 << srcIndex; // 移除該方手排原有位置
+        bitboard[srcChess] ^= 1 << srcIndex; // 移除該方手牌原有位置
 
-        if (pro) srcChess ^= PROMOTE; // 升變
-        bitboard[srcChess] ^= dstboard; // 更新該方手排至目的位置
+        if (pro) {
+            srcChess ^= PROMOTE; // 升變
+            m_evaluate += CHESS_SCORE[srcChess] - CHESS_SCORE[srcChess ^ PROMOTE];
+        }
+        bitboard[srcChess] ^= dstboard; // 更新該方手牌至目的位置
         board[srcIndex] = BLANK; // 原本清空
     }
     else { // 打入
         srcChess = HandToChess[srcIndex];
         occupied[m_turn] ^= dstboard; // 打入場上的位置
-        bitboard[srcChess] ^= dstboard; // 打入該手排的位置
+        bitboard[srcChess] ^= dstboard; // 打入該手牌的位置
         board[srcIndex]--; // 減少該手牌
+        m_evaluate += CHESS_SCORE[srcChess] - HAND_SCORE[srcIndex - 25];
     }
     board[dstIndex] = srcChess; // 放置到目的
     record.push_back((dstChess << 18) | (srcChess << 12) | action);
 
-	m_turn ^= 1;
-
-    /*checkstate.push_back(nonBlockable | checking);
-    checking = 0;
-    nonBlockable = 0;
-    U32 attackboard;
-    U32 kingboard = bitboard[KING | turn << 4],
-        kingpos = BitScan(kingboard);
-    if (srcIndex < BOARD_SIZE) {
-        attackboard = (RookMove(*this, srcIndex) | BishopMove(*this, srcIndex)) & occupied[turn ^ 1];
-        while (attackboard) {
-            srcIndex = BitScan(attackboard);
-            if (Movable(*this, srcIndex) & kingboard) {
-                checking = 1;
-                if (Movement[KING][srcIndex] & kingboard) {
-                    nonBlockable = 2;
-                    break;
-                }
-            }
-            attackboard ^= 1 << srcIndex;
-        }
-    }
-    else if (Movable(*this, dstIndex) & kingboard) {
-        checking = 1;
-        if (Movement[KING][dstIndex] & kingboard)
-            nonBlockable = 2;
-    }*/
+    m_turn ^= 1;
 }
 
 void Board::UndoMove() {
@@ -196,7 +174,7 @@ void Board::UndoMove() {
     }
     Action redo = record.back();
     record.pop_back();
-	m_turn ^= 1;
+    m_turn ^= 1;
 
     // 0 board[dst] board[src] dst src
     U32 srcIndex = ACTION_TO_SRCINDEX(redo),
@@ -209,39 +187,29 @@ void Board::UndoMove() {
     if (srcIndex < BOARD_SIZE) { // 之前是移動
         if (dstChess) { // 之前有吃子
             occupied[m_turn ^ 1] ^= dstboard; // 還原對方場上狀況
-            bitboard[dstChess] ^= dstboard; // 還原對方手排
-            board[EatToHand[dstChess]]--; // 從該方手排移除
+            bitboard[dstChess] ^= dstboard; // 還原對方手牌
+            board[EatToHand[dstChess]]--; // 從該方手牌移除
+
+            m_evaluate += CHESS_SCORE[dstChess] - HAND_SCORE[EatToHand[dstChess] - 25];
         }
 
         occupied[m_turn] ^= (1 << srcIndex) | dstboard; // 還原該方場上狀況
-        bitboard[srcChess] ^= dstboard; // 移除該方手排的目的位置
+        bitboard[srcChess] ^= dstboard; // 移除該方手牌的目的位置
 
-        if (pro) srcChess ^= PROMOTE; // 之前有升變
-        bitboard[srcChess] ^= 1 << srcIndex; // 還原該方手排原有位置
+        if (pro) {
+            srcChess ^= PROMOTE; // 之前有升變
+            m_evaluate += CHESS_SCORE[srcChess] - CHESS_SCORE[srcChess ^ PROMOTE];
+        }
+        bitboard[srcChess] ^= 1 << srcIndex; // 還原該方手牌原有位置
         board[srcIndex] = srcChess; // 還原
     }
     else { // 之前是打入
         occupied[m_turn] ^= dstboard; // 取消打入場上的位置
-        bitboard[srcChess] ^= dstboard; // 取消打入該手排的位置
+        bitboard[srcChess] ^= dstboard; // 取消打入該手牌的位置
         board[srcIndex]++; // 收回該手牌
+        m_evaluate += HAND_SCORE[srcIndex - 25] - CHESS_SCORE[srcChess];
     }
     board[dstIndex] = dstChess; // 還原目的棋
-    //checking = checkstate.back() & 1;
-    //nonBlockable = checkstate.back() & 2;
-    //checkstate.pop_back();
-}
-
-int Board::Evaluate() {
-	int i = 0, score = 0;
-	for (; i < 25; i++) {
-		if (board[i])
-			score += CHESS_SCORE[board[i]];
-	}
-	for (; i < 35; i++) {
-		if (board[i])
-			score += HAND_SCORE[i - 25] * board[i];
-	}
-	return m_turn ? score : -score;
 }
 
 bool Board::SaveBoard(const string filename, const string comment) const {
@@ -346,7 +314,7 @@ bool Board::IsSennichite(Action action) const {
 	return false;
 }
 
-bool Board::IsStillChecking(const int src, const int dst) {
+bool Board::IsCheckAfter(const int src, const int dst) {
 	bool isStillChecking = false;
 	U32 dstboard = 1 << dst, moveboard = (1 << src) | dstboard;
 
