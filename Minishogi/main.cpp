@@ -65,8 +65,10 @@ int main() {
         break;
     }
 	cin.ignore();
+	
 	cout << "輸入搜尋的深度\n";
 	cin >> Observer::depth;
+	cin.ignore();
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
 	isCustomBoard = getchar() != '0';
 	cin.ignore();
@@ -107,6 +109,7 @@ int main() {
 				break;
 			}
 		}
+		Observer::GameStart(m_Board.GetZobristHash());
 		while (!m_Board.IsGameOver()) {
 			/*cout << (m_Board.GetTurn() ? "GREEN" : "RED") << " turn\n";
 			Action moveList[128] = { 0 };
@@ -131,7 +134,7 @@ int main() {
 			}*/
 
 			PV pv;
-			cout << "---------------- Step " << m_Board.record.size() << " ----------------\n";
+			cout << "---------- Game " << Observer::gameNum << " Step " << m_Board.record.size() << " ----------\n";
 			m_Board.PrintChessBoard();
 			cout << (m_Board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 			if (player[m_Board.GetTurn()] == HUMAN_CTRL) {
@@ -163,23 +166,29 @@ int main() {
 				cout << "投降! I'm lose" << endl;
 				break;
 			}
+			if (m_Board.record.size() == 100) { //TODO: 以後會刪掉
+				cout << "千日手! I'm lose" << endl;
+				break;
+			}
 			m_Board.DoMove(action);
 		}
+		Observer::GameOver(!m_Board.GetTurn(), m_Board.GetKifuHash());
 
 		cout << "Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win!\n";
 		if (Observer::isAutoSaveKifu) {
 			if (isCustomBoard) {
-				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt", currTimeStr);
+				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
 			}
 			else {
 				m_Board.SaveKifu(currTimeStr + "_Kifu.txt", currTimeStr);
 			}
 		}
-		Observer::GameOver(!m_Board.GetTurn(), m_Board.record);
-		if (Observer::isAutoSaveAIReport)
+		if (Observer::isAutoSaveAIReport) {
 			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
+		}
+		Observer::PrintGameReport(cout);
 	} while (isCustomBoard);
-	Observer::PrintAvgReport(cout);
+	Observer::PrintObserverReport(cout);
 
 	cout << "\a\a\a"; //終わり　びびびー
     system("pause");
@@ -292,7 +301,7 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 	if (file) {
 		if (board.record.size() == 0)
 			file << "#" << comment << "\n";
-		file << "---------------- Step " << board.record.size() << " ----------------\n";
+		file << "---------- Game " << Observer::gameNum << " Step " << board.record.size() << " ----------\n";
 		board.PrintNoncolorBoard(file);
 		file << (board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n");
 		if (pv.count != 0) {
@@ -315,18 +324,21 @@ bool SaveAIReport(const string filename, const string comment) {
 	if (Observer::searchNum == 0)
 		return false;
 	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::out);
+	fstream file(filepath, ios::app);
 	if (!file) {
 		CreateDirectory(LREPORT_PATH, NULL);
 		file.open(filepath);
 	}
 	if (file) {
-		file << "#" << comment << endl;
-		Observer::PrintAvgReport(file);
+		if (Observer::gameNum <= 1)
+			file << "#" << comment << "\n";
+		else
+			file << "\n";
+		Observer::PrintGameReport(file);
 		file.close();
-		cout << "Success Save AI Report to " << filepath << endl;
+		cout << "Success Save AI Report to " << filepath << "\n";
 		return true;
 	}
-	cout << "Fail Save AI Report to " << filepath << endl;
+	cout << "Fail Save AI Report to " << filepath << "\n";
 	return false;
 }

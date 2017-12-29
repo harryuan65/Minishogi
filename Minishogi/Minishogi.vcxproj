@@ -22,7 +22,7 @@
     <ProjectGuid>{430A7725-362D-4470-9526-DA3A9E6A14B3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Minishogi</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

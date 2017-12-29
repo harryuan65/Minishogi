@@ -28,26 +28,27 @@ public:
     ~Board();
     void Initialize();
     void Initialize(const char *str);
-    void DoMove(Action m_Action);
-    void UndoMove();
-    bool IsGameOver();
-    // 已經是了 而且真的蠻快的 (12/21)
-    inline int Evaluate() { return m_turn ? m_evaluate : -m_evaluate; };
     void PrintChessBoard() const;
 	void PrintNoncolorBoard(ostream &os) const;
-	//void CalEvaluate();
-	//void CalZobristNumber();
+	void CalZobristNumber();
 	//void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
+
+	void DoMove(Action m_Action);
+	void UndoMove();
+
     bool SaveBoard(const string filename, const string comment) const;
     bool LoadBoard(const string filename, int &offset);
 	bool SaveKifu(const string filename, const string comment) const;
 
+	bool IsGameOver();
 	bool IsSennichite(Action action) const;
 	bool IsCheckAfter(const int src, const int dst);
     inline bool GetTurn() const { return m_turn; }
-    inline U32 GetHashcode(bool turn) const { return turn ? m_blackHashcode : m_whiteHashcode; }
+	inline int Evaluate() const { return m_turn ? m_evaluate : -m_evaluate; };
+	inline U64 GetZobristHash() const {
+		return m_turn ? (m_blackHashcode << 32) | m_whiteHashcode : (m_whiteHashcode << 32) | m_blackHashcode;
+	}
+	unsigned int GetKifuHash();
 };
-
-ostream & operator<<(ostream &os, const Board &board);
 
 #endif 

@@ -90,7 +90,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 
 int QuiescenceSearch(Board& board, int alpha, int beta) {
 	Observer::totalNode++;
-	Observer::quieNode++;
+	Observer::quiesNode++;
 
     //int bestScore = board.Evaluate();
     //if (bestScore >= beta) return bestScore;

@@ -5,7 +5,24 @@
 #define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
 #endif
 
-Board::Board() {}
+vector<U32> Board::ZOBRIST_TABLE[37];
+
+Board::Board() {
+	/* Make Zobrsit Table */
+	if (ZOBRIST_TABLE[0].size() == 0) {
+		srand(ZOBRIST_SEED);
+		for (int i = 0; i < 25; i++) {
+			ZOBRIST_TABLE[i] = vector<U32>(30);
+		}
+		for (int i = 25; i < 37; i++) {
+			ZOBRIST_TABLE[i] = vector<U32>(3);
+		}
+		for (int i = 0; i < 37; i++)
+			for (int j = 0; j < ZOBRIST_TABLE[i].size(); j++)
+				ZOBRIST_TABLE[i][j] = rand() | (rand() << 16);
+		//rand() ^ (rand()<<8) ^ (rand()<<16);
+	}
+}
 
 Board::~Board() {}
 
@@ -44,6 +61,8 @@ void Board::Initialize(const char *s) {
     for (; i < TOTAL_BOARD_SIZE && input >> chess; ++i)
         if (chess == 1 || chess == 2)
             board[i] = chess;
+
+	CalZobristNumber();
 }
 
 void Board::PrintChessBoard() const {
@@ -107,24 +126,27 @@ void Board::PrintNoncolorBoard(ostream &os) const {
 	os << "\n";
 }
 
-bool Board::IsGameOver() {
-    Action moveList[MAX_MOVE_NUM] = { 0 };
-    U32 cnt = 0;
-    AttackGenerator(*this, moveList, cnt);
-    if (!cnt)
-        MoveGenerator(*this, moveList, cnt);
-    if (!cnt)
-        HandGenerator(*this, moveList, cnt);
-
-    if (!cnt) {
-        PrintChessBoard();
-        cout << (m_turn ? "White" : "Black") << " Win\n";
-        return true;
-    }
-
-    return false;
+/* 完全重新計算Zobrist */
+void Board::CalZobristNumber() {
+	m_whiteHashcode = 0;
+	m_blackHashcode = 0;
+	for (int i = 0; i < 25; i++) {
+		if (board[i] != BLANK) {
+			m_whiteHashcode ^= ZOBRIST_TABLE[i][board[i]];
+			m_blackHashcode ^= ZOBRIST_TABLE[24 - i][board[i] ^ BLACKCHESS];
+		}
+	}
+	for (int i = 25; i < 37; i++) {
+		if (board[i]) {
+			m_whiteHashcode ^= ZOBRIST_TABLE[i][1];
+			m_blackHashcode ^= ZOBRIST_TABLE[i> 30 ? i - 6 : i + 6][1];
+		}
+		if (board[i] == 2) {
+			m_whiteHashcode ^= ZOBRIST_TABLE[i][2];
+			m_blackHashcode ^= ZOBRIST_TABLE[i> 30 ? i - 6 : i + 6][1];
+		}
+	}
 }
-
 
 void Board::DoMove(const Action action) {
     // 0 board[dst] board[src] dst src
@@ -286,7 +308,7 @@ bool Board::SaveKifu(string filename, const string comment) const {
 	if (file) {
 		file << "*" << comment << endl;
 		for (int i = 0; i < record.size(); i++) {
-			file << i << " : " << (i % 2 ? "▼" : "△");
+			file << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
 			file << Index2Input(ACTION_TO_SRCINDEX(record[i]));
 			file << Index2Input(ACTION_TO_DSTINDEX(record[i]));
 			file << (ACTION_TO_ISPRO(record[i]) ? "+\n" : "\n");
@@ -299,6 +321,23 @@ bool Board::SaveKifu(string filename, const string comment) const {
 	return false;
 }
 
+bool Board::IsGameOver() {
+	Action moveList[MAX_MOVE_NUM] = { 0 };
+	U32 cnt = 0;
+	AttackGenerator(*this, moveList, cnt);
+	if (!cnt)
+		MoveGenerator(*this, moveList, cnt);
+	if (!cnt)
+		HandGenerator(*this, moveList, cnt);
+
+	if (!cnt) {
+		PrintChessBoard();
+		cout << (m_turn ? "White" : "Black") << " Win\n";
+		return true;
+	}
+
+	return false;
+}
 
 // TODO : 目前僅能處理小迴圈 等架構穩定再來考慮完整方案 同時避免速度變慢
 bool Board::IsSennichite(Action action) const {
@@ -362,4 +401,12 @@ bool Board::IsCheckAfter(const int src, const int dst) {
 		Observer::cutIllgalBranch++;
 	}
 	return isStillChecking;
+}
+
+unsigned int Board::GetKifuHash() {
+	unsigned int seed = record.size();
+	for (auto& i : record) {
+		seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
+	return seed;
 }

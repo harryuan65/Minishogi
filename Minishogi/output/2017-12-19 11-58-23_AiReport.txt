@@ -1,9 +1,0 @@
-#2017-12-19 11-58-23
-Average Report :
-Search nums             :         48
-Total search nodes      :   12285535
-Failed-high nodes       :    5061514
-Quie search nodes       :          0
-Avg scout search branch :             0
-Cut illgal branch       :    3066998
-Search time             :          2.70

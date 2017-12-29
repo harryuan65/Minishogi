@@ -10,45 +10,50 @@
 using namespace std;
 
 namespace Observer {
-	extern unsigned int searchNum;
-
+	// 單一盤面搜尋結果
 	extern unsigned long long totalNode;
 	extern unsigned long long researchNode;
-	extern unsigned long long quieNode;
+	extern unsigned long long quiesNode;
 	extern unsigned long long scoutGeneNums;
 	extern unsigned long long scoutSearchBranch;
 	extern unsigned	long long cutIllgalBranch;
 	extern double searchTime;
+	static clock_t beginTime;
 
+	// 整局結果
+	extern unsigned long long startZobristHash;
+	extern unsigned int kifuHash;
+	extern unsigned int searchNum;
+	extern bool winner;
+	extern double gamePlayTime;
+
+	extern unsigned long long game_totalNode;
+	extern unsigned long long game_researchNode;
+	extern unsigned long long game_quiesNode;
+	extern unsigned long long game_scoutGeneNums;
+	extern unsigned long long game_scoutSearchBranch;
+	extern unsigned	long long game_cutIllgalBranch;
+	extern double game_searchTime;
+	static clock_t game_beginTime;
+
+	// 全部
 	extern unsigned int gameNum;
 	extern unsigned int whiteWinNum;
-	extern vector<bool> winner;
-	extern vector<unsigned int> kifuHash;
 
-	extern unsigned long long all_totalNode;
-	extern unsigned long long all_researchNode;
-	extern unsigned long long all_quieNode;
-	extern unsigned long long all_scoutGeneNums;
-	extern unsigned long long all_scoutSearchBranch;
-	extern unsigned	long long all_cutIllgalBranch;
-	extern double all_searchTime;
-
+	// 設定
 	extern int depth;
 	extern bool isAutoSaveKifu;
 	extern bool isAutoSaveDetail;
 	extern bool isAutoSaveAIReport;
 
-	static clock_t beginTime;
-
 	inline void StartSearching() {
 		totalNode = 0;
 		researchNode = 0;
-		quieNode = 0;
+		quiesNode = 0;
 		scoutGeneNums = 0;
 		scoutSearchBranch = 0;
 		cutIllgalBranch = 0;
 		searchTime = 0;
-
 		beginTime = clock();
 	}
 
@@ -57,63 +62,81 @@ namespace Observer {
 
 		searchNum++;
 
-		all_totalNode += totalNode;
-		all_researchNode += researchNode;
-		all_quieNode += quieNode;
-		all_scoutGeneNums += scoutGeneNums;
-		all_scoutSearchBranch += scoutSearchBranch;
-		all_cutIllgalBranch += cutIllgalBranch;
-		all_searchTime += searchTime;
+		game_totalNode += totalNode;
+		game_researchNode += researchNode;
+		game_quiesNode += quiesNode;
+		game_scoutGeneNums += scoutGeneNums;
+		game_scoutSearchBranch += scoutSearchBranch;
+		game_cutIllgalBranch += cutIllgalBranch;
+		game_searchTime += searchTime;
 	}
 
-	inline unsigned int GetKifuHash(vector<Action> kifu) {
-		unsigned int seed = kifu.size();
-		for (auto& i : kifu) {
-			seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		}
-		return seed;
+	inline void GameStart(unsigned __int64 _startZobristHash) {
+		startZobristHash = _startZobristHash;
+		searchNum = 0;
+
+		game_totalNode = 0;
+		game_researchNode = 0;
+		game_quiesNode = 0;
+		game_scoutGeneNums = 0;
+		game_scoutSearchBranch = 0;
+		game_cutIllgalBranch = 0;
+		game_searchTime = 0;
+
+		game_beginTime = clock();
 	}
 
-	inline void GameOver(bool _winner, vector<Action> kifu) {
+	inline void GameOver(bool _winner, unsigned int _kifuHash) {
+		winner = _winner;
+		kifuHash = _kifuHash;
+		gamePlayTime = double(clock() - game_beginTime) / 1000;
+
 		gameNum++;
 		whiteWinNum += _winner == 0;
-		winner.push_back(_winner);
-		kifuHash.push_back(GetKifuHash(kifu));
 	}
 
 	inline void PrintReport(std::ostream &os) {
-		if (scoutGeneNums == 0)
-			scoutGeneNums = 1;
-		os << "Search Report :" << endl;
-		os << "Total search nodes      : " << setw(10) << totalNode << "\n";
-		os << "Research nodes          : " << setw(10) << researchNode << "\n";
-		os << "Quie search nodes       : " << setw(10) << quieNode << "\n";
-		os << "Avg scout search branch : " << setw(13) << (float)scoutSearchBranch / scoutGeneNums << setiosflags(ios::fixed) << setprecision(2) << "\n";
-		os << "Cut illgal branch       : " << setw(10) << cutIllgalBranch << "\n";
-		os << "Search time             : " << setw(13) << searchTime << setiosflags(ios::fixed) << setprecision(2) << "\n";
+		if (searchNum == 0) return;
+		if (scoutGeneNums == 0) scoutGeneNums = 1;
+		os << "Search Report :\n";
+		os << setiosflags(ios::fixed) << setprecision(2);
+		os << " Total search nodes      : " << setw(10) << setw(10) << totalNode << "\n";
+		os << " Research nodes          : " << setw(10) << setw(10) << researchNode << "\n";
+		os << " Quie search nodes       : " << setw(10) << quiesNode << "\n";
+		os << " Avg scout search branch : " << setw(13) << (float)scoutSearchBranch / scoutGeneNums << "\n";
+		os << " Cut illgal branch       : " << setw(10) << cutIllgalBranch << "\n";
+		os << " Search time             : " << setw(13) << searchTime << "\n";
 	}
 
 
-	inline void PrintAvgReport(ostream &os) {
-		if (searchNum == 0)
-			return;
-		os << "Play Result :\n";
-		os << "Search depths           : " << setw(10) << depth << "\n";
-		os << "Game play nums          : " << setw(10) << gameNum << "\n";
-		os << "Search nums             : " << setw(10) << searchNum << "\n";
-		os << "White win rate          : " << setw(10) << (int)(whiteWinNum * 100 / gameNum) << "%\n";
-		os << "Black win rate          : " << setw(10) << 100 - (int)(whiteWinNum * 100 / gameNum) << "%\n";
-		for (int i = 0; i < winner.size(); i++) {
-			os << "Round " << setw(3) << i << " : " << (winner[i] ? "▼" : "△") << " Win! " << setw(8) << std::hex << kifuHash[i] << std::dec << "\n";
-		}
+	inline void PrintGameReport(ostream &os) {
+		if (searchNum == 0) return;
+		os << setiosflags(ios::fixed) << setprecision(2);
 
-		os << "Average Report (Divide Search nums) :\n";
-		os << "Total search nodes      : " << setw(10) << all_totalNode / searchNum << "\n";
-		os << "Research nodes          : " << setw(10) << all_researchNode / searchNum << "\n";
-		os << "Quie search nodes       : " << setw(10) << all_quieNode / searchNum << "\n";
-		os << "Avg scout search branch : " << setw(13) << (float)all_scoutSearchBranch / all_scoutGeneNums << setiosflags(ios::fixed) << setprecision(2) << "\n";
-		os << "Cut illgal branch       : " << setw(10) << all_cutIllgalBranch / searchNum << "\n";
-		os << "Search time             : " << setw(13) << all_searchTime / searchNum << setiosflags(ios::fixed) << setprecision(2) << "\n";
+		os << "Round" << setw(3) << gameNum - 1 << " : " << (winner ? "▼" : "△") << " Win!\n";
+		os << "Game Result :\n";
+		os << " Init board zobrist      : " << setw(10) << hex << startZobristHash << dec << "\n";
+		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
+		os << " Search depths           : " << setw(10) << depth << "\n";
+		os << " Search nums             : " << setw(10) << searchNum << "\n";
+		os << " Game play time          : " << setw(13) << gamePlayTime << "\n";
+		os << " Winner                  : " << setw(10) << (winner ? "▼" : "△") << "\n";
+
+		os << "Average Report (per search) :\n";
+		os << " Total search nodes      : " << setw(10) << game_totalNode / searchNum << "\n";
+		os << " Research nodes          : " << setw(10) << game_researchNode / searchNum << "\n";
+		os << " Quie search nodes       : " << setw(10) << game_quiesNode / searchNum << "\n";
+		os << " Avg scout search branch : " << setw(13) << (float)game_scoutSearchBranch / game_scoutGeneNums  << "\n";
+		os << " Cut illgal branch       : " << setw(10) << game_cutIllgalBranch / searchNum << "\n";
+		os << " Search time             : " << setw(13) << game_searchTime / searchNum << "\n";
+	}
+
+	inline void PrintObserverReport(ostream &os) {
+		if (searchNum == 0) return;
+		os << "Observer Report :\n";
+		os << " Game play nums          : " << setw(10) << gameNum << "\n";
+		os << " White win rate          : " << setw(10) << whiteWinNum * 100 / gameNum << "%\n";
+		os << " Black win rate          : " << setw(10) << (gameNum - whiteWinNum) * 100 / gameNum << "%\n";
 	}
 }
 #endif

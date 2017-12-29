@@ -1,30 +1,37 @@
 #include "Observer.h"
 
-// Global Variables 
-unsigned int Observer::searchNum = 0;
+namespace Observer {
+	// 單一盤面搜尋結果
+	unsigned long long totalNode;
+	unsigned long long researchNode;
+	unsigned long long quiesNode;
+	unsigned long long scoutGeneNums;
+	unsigned long long scoutSearchBranch;
+	unsigned long long cutIllgalBranch;
+	double searchTime;
 
-unsigned long long Observer::totalNode = 0;
-unsigned long long Observer::researchNode = 0;
-unsigned long long Observer::quieNode = 0;
-unsigned long long Observer::scoutGeneNums = 0;
-unsigned long long Observer::scoutSearchBranch = 0;
-unsigned long long Observer::cutIllgalBranch = 0;
-double Observer::searchTime = 0;
+	// 整局結果
+	unsigned long long startZobristHash;
+	unsigned int kifuHash;
+	unsigned int searchNum;
+	bool winner;
+	double gamePlayTime;
 
-unsigned int Observer::gameNum = 0;
-unsigned int Observer::whiteWinNum = 0;
-vector<bool> Observer::winner;
-vector<unsigned int> Observer::kifuHash;
+	unsigned long long game_totalNode;
+	unsigned long long game_researchNode;
+	unsigned long long game_quiesNode;
+	unsigned long long game_scoutGeneNums;
+	unsigned long long game_scoutSearchBranch;
+	unsigned long long game_cutIllgalBranch;
+	double game_searchTime;
 
-unsigned long long Observer::all_totalNode = 0;
-unsigned long long Observer::all_researchNode = 0;
-unsigned long long Observer::all_quieNode = 0;
-unsigned long long Observer::all_scoutGeneNums = 0;
-unsigned long long Observer::all_scoutSearchBranch = 0;
-unsigned long long Observer::all_cutIllgalBranch = 0;
-double Observer::all_searchTime = 0;
+	// 全部
+	unsigned int gameNum;
+	unsigned int whiteWinNum;
 
-int Observer::depth = 10;
-bool Observer::isAutoSaveKifu = false;
-bool Observer::isAutoSaveDetail = false;
-bool Observer::isAutoSaveAIReport = false;
+	// 設定
+	int Observer::depth = 10;
+	bool Observer::isAutoSaveKifu = false;
+	bool Observer::isAutoSaveDetail = false;
+	bool Observer::isAutoSaveAIReport = false;
+}
