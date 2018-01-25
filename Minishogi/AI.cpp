@@ -22,7 +22,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 
     if (depth == 0) {
         pv.count = 0;
-		Observer::totalNode--; //不然會重複計數
+		//Observer::totalNode--; //不然會重複計數
 		return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
     }
 
@@ -39,34 +39,35 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
         accCnt += cnt;
 
         for (U32 j = 0; j < cnt; ++j) {
-			if (board.IsSennichite(moveList[j]) ||
-				board.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))) {
+			if (board.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))) {
 				accCnt--;
 				continue;
 			}
 
             /* Search Depth */
             board.DoMove(moveList[j]);
-            int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, isResearch);
-            if (score > bestScore) {
-                if (depth < 3 || score >= beta || n == beta)
-                    bestScore = score;
-                else
-                    bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
-				// Save PV
-                pv.action[0] = moveList[j];
-				pv.evaluate[0] = -board.Evaluate();
-                memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-                pv.count = tempPV.count + 1;
-            }
-			else if (n == beta && score == -CHECKMATE) {
-				// Save PV
-				pv.action[0] = moveList[j];
-				pv.evaluate[0] = -board.Evaluate();
-				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-				pv.count = tempPV.count + 1;
+			if (!board.IsSennichite() /*||DoMove()前被將軍 也就是被連將(被連將攻擊者判輸)*/ ) {
+				int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, isResearch);
+				if (score > bestScore) {
+					if (depth < 3 || score >= beta || n == beta)
+						bestScore = score;
+					else
+						bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
+					// Save PV
+					pv.action[0] = moveList[j];
+					pv.evaluate[0] = -board.Evaluate();
+					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+					pv.count = tempPV.count + 1;
+				}
+				else if (n == beta && score == -CHECKMATE) {
+					// Save PV
+					pv.action[0] = moveList[j];
+					pv.evaluate[0] = -board.Evaluate();
+					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+					pv.count = tempPV.count + 1;
+				}
 			}
             board.UndoMove();
 			if (bestScore >= beta) {
@@ -107,8 +108,7 @@ int QuiescenceSearch(Board& board, int alpha, int beta) {
 		accCnt += cnt;
 
 		for (U32 j = 0; j < cnt; ++j) {
-			if (board.IsSennichite(moveList[j]) ||
-				board.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))
+			if (board.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))
 				/*|| !我是否被將軍 || !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE >= 0)*/) {
 				accCnt--;
 				continue;

@@ -72,7 +72,7 @@ int main() {
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
 	isCustomBoard = getchar() != '0';
 	cin.ignore();
-	cout << "執行時匯出cmd畫面?\n";
+	cout << "結束時匯出cmd畫面?\n";
 	Observer::isAutoSaveDetail = getchar() != '0';
 	cin.ignore();
 	cout << "結束時匯出棋譜?\n";
@@ -134,7 +134,7 @@ int main() {
 			}*/
 
 			PV pv;
-			cout << "---------- Game " << Observer::gameNum << " Step " << m_Board.record.size() << " ----------\n";
+			cout << "---------- Game " << Observer::gameNum << " Step " << m_Board.GetStep() << " ----------\n";
 			m_Board.PrintChessBoard();
 			cout << (m_Board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 			if (player[m_Board.GetTurn()] == HUMAN_CTRL) {
@@ -166,7 +166,7 @@ int main() {
 				cout << "投降! I'm lose" << endl;
 				break;
 			}
-			if (m_Board.record.size() == 100) { //TODO: 以後會刪掉
+			if (m_Board.GetStep() == 100) { //TODO: 以後會刪掉
 				cout << "千日手! I'm lose" << endl;
 				break;
 			}
@@ -299,9 +299,9 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 		file.open(filepath, ios::out | ios::app);
 	}
 	if (file) {
-		if (board.record.size() == 0)
+		if (board.GetStep() == 0)
 			file << "#" << comment << "\n";
-		file << "---------- Game " << Observer::gameNum << " Step " << board.record.size() << " ----------\n";
+		file << "---------- Game " << Observer::gameNum << " Step " << board.GetStep() << " ----------\n";
 		board.PrintNoncolorBoard(file);
 		file << (board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n");
 		if (pv.count != 0) {
