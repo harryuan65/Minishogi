@@ -19,9 +19,10 @@ Action IDAS(Board& board, PV &pv) {
 int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResearch) {
 	Observer::totalNode++;
 	Observer::researchNode += isResearch;
+	pv.count = 0;
 
     if (depth == 0) {
-        pv.count = 0;
+        //pv.count = 0;
 		//Observer::totalNode--; //不然會重複計數
 		return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
     }
@@ -46,39 +47,52 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 
             /* Search Depth */
             board.DoMove(moveList[j]);
-			if (!board.IsSennichite() /*||DoMove()前被將軍 也就是被連將(被連將攻擊者判輸)*/ ) {
-				int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, isResearch);
-				if (score > bestScore) {
-					if (depth < 3 || score >= beta || n == beta)
-						bestScore = score;
-					else
-						bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
-					// Save PV
-					pv.action[0] = moveList[j];
-					pv.evaluate[0] = -board.Evaluate();
-					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-					pv.count = tempPV.count + 1;
-				}
-				else if (n == beta && score == -CHECKMATE) {
-					// Save PV
-					pv.action[0] = moveList[j];
-					pv.evaluate[0] = -board.Evaluate();
-					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-					pv.count = tempPV.count + 1;
-				}
+			// 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍
+			if (board.IsSennichite() /*&& !(DoMove()前被將軍)*/ ) {
+				board.UndoMove();
+				accCnt--;
+				continue;
+			}
+			int score = -NegaScout(tempPV, board, -n, -max(alpha, bestScore), depth - 1, isResearch);
+			if (score > bestScore) {
+				if (depth < 3 || score >= beta || n == beta)
+					bestScore = score;
+				else
+					bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
+				// Save PV
+				pv.action[0] = moveList[j];
+				pv.evaluate[0] = -board.Evaluate();
+				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+				pv.count = tempPV.count + 1;
+				//Debug
+				//if (depth != pv.count && bestScore != CHECKMATE && bestScore != -CHECKMATE)
+				//	system("pause");
+			}
+			// moveList的第一個action是必輸的話照樣儲存pv 才能在必輸下得到pv
+			else if (pv.count == 0 && score == -CHECKMATE) {
+				// Save PV
+				pv.action[0] = moveList[j];
+				pv.evaluate[0] = -board.Evaluate();
+				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+				pv.count = tempPV.count + 1;
+				//Debug
+				//if (depth != pv.count && bestScore != CHECKMATE && bestScore != -CHECKMATE)
+				//	system("pause");
 			}
             board.UndoMove();
+
+			// Beta cutoff
 			if (bestScore >= beta) {
 				Observer::scoutSearchBranch += accCnt + j;
-				return bestScore; // cut off
+				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // set up a null window
         }
     }
 	if (!accCnt) {
-		pv.count = 0;
+		//pv.count = 0;
 #ifdef PERFECT_ENDGAME_PV
 		return -CHECKMATE - 10 * depth;
 #else

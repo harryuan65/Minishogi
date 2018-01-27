@@ -45,7 +45,7 @@ void Board::Initialize(const char *s) {
     memset(board, BLANK, TOTAL_BOARD_SIZE * sizeof(int));
 	recordAction.clear();
 	recordZobrist.clear();
-	recordSenichite.clear();
+	//recordSenichite.clear();
     m_turn = WHITE_TURN; // 先手是白
     m_evaluate = 0;
 
@@ -67,10 +67,10 @@ void Board::Initialize(const char *s) {
 
 	CalZobristNumber();
 	recordZobrist.push_back(GetZobristHash());
-	recordSenichite.push_back(0);
+	//recordSenichite.push_back(0);
 }
 
-void Board::PrintChessBoard() /*const*/ {
+void Board::PrintChessBoard() const{
 	static const char *RANK_NAME[] = { " A", " B", " C", " D", " E", " F", "  ", " G", "  " };
     int chess;
     int rank_count = 0;
@@ -217,7 +217,7 @@ void Board::DoMove(const Action action) {
     board[dstIndex] = srcChess; // 放置到目的
 	recordAction.push_back((dstChess << 18) | (srcChess << 12) | action);
 	recordZobrist.push_back(GetZobristHash());
-	recordSenichite.push_back(0);
+	//recordSenichite.push_back(0);
 
     m_turn ^= 1;
 }
@@ -230,7 +230,7 @@ void Board::UndoMove() {
     Action redo = recordAction.back();
 	recordAction.pop_back();
 	recordZobrist.pop_back();
-	recordSenichite.pop_back();
+	//recordSenichite.pop_back();
     m_turn ^= 1;
 
     // 0 board[dst] board[src] dst src
@@ -346,13 +346,13 @@ bool Board::SaveKifu(string filename, const string comment) const {
 	if (file) {
 		file << "*" << comment << endl;
 		file << "Kifu hash : " << setw(10) << hex << GetKifuHash() << "\n";
-		file << "Initboard : " << setw(10) << hex << recordZobrist[0] << dec << " " << recordSenichite[0] << "\n";
+		file << "Initboard : " << setw(10) << hex << recordZobrist[0] << dec /*<< " " << recordSenichite[0]*/ << "\n";
 		for (int i = 0; i < recordAction.size(); i++) {
 			file << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
 			file << Index2Input(ACTION_TO_SRCINDEX(recordAction[i]));
 			file << Index2Input(ACTION_TO_DSTINDEX(recordAction[i]));
 			file << (ACTION_TO_ISPRO(recordAction[i]) ? "+" : " ");
-			file << setw(10) << hex << recordZobrist[i + 1] << dec << " " << recordSenichite[i + 1] << "\n";
+			file << setw(10) << hex << recordZobrist[i + 1] << dec /*<< " " << recordSenichite[i + 1]*/ << "\n";
 		}
 		file.close();
 		cout << "Success Save Kifu to " << filepath << endl;
@@ -384,8 +384,8 @@ bool Board::IsGameOver() {
 // 需要先DoMove後才能判斷 在此不考慮被連將
 bool Board::IsSennichite() const {
 	int size = recordAction.size();
-	for (int i = size - 5; i >= 0; i--) {
-		if (recordZobrist[i] == recordZobrist[size - 1] && (size - 1 - i) % 2 == 0) {
+	for (int i = size - 5; i >= 0; i -= 2) {
+		if (recordZobrist[i] == recordZobrist[size - 1]) {
 			return true;
 		}
 	}

@@ -21,7 +21,7 @@ private:
 	//recordZobrist第0個是初始盤面
 	vector<Action> recordAction;
 	vector<U32> recordZobrist;
-	vector<int> recordSenichite;
+	//vector<int> recordSenichite;
 
 public:
     U32 occupied[2];
@@ -32,7 +32,7 @@ public:
     ~Board();
     void Initialize();
     void Initialize(const char *str);
-    void PrintChessBoard() /*const*/;
+    void PrintChessBoard() const;
 	void PrintNoncolorBoard(ostream &os) const;
 	void CalZobristNumber();
 	void CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess);
