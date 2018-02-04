@@ -48,7 +48,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
             /* Search Depth */
             board.DoMove(moveList[j]);
 			// 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍
-			if (board.IsSennichite() /*&& !(DoMove()前被將軍)*/ ) {
+			if (/*depth >= Observer::depth && */board.IsSennichite() /*&& !(DoMove()前被將軍)*/ ) {
 				board.UndoMove();
 				accCnt--;
 				continue;

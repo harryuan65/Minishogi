@@ -66,9 +66,11 @@ int main() {
     }
 	cin.ignore();
 	
-	cout << "輸入搜尋的深度\n";
-	cin >> Observer::depth;
-	cin.ignore();
+	if (gameMode != 2) {
+		cout << "輸入搜尋的深度\n";
+		cin >> Observer::depth;
+		cin.ignore();
+	}
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
 	isCustomBoard = getchar() != '0';
 	cin.ignore();
@@ -166,15 +168,14 @@ int main() {
 				cout << "投降! I'm lose" << endl;
 				break;
 			}
-			if (m_Board.GetStep() == 100) { //TODO: 以後會刪掉
+			if (m_Board.GetStep() == 100) {
 				cout << "千日手! I'm lose" << endl;
 				break;
 			}
 			m_Board.DoMove(action);
 		}
 		Observer::GameOver(!m_Board.GetTurn(), m_Board.GetKifuHash());
-
-		cout << "Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win!\n";
+		cout << "-------- Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
 		if (Observer::isAutoSaveKifu) {
 			if (isCustomBoard) {
 				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
@@ -186,6 +187,7 @@ int main() {
 		if (Observer::isAutoSaveAIReport) {
 			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
 		}
+		cout << "\n";
 		Observer::PrintGameReport(cout);
 	} while (isCustomBoard);
 	Observer::PrintObserverReport(cout);

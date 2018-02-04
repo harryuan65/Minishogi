@@ -1,12 +1,6 @@
 #ifndef _OBSERVER_
 #define _OBSERVER_
-#include "define.h"
-#include <iostream>
-#include <stdio.h>
-#include <time.h>
-#include <iomanip>
-#include <vector>
-#include <functional>
+#include "head.h"
 using namespace std;
 
 namespace Observer {
@@ -106,6 +100,7 @@ namespace Observer {
 		os << " Avg scout search branch : " << setw(13) << (float)scoutSearchBranch / scoutGeneNums << "\n";
 		os << " Cut illgal branch       : " << setw(10) << cutIllgalBranch << "\n";
 		os << " Search time             : " << setw(13) << searchTime << "\n";
+		os << endl;
 	}
 
 
@@ -113,7 +108,7 @@ namespace Observer {
 		if (searchNum == 0) return;
 		os << setiosflags(ios::fixed) << setprecision(2);
 
-		os << "Round" << setw(3) << gameNum - 1 << " : " << (winner ? "¡¿" : "¡µ") << " Win!\n";
+		os << "Game" << setw(3) << gameNum - 1 << " : " << (winner ? "¡¿" : "¡µ") << " Win!\n";
 		os << "Game Result :\n";
 		os << " Init board zobrist      : " << setw(10) << hex << startZobristHash << dec << "\n";
 		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
@@ -129,6 +124,7 @@ namespace Observer {
 		os << " Avg scout search branch : " << setw(13) << (float)game_scoutSearchBranch / game_scoutGeneNums  << "\n";
 		os << " Cut illgal branch       : " << setw(10) << game_cutIllgalBranch / searchNum << "\n";
 		os << " Search time             : " << setw(13) << game_searchTime / searchNum << "\n";
+		os << endl;
 	}
 
 	inline void PrintObserverReport(ostream &os) {
@@ -137,6 +133,7 @@ namespace Observer {
 		os << " Game play nums          : " << setw(10) << gameNum << "\n";
 		os << " White win rate          : " << setw(10) << whiteWinNum * 100 / gameNum << "%\n";
 		os << " Black win rate          : " << setw(10) << (gameNum - whiteWinNum) * 100 / gameNum << "%\n";
+		os << endl;
 	}
 }
 #endif

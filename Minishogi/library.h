@@ -1,8 +1,6 @@
 #ifndef _LIBRARY_
 #define _LIBRARY_
-#include <string.h>
-#include <sstream>
-#include <Windows.h>
+#include "head.h"
 using namespace std;
 
 /*    Print     */
@@ -26,10 +24,6 @@ const char SAVE_CHESS_WORD[][5] = {
 	"    ","▼ㄈ","▼全","    ","▼馬","▼龍"
 };
 
-/*    Player Turn    */
-#define WHITE_TURN 0
-#define BLACK_TURN 1
-
 
 const int EatToHand[] = {
     0, 25, 26, 27, 28, 29, 35, 0,//  8,  0- 7
@@ -51,9 +45,13 @@ const int HandToChess[] = {
 
 /*    Chess    */
 enum {
-    BLANK = 0,
-    // 1     2     3      4      5      6
-    PAWN, SILVER, GOLD, BISHOP, ROOK, KING
+    BLANK  = 0,
+    PAWN   = 1, //步
+	SILVER = 2, //銀
+	GOLD   = 3, //金
+	BISHOP = 4, //角
+	ROOK   = 5, //飛
+	KING   = 6  //王
 };
 
 inline int Input2Index(char row, char col) {
@@ -79,37 +77,9 @@ inline void PrintAction(ostream &os, Action action) {
 	os << (ACTION_TO_ISPRO(action) ? "+" : " ");
 }
 
-struct TranspositNode {
-	TranspositNode() {}
-	TranspositNode(int score, bool isExact, int depth, Action action) {
-		bestScore = score;
-		bestAction = (isExact << 31) | (depth << 25) | action;
-	}
-
-	short bestScore;
-	Action bestAction;
-};
-
-struct PV {
-	Action action[MAX_DEPTH];
-	int evaluate[MAX_DEPTH];
-	int count = 0;
-	int leafEvaluate;
-
-	void Print(ostream& os, bool turn) {
-		os << "PV: (depth | turn | action | my evaluate)" << endl;
-		for (U32 i = 0; i < count; ++i) {
-			os << i << " : " << (((turn + i) & 1) ? "▼" : "△");
-			PrintAction(os, action[i]);
-			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
-		}
-		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
-			os << count << " : " << (((turn + count) & 1) ? "▼" : "△") << "Lose " << setw(7) << leafEvaluate << endl;
-		}
-	}
-};
-
 /*     Evaluate Value     */
+const int CHECKMATE = 30000; // 避免PERFECT_ENDGAME_PV時超過SHRT_MAX
+
 const int CHESS_SCORE[] = {
     0, -107, -810, -907, -1291, -1670, 0, 0,
     0, -895, -933,    0, -1985, -2408, 0, 0,
@@ -302,5 +272,35 @@ const U32 slope2_lower[BOARD_SIZE] = {
     0x0000000,    0x0000400,    0x0000820,    0x0001041,    0x0002082,
     0x0000000,    0x0008000,    0x0010400,    0x0020820,    0x0041041
 };
- 
+
+
+struct TranspositNode {
+	TranspositNode() {}
+	TranspositNode(int score, bool isExact, int depth, Action action) {
+		bestScore = score;
+		bestAction = (isExact << 31) | (depth << 25) | action;
+	}
+
+	short bestScore;
+	Action bestAction;
+};
+
+struct PV {
+	Action action[MAX_DEPTH];
+	int evaluate[MAX_DEPTH];
+	int count = 0;
+	int leafEvaluate;
+
+	void Print(ostream& os, bool turn) {
+		os << "PV: (depth | turn | action | my evaluate)" << endl;
+		for (U32 i = 0; i < count; ++i) {
+			os << i << " : " << (((turn + i) & 1) ? "▼" : "△");
+			PrintAction(os, action[i]);
+			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
+		}
+		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
+			os << count << " : " << (((turn + count) & 1) ? "▼" : "△") << "Lose " << setw(7) << leafEvaluate << endl;
+		}
+	}
+};
 #endif
