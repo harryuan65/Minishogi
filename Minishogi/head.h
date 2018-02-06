@@ -1,8 +1,10 @@
 #ifndef _HEAD_
 #define _HEAD_
 #define _CRT_SECURE_NO_WARNINGS
-#define WINDOWS_10 //WINDOWS_7 or WINDOWS_10
+#define WINDOWS_10
+//#define PV_DISABLE
 //#define PERFECT_ENDGAME_PV
+//#define TRANSPOSITION_DISABLE
 
 using namespace std;
 

@@ -8,7 +8,7 @@ namespace Zobrist {
 	typedef unsigned __int64 Zobrist;
 	typedef unsigned __int32 HalfZobrist;
 
-	const int SEED = 10;
+	const int SEED = 11;
 	extern HalfZobrist* key[37];
 
 	void Initialize();

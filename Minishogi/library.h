@@ -280,6 +280,7 @@ struct PV {
 	int leafEvaluate;
 
 	void Print(ostream& os, bool turn) {
+#ifndef PV_DISABLE
 		os << "PV: (depth | turn | action | my evaluate)" << "\n";
 		for (int i = 0; i < count; ++i) {
 			os << i << " : " << (((turn + i) & 1) ? "¡¿" : "¡µ");
@@ -289,7 +290,11 @@ struct PV {
 		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
 			os << count << " : " << (((turn + count) & 1) ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << "\n";
 		}
-		os << "PVleaf : " << leafEvaluate << "\n";
+		os << "PV leaf : " << leafEvaluate << "\n";
+#else
+		os << "PV disable.\n";
+		os << "PV leaf : " << leafEvaluate << "\n";
+#endif
 	}
 };
 #endif

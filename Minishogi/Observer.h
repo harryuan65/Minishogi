@@ -118,7 +118,7 @@ namespace Observer {
 
 		os << "Game" << setw(3) << gameNum - 1 << " : " << (winner ? "¡¿" : "¡µ") << " Win!\n";
 		os << "Game Result :\n";
-		os << " Init board zobrist      : " << setw(10) << hex << startZobristHash << dec << "\n";
+		os << " Init board zobrist      : " << setw(12) << hex << startZobristHash << dec << "\n";
 		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
 		os << " Search depths           : " << setw(10) << depth << "\n";
 		os << " Search nums             : " << setw(10) << searchNum << "\n";

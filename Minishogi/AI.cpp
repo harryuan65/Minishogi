@@ -61,13 +61,23 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 					bestScore = score;
 				else
 					bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
-				
+#ifndef PV_DISABLE
 				pv.action[0] = moveList[j];
 				pv.evaluate[0] = -board.Evaluate();
 				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
 				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
 				pv.count = tempPV.count + 1;
+#else
+				if (depth == Observer::depth) {
+					pv.action[0] = moveList[j];
+					pv.evaluate[0] = -board.Evaluate();
+					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
+					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
+					pv.count = tempPV.count + 1;
+				}
+#endif
 			}
+#ifndef PV_DISABLE
 			else if (pv.count == 0 && score == -CHECKMATE) {
 				/* moveList的第一個action是必輸的話照樣儲存pv 才能在必輸下得到pv */
 				pv.action[0] = moveList[j];
@@ -76,6 +86,7 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
 				pv.count = tempPV.count + 1;
 			}
+#endif
             board.UndoMove();
 
 			if (bestScore >= beta) {
@@ -222,12 +233,17 @@ inline U64 ZobristToIndex(Zobrist::Zobrist zobrist){
 }
 
 void InitializeTP() {
+#ifndef TRANSPOSITION_DISABLE
 	transpositTable = new TransPosition[TPSize];
 	cout << "TransPosition Table Created. ";
 	cout << "Used Size : " << ((TPSize * sizeof(TransPosition)) >> 20) << "MiB\n";
+#else
+	cout << "TransPosition Table disable.\n";
+#endif
 }
 
 bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value) {
+#ifndef TRANSPOSITION_DISABLE
 	U64 index = ZobristToIndex(zobrist);
 	if (transpositTable[index].zobrist != zobrist) {
 		Observer::collisionNums++;
@@ -260,9 +276,17 @@ bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& val
 	/*Exact*/
 	value = transpositTable[index].value;
 	return true;
+#else
+	return false;
+#endif
 }
 
 void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value) {
+#ifndef TRANSPOSITION_DISABLE
+	/*if (depth < TPLimit) {
+		return;
+	}*/
+
 	U64 index = ZobristToIndex(zobrist);
 	transpositTable[index].zobrist = zobrist;
 	transpositTable[index].value = value;
@@ -275,4 +299,5 @@ void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int valu
 	else {
 		transpositTable[index].state = TransPosition::Exact;
 	}
+#endif
 }

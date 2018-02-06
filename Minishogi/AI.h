@@ -12,6 +12,7 @@ int SEE(const Board &board, int dstIndex);
 const U64 TPSize = 0x0000000001000000ULL;
 const U64 TPMask = 0x0000000000ffffffULL;
 const U64 TPShift = 0;
+//const int TPLimit = 3;
 
 struct TransPosition {
 	Zobrist::Zobrist zobrist = 0;  //64bits

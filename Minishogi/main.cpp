@@ -96,7 +96,7 @@ int main() {
     else */
 
 	Zobrist::Initialize();
-	if (gameMode != 2) {
+	if (player[0] == AI_CTRL || player[1] == AI_CTRL) {
 		InitializeTP();
 	}
 	do {
