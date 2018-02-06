@@ -10,8 +10,6 @@
 */
 
 #include "head.h"
-#define REPORT_PATH       "output//"
-#define LREPORT_PATH     L"output//"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 using namespace std;
 
@@ -28,8 +26,9 @@ int main() {
     int gameMode;
 	bool isCustomBoard;
 	string currTimeStr;
-	int readBoardOffset = 0;
+	streamoff readBoardOffset = 0;
 
+	/*    取得現在時間字串    */
 	char buffer[80];
 	time_t rawtime;
 	time(&rawtime);
@@ -66,7 +65,7 @@ int main() {
     }
 	cin.ignore();
 	
-	if (gameMode != 2) {
+	if (player[0] == AI_CTRL || player[1] == AI_CTRL) {
 		cout << "輸入搜尋的深度\n";
 		cin >> Observer::depth;
 		cin.ignore();
@@ -74,17 +73,9 @@ int main() {
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
 	isCustomBoard = getchar() != '0';
 	cin.ignore();
-	cout << "結束時匯出cmd畫面?\n";
-	Observer::isAutoSaveDetail = getchar() != '0';
+	cout << "結束時匯出紀錄?\n";
+	Observer::isSaveRecord = getchar() != '0';
 	cin.ignore();
-	cout << "結束時匯出棋譜?\n";
-	Observer::isAutoSaveKifu = getchar() != '0';
-	cin.ignore();
-	if (gameMode != 2) {
-		cout << "結束時匯出AI平均效能?\n";
-		Observer::isAutoSaveAIReport = getchar() != '0';
-		cin.ignore();
-	}
 	cout << "確定要開始? ";
 	system("pause");
 
@@ -104,6 +95,10 @@ int main() {
     }
     else */
 
+	Zobrist::Initialize();
+	if (gameMode != 2) {
+		InitializeTP();
+	}
 	do {
 		m_Board.Initialize();
 		if (isCustomBoard) {
@@ -156,7 +151,7 @@ int main() {
 				cin >> action;
 			}
 
-			if (Observer::isAutoSaveDetail) {
+			if (Observer::isSaveRecord) {
 				if (isCustomBoard) {
 					SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
 				}
@@ -176,7 +171,7 @@ int main() {
 		}
 		Observer::GameOver(!m_Board.GetTurn(), m_Board.GetKifuHash());
 		cout << "-------- Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
-		if (Observer::isAutoSaveKifu) {
+		if (Observer::isSaveRecord) {
 			if (isCustomBoard) {
 				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
 			}
@@ -184,7 +179,7 @@ int main() {
 				m_Board.SaveKifu(currTimeStr + "_Kifu.txt", currTimeStr);
 			}
 		}
-		if (Observer::isAutoSaveAIReport) {
+		if (Observer::isSaveRecord) {
 			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
 		}
 		cout << "\n";
@@ -301,8 +296,10 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 		file.open(filepath, ios::out | ios::app);
 	}
 	if (file) {
-		if (board.GetStep() == 0)
+		if (board.GetStep() == 0) {
 			file << "#" << comment << "\n";
+			file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
+		}
 		file << "---------- Game " << Observer::gameNum << " Step " << board.GetStep() << " ----------\n";
 		board.PrintNoncolorBoard(file);
 		file << (board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n");
@@ -332,10 +329,13 @@ bool SaveAIReport(const string filename, const string comment) {
 		file.open(filepath);
 	}
 	if (file) {
-		if (Observer::gameNum <= 1)
+		if (Observer::gameNum <= 1) {
 			file << "#" << comment << "\n";
-		else
+			file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
+		}
+		else {
 			file << "\n";
+		}
 		Observer::PrintGameReport(file);
 		file.close();
 		cout << "Success Save AI Report to " << filepath << "\n";

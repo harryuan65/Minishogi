@@ -41,8 +41,8 @@ typedef unsigned __int32 Action;
 #define ACTION_TO_SRCCHESS(action) (action & 0x0003f000) >> 12
 #define ACTION_TO_DSTCHESS(action) (action & 0x00fc0000) >> 18
 #define ACTION_TO_ISPRO(action)    (action & 0x01000000) >> 24
-#define ACTION_TO_DEPTH(action)    (action & 0x7e000000) >> 25
-#define ACTION_TO_ISEXACT(action)  (action >> 31)
+//#define ACTION_TO_DEPTH(action)    (action & 0x7e000000) >> 25
+//#define ACTION_TO_ISEXACT(action)  (action >> 31)
 
 /*    Search    */
 // max move number including attack (21) and move (29)

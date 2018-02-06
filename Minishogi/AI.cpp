@@ -1,16 +1,15 @@
 #include "AI.h"
 
-U32 max_move[3] = { 0 };
+/*    Negascout Algorithm    */
+
+//U32 max_move[3] = { 0 };
 
 typedef void(*genmove)(Board &, Action *, U32 &);
 static const genmove move_func[] = { AttackGenerator, MoveGenerator, HandGenerator };
 
-map<U32, TranspositNode> transpositTable;
-
 Action IDAS(Board& board, PV &pv) {
     cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
 	pv.leafEvaluate = NegaScout(pv, board, -CHECKMATE, CHECKMATE, Observer::depth, false);
-	cout << "pvleaf : " << pv.leafEvaluate << endl;
     if (pv.count == 0 || pv.leafEvaluate <= -CHECKMATE)
 		return 0;
 	return pv.action[0];
@@ -19,19 +18,23 @@ Action IDAS(Board& board, PV &pv) {
 int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResearch) {
 	Observer::totalNode++;
 	Observer::researchNode += isResearch;
+
+	int bestScore = -CHECKMATE;
+	int n = beta;
+	PV tempPV;
+	U32 accCnt = 0;
+	Zobrist::Zobrist zobrist = board.GetZobristHash();
+
+	Observer::scoutGeneNums++;
 	pv.count = 0;
+	if (ReadTP(zobrist, depth, alpha, beta, bestScore)) {
+		return bestScore;
+	}
 
     if (depth == 0) {
-        //pv.count = 0;
 		//Observer::totalNode--; //不然會重複計數
 		return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
     }
-
-    int bestScore = -CHECKMATE;
-    int n = beta;
-    PV tempPV;
-    U32 accCnt = 0;
-	Observer::scoutGeneNums++;
     /* 分三個步驟搜尋 [攻擊 移動 打入] */
     for (int i = 0; i < 3; i++) {
         Action moveList[MAX_MOVE_NUM];
@@ -45,10 +48,9 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 				continue;
 			}
 
-            /* Search Depth */
             board.DoMove(moveList[j]);
-			// 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍
-			if (/*depth >= Observer::depth && */board.IsSennichite() /*&& !(DoMove()前被將軍)*/ ) {
+			if (board.IsSennichite() /*&& !(DoMove()前被將軍)*/ ) {
+				/* 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍 */
 				board.UndoMove();
 				accCnt--;
 				continue;
@@ -59,46 +61,40 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 					bestScore = score;
 				else
 					bestScore = -NegaScout(tempPV, board, -beta, -score + 1, depth - 1, true);
-				// Save PV
+				
 				pv.action[0] = moveList[j];
 				pv.evaluate[0] = -board.Evaluate();
 				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
 				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
 				pv.count = tempPV.count + 1;
-				//Debug
-				//if (depth != pv.count && bestScore != CHECKMATE && bestScore != -CHECKMATE)
-				//	system("pause");
 			}
-			// moveList的第一個action是必輸的話照樣儲存pv 才能在必輸下得到pv
 			else if (pv.count == 0 && score == -CHECKMATE) {
-				// Save PV
+				/* moveList的第一個action是必輸的話照樣儲存pv 才能在必輸下得到pv */
 				pv.action[0] = moveList[j];
 				pv.evaluate[0] = -board.Evaluate();
 				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
 				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
 				pv.count = tempPV.count + 1;
-				//Debug
-				//if (depth != pv.count && bestScore != CHECKMATE && bestScore != -CHECKMATE)
-				//	system("pause");
 			}
             board.UndoMove();
 
-			// Beta cutoff
 			if (bestScore >= beta) {
+				/* Beta cutoff */
 				Observer::scoutSearchBranch += accCnt + j;
+				UpdateTP(zobrist, depth, alpha, beta, bestScore);
 				return bestScore;
 			}
-			n = max(alpha, bestScore) + 1; // set up a null window
+			n = max(alpha, bestScore) + 1; // Set up a null window
         }
     }
-	if (!accCnt) {
-		//pv.count = 0;
+	if (accCnt == 0) {
 #ifdef PERFECT_ENDGAME_PV
-		return -CHECKMATE - 10 * depth;
+		bestScore = -CHECKMATE - 10 * depth;
 #else
-		return -CHECKMATE;
+		bestScore = -CHECKMATE;
 #endif
 	}
+	UpdateTP(zobrist, depth, alpha, beta, bestScore);
 	Observer::scoutSearchBranch += accCnt;
     return bestScore;
 }
@@ -216,18 +212,67 @@ int SEE(const Board &board, int dstIndex) {
     return board.GetTurn() ? -exchangeScore : exchangeScore;
 }
 
-bool ReadTransposit(U32 hashcode, TranspositNode& bestNode) {
-	if (transpositTable.find(hashcode) != transpositTable.end()) {
-		bestNode = transpositTable[hashcode];
-		//TODO: if board.IsMovable(bestNode.bestAction) collision avoid
-		return true;
-	}
-	return false;
+
+/*    Transposition Table    */
+
+static TransPosition* transpositTable = nullptr;
+
+inline U64 ZobristToIndex(Zobrist::Zobrist zobrist){
+	return ((zobrist & TPMask) >> TPShift);
 }
 
-void UpdateTransposit(U32 hashcode, int score, bool isExact, U32 depth, Action action) {
-	map<U32, TranspositNode>::iterator it = transpositTable.find(hashcode);
-	if (it != transpositTable.end() && depth >= ACTION_TO_DEPTH(it->second.bestAction)) {
-		it->second = TranspositNode(score, isExact, depth, action);
+void InitializeTP() {
+	transpositTable = new TransPosition[TPSize];
+	cout << "TransPosition Table Created. ";
+	cout << "Used Size : " << ((TPSize * sizeof(TransPosition)) >> 20) << "MiB\n";
+}
+
+bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value) {
+	U64 index = ZobristToIndex(zobrist);
+	if (transpositTable[index].zobrist != zobrist) {
+		Observer::collisionNums++;
+		return false;
+	}
+	if (transpositTable[index].depth < depth) {
+		return false;
+	}
+
+	if (transpositTable[index].state == TransPosition::Unknown) {
+		/* Value在(-Infinity, value] */
+		beta = min(transpositTable[index].value, beta);
+		return false;
+	}
+	/* TODO : 需驗證 */
+	/*if (transpositTable[index].state == TranspositNode::Unknown && beta < transpositTable[index].value) {
+		beta = transpositTable[index].value;
+		return false;
+	}*/
+	if (transpositTable[index].value >= beta) {
+		/*自己發生Failed High*/
+		value = beta;
+		return true;
+	}
+	if (transpositTable[index].state == TransPosition::FailHigh) {
+		/*Failed-High*/
+		alpha = max(transpositTable[index].value, alpha);
+		return false;
+	}
+	/*Exact*/
+	value = transpositTable[index].value;
+	return true;
+}
+
+void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value) {
+	U64 index = ZobristToIndex(zobrist);
+	transpositTable[index].zobrist = zobrist;
+	transpositTable[index].value = value;
+	if (value < alpha) {
+		transpositTable[index].state = TransPosition::Unknown;
+	}
+	else if (value >= beta) {
+		transpositTable[index].state = TransPosition::FailHigh;
+	}
+	else {
+		transpositTable[index].state = TransPosition::Exact;
 	}
 }

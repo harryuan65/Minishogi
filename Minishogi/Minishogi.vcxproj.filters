@@ -30,6 +30,9 @@
     <ClCompile Include="Observer.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
+    <ClCompile Include="Zobrist.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="library.h">
@@ -54,6 +57,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="MoveGene.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Zobrist.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

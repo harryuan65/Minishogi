@@ -5,24 +5,7 @@
 #define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
 #endif
 
-vector<U32> Board::ZOBRIST_TABLE[37];
-
-Board::Board() {
-	/* Make Zobrsit Table */
-	if (ZOBRIST_TABLE[0].size() == 0) {
-		srand(ZOBRIST_SEED);
-		for (int i = 0; i < 25; i++) {
-			ZOBRIST_TABLE[i] = vector<U32>(30);
-		}
-		for (int i = 25; i < 37; i++) {
-			ZOBRIST_TABLE[i] = vector<U32>(3);
-		}
-		for (int i = 0; i < 37; i++)
-			for (int j = 0; j < ZOBRIST_TABLE[i].size(); j++)
-				ZOBRIST_TABLE[i][j] = rand() | (rand() << 16);
-		//rand() ^ (rand()<<8) ^ (rand()<<16);
-	}
-}
+Board::Board() {}
 
 Board::~Board() {}
 
@@ -138,40 +121,40 @@ void Board::CalZobristNumber() {
 	m_blackHashcode = 0;
 	for (int i = 0; i < 25; i++) {
 		if (board[i] != BLANK) {
-			m_whiteHashcode ^= ZOBRIST_TABLE[i][board[i]];
-			m_blackHashcode ^= ZOBRIST_TABLE[24 - i][board[i] ^ BLACKCHESS];
+			m_whiteHashcode ^= Zobrist::key[i][board[i]];
+			m_blackHashcode ^= Zobrist::key[24 - i][board[i] ^ BLACKCHESS];
 		}
 	}
 	for (int i = 25; i < 37; i++) {
 		if (board[i]) {
-			m_whiteHashcode ^= ZOBRIST_TABLE[i][1];
-			m_blackHashcode ^= ZOBRIST_TABLE[i> 30 ? i - 6 : i + 6][1];
+			m_whiteHashcode ^= Zobrist::key[i][1];
+			m_blackHashcode ^= Zobrist::key[i> 30 ? i - 6 : i + 6][1];
 		}
 		if (board[i] == 2) {
-			m_whiteHashcode ^= ZOBRIST_TABLE[i][2];
-			m_blackHashcode ^= ZOBRIST_TABLE[i> 30 ? i - 6 : i + 6][1];
+			m_whiteHashcode ^= Zobrist::key[i][2];
+			m_blackHashcode ^= Zobrist::key[i> 30 ? i - 6 : i + 6][1];
 		}
 	}
 }
 
 /* 移動完計算Zobrist */
 void Board::CalZobristNumber(int srcIndex, int dstIndex, int srcChess, int dstChess) {
-	m_whiteHashcode ^= ZOBRIST_TABLE[srcIndex][srcChess];
-	m_whiteHashcode ^= ZOBRIST_TABLE[dstIndex][dstChess];
+	m_whiteHashcode ^= Zobrist::key[srcIndex][srcChess];
+	m_whiteHashcode ^= Zobrist::key[dstIndex][dstChess];
 	if (srcIndex > 24) {
 		/* 打入 */
-		m_blackHashcode ^= ZOBRIST_TABLE[srcIndex > 30 ? srcIndex - 6 : srcIndex + 6][srcChess];
-		m_blackHashcode ^= ZOBRIST_TABLE[24 - dstIndex][dstChess ^ BLACKCHESS];
+		m_blackHashcode ^= Zobrist::key[srcIndex > 30 ? srcIndex - 6 : srcIndex + 6][srcChess];
+		m_blackHashcode ^= Zobrist::key[24 - dstIndex][dstChess ^ BLACKCHESS];
 	}
 	else if (dstIndex > 24) {
 		/* 吃掉 */
-		m_blackHashcode ^= ZOBRIST_TABLE[24 - srcIndex][srcChess ^ BLACKCHESS];
-		m_blackHashcode ^= ZOBRIST_TABLE[dstIndex > 30 ? dstIndex - 6 : dstIndex + 6][dstChess];
+		m_blackHashcode ^= Zobrist::key[24 - srcIndex][srcChess ^ BLACKCHESS];
+		m_blackHashcode ^= Zobrist::key[dstIndex > 30 ? dstIndex - 6 : dstIndex + 6][dstChess];
 	}
 	else {
 		/* 移動 */
-		m_blackHashcode ^= ZOBRIST_TABLE[24 - srcIndex][srcChess ^ BLACKCHESS];
-		m_blackHashcode ^= ZOBRIST_TABLE[24 - dstIndex][dstChess ^ BLACKCHESS];
+		m_blackHashcode ^= Zobrist::key[24 - srcIndex][srcChess ^ BLACKCHESS];
+		m_blackHashcode ^= Zobrist::key[24 - dstIndex][dstChess ^ BLACKCHESS];
 	}
 }
 
@@ -232,7 +215,10 @@ void Board::UndoMove() {
 
 	m_turn ^= 1;
 	m_step--;
-	UndoZobristHash();
+	m_whiteHashcode = m_turn ? recordZobrist[m_step] >> 32 : recordZobrist[m_step];
+	m_blackHashcode = m_turn ? recordZobrist[m_step] : recordZobrist[m_step] >> 32;
+	//m_whiteHashcode = recordZobristWhite[m_step];
+	//m_blackHashcode = recordZobristBlack[m_step];
 
     // 0 board[dst] board[src] dst src
     U32 srcIndex = ACTION_TO_SRCINDEX(redo),
@@ -288,7 +274,7 @@ bool Board::SaveBoard(const string filename, const string comment) const {
 	return false;
 }
 
-bool Board::LoadBoard(const string filename, int &offset) {
+bool Board::LoadBoard(const string filename, streamoff &offset) {
 	string filepath = BOARD_PATH + filename;
 	fstream file(filepath, ios::in);
 	if (file) {
@@ -343,6 +329,7 @@ bool Board::SaveKifu(string filename, const string comment) const {
 	}
 	if (file) {
 		file << "*" << comment << endl;
+		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
 		file << "Kifu hash : " << setw(8) << hex << GetKifuHash() << "\n";
 		file << "Initboard : " << setw(16) << hex << recordZobrist[0] << dec << "\n";
 		for (int i = 0; i < m_step; i++) {

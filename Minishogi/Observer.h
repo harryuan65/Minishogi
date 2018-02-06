@@ -1,5 +1,9 @@
 #ifndef _OBSERVER_
 #define _OBSERVER_
+
+#define REPORT_PATH       "output//"
+#define LREPORT_PATH     L"output//"
+
 #include "head.h"
 using namespace std;
 
@@ -11,6 +15,7 @@ namespace Observer {
 	extern unsigned long long scoutGeneNums;
 	extern unsigned long long scoutSearchBranch;
 	extern unsigned	long long cutIllgalBranch;
+	extern unsigned	long long collisionNums;
 	extern double searchTime;
 	static clock_t beginTime;
 
@@ -27,6 +32,7 @@ namespace Observer {
 	extern unsigned long long game_scoutGeneNums;
 	extern unsigned long long game_scoutSearchBranch;
 	extern unsigned	long long game_cutIllgalBranch;
+	extern unsigned	long long game_collisionNums;
 	extern double game_searchTime;
 	static clock_t game_beginTime;
 
@@ -36,9 +42,7 @@ namespace Observer {
 
 	// ³]©w
 	extern int depth;
-	extern bool isAutoSaveKifu;
-	extern bool isAutoSaveDetail;
-	extern bool isAutoSaveAIReport;
+	extern bool isSaveRecord;
 
 	inline void StartSearching() {
 		totalNode = 0;
@@ -47,6 +51,7 @@ namespace Observer {
 		scoutGeneNums = 0;
 		scoutSearchBranch = 0;
 		cutIllgalBranch = 0;
+		collisionNums = 0;
 		searchTime = 0;
 		beginTime = clock();
 	}
@@ -62,6 +67,7 @@ namespace Observer {
 		game_scoutGeneNums += scoutGeneNums;
 		game_scoutSearchBranch += scoutSearchBranch;
 		game_cutIllgalBranch += cutIllgalBranch;
+		game_collisionNums += collisionNums;
 		game_searchTime += searchTime;
 	}
 
@@ -75,6 +81,7 @@ namespace Observer {
 		game_scoutGeneNums = 0;
 		game_scoutSearchBranch = 0;
 		game_cutIllgalBranch = 0;
+		game_collisionNums = 0;
 		game_searchTime = 0;
 
 		game_beginTime = clock();
@@ -99,6 +106,7 @@ namespace Observer {
 		os << " Quie search nodes       : " << setw(10) << quiesNode << "\n";
 		os << " Avg scout search branch : " << setw(13) << (float)scoutSearchBranch / scoutGeneNums << "\n";
 		os << " Cut illgal branch       : " << setw(10) << cutIllgalBranch << "\n";
+		os << " Collision nums          : " << setw(10) << collisionNums << "\n";
 		os << " Search time             : " << setw(13) << searchTime << "\n";
 		os << endl;
 	}
@@ -123,6 +131,7 @@ namespace Observer {
 		os << " Quie search nodes       : " << setw(10) << game_quiesNode / searchNum << "\n";
 		os << " Avg scout search branch : " << setw(13) << (float)game_scoutSearchBranch / game_scoutGeneNums  << "\n";
 		os << " Cut illgal branch       : " << setw(10) << game_cutIllgalBranch / searchNum << "\n";
+		os << " Collision nums          : " << setw(10) << game_collisionNums / searchNum << "\n";
 		os << " Search time             : " << setw(13) << game_searchTime / searchNum << "\n";
 		os << endl;
 	}

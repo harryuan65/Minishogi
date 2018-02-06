@@ -14,7 +14,6 @@ using namespace std;
 #include <functional>
 #include <iostream>
 #include <iomanip>
-#include <map> //之後不用
 #include <stdlib.h>
 #include <string>
 #include <sstream>
@@ -26,6 +25,7 @@ struct TranspositNode;
 struct PV;
 class Board;
 
+#include "Zobrist.h"
 #include "define.h"
 #include "library.h"
 #include "Observer.h"

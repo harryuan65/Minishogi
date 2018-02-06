@@ -273,18 +273,6 @@ const U32 slope2_lower[BOARD_SIZE] = {
     0x0000000,    0x0008000,    0x0010400,    0x0020820,    0x0041041
 };
 
-
-struct TranspositNode {
-	TranspositNode() {}
-	TranspositNode(int score, bool isExact, int depth, Action action) {
-		bestScore = score;
-		bestAction = (isExact << 31) | (depth << 25) | action;
-	}
-
-	short bestScore;
-	Action bestAction;
-};
-
 struct PV {
 	Action action[MAX_DEPTH];
 	int evaluate[MAX_DEPTH];
@@ -292,15 +280,16 @@ struct PV {
 	int leafEvaluate;
 
 	void Print(ostream& os, bool turn) {
-		os << "PV: (depth | turn | action | my evaluate)" << endl;
-		for (U32 i = 0; i < count; ++i) {
+		os << "PV: (depth | turn | action | my evaluate)" << "\n";
+		for (int i = 0; i < count; ++i) {
 			os << i << " : " << (((turn + i) & 1) ? "¡¿" : "¡µ");
 			PrintAction(os, action[i]);
-			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << endl;
+			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << "\n";
 		}
 		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
-			os << count << " : " << (((turn + count) & 1) ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << endl;
+			os << count << " : " << (((turn + count) & 1) ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << "\n";
 		}
+		os << "PVleaf : " << leafEvaluate << "\n";
 	}
 };
 #endif

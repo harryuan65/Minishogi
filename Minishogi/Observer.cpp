@@ -8,6 +8,7 @@ namespace Observer {
 	unsigned long long scoutGeneNums;
 	unsigned long long scoutSearchBranch;
 	unsigned long long cutIllgalBranch;
+	unsigned long long collisionNums;
 	double searchTime;
 
 	// 整局結果
@@ -23,6 +24,7 @@ namespace Observer {
 	unsigned long long game_scoutGeneNums;
 	unsigned long long game_scoutSearchBranch;
 	unsigned long long game_cutIllgalBranch;
+	unsigned long long game_collisionNums;
 	double game_searchTime;
 
 	// 全部
@@ -31,7 +33,5 @@ namespace Observer {
 
 	// 設定
 	int Observer::depth = 10;
-	bool Observer::isAutoSaveKifu = false;
-	bool Observer::isAutoSaveDetail = false;
-	bool Observer::isAutoSaveAIReport = false;
+	bool Observer::isSaveRecord = true;
 }
