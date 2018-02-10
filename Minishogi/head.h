@@ -3,13 +3,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define WINDOWS_10
 //#define PV_DISABLE
-//#define PERFECT_ENDGAME_PV
+//#define BEST_ENDGAME_SEARCH
 //#define TRANSPOSITION_DISABLE
-
 using namespace std;
 
 #include <algorithm>
 #include <assert.h>
+#include <atlstr.h>
 #include <conio.h>
 #include <direct.h>
 #include <fstream>

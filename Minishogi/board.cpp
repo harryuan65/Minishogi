@@ -260,7 +260,7 @@ bool Board::SaveBoard(const string filename, const string comment) const {
 	string filepath = BOARD_PATH + filename;
 	fstream file(filepath, ios::out | ios::app);
 	if (!file) {
-		CreateDirectory(LBOARD_PATH, NULL);
+		CreateDirectory(CA2W(BOARD_PATH), NULL);
 		file.open(filepath, ios::out | ios::app);
 	}
 	if (file) {
@@ -324,14 +324,14 @@ bool Board::SaveKifu(string filename, const string comment) const {
 	string filepath = KIFU_PATH + filename;
 	fstream file(filepath, ios::out);
 	if (!file) {
-		CreateDirectory(LKIFU_PATH, NULL);
+		CreateDirectory(CA2W(KIFU_PATH), NULL);
 		file.open(filepath, ios::out);
 	}
 	if (file) {
 		file << "*" << comment << endl;
 		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
 		file << "Kifu hash : " << setw(8) << hex << GetKifuHash() << "\n";
-		file << "Initboard : " << setw(16) << hex << recordZobrist[0] << dec << "\n";
+		file << "Initboard : " << setw(18) << hex << recordZobrist[0] << dec << "\n";
 		for (int i = 0; i < m_step; i++) {
 			file << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
 			file << Index2Input(ACTION_TO_SRCINDEX(recordAction[i]));
@@ -421,9 +421,6 @@ bool Board::IsCheckAfter(const int src, const int dst) {
 		occupied[m_turn] ^= dstboard;
 	}
 	/************ UnDoMove ************/
-	if (isStillChecking) {
-		Observer::cutIllgalBranch++;
-	}
 	return isStillChecking;
 }
 

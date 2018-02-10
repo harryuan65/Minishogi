@@ -290,10 +290,10 @@ struct PV {
 		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
 			os << count << " : " << (((turn + count) & 1) ? "¡¿" : "¡µ") << "Lose " << setw(7) << leafEvaluate << "\n";
 		}
-		os << "PV leaf : " << leafEvaluate << "\n";
+		os << "PV leaf : " << setw(8) << leafEvaluate << "\n";
 #else
 		os << "PV disable.\n";
-		os << "PV leaf : " << leafEvaluate << "\n";
+		os << "PV leaf : " << setw(8) << leafEvaluate << "\n";
 #endif
 	}
 };

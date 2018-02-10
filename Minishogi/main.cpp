@@ -8,62 +8,85 @@
 ▼0步0銀2金0角0飛
 △0步0銀0金1角0飛
 */
-
 #include "head.h"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
+#define REPORT_PATH       "output//"
+#define AI_VERSION		  "Seed=11, TPSize=0x1000000, TPShift=20" //輸出報告註解用
 using namespace std;
 
 Action Human_DoMove(Board &board);
 Action AI_DoMove(Board &board, PV &pv);
 
 bool SavePlayDetail(const string filename, const string comment, Board &board, Action action, PV &pv);
-bool SaveAIReport(const string filename, const string comment);
+bool SaveAIReport(const string filename, const string comment, const string aiType);
 
-int main() {
-    Board m_Board;
-    Action action;
-    int player[2];
-    int gameMode;
+void GetCurrentTimeString(string& out);
+bool GetOpenFileNameString(string& out);
+void SendMessageByHWND(const HWND hwnd, const string message);
+
+int main(int argc, char **argv) {
+	Board m_Board;
+	Action action;
+	int player[2];
+	int gameMode;
 	bool isCustomBoard;
+	bool isSwap = false;
+	HWND opponentHWND;
+
 	string currTimeStr;
+	string gameDirStr;
 	streamoff readBoardOffset = 0;
 
-	/*    取得現在時間字串    */
-	char buffer[80];
-	time_t rawtime;
-	time(&rawtime);
-	strftime(buffer, sizeof(buffer), "%Y-%m-%d %H-%M-%S", localtime(&rawtime));
-	currTimeStr = buffer;
-
-    for (;;) {
-        cout << "請選擇對手:\n(0)玩家vs電腦\n(1)電腦vs玩家\n(2)玩家對打\n(3)電腦對打\n(4)電腦對打 本機vs其他程式\n"; //(5)電腦對打 其他程式vs本機\n
-		gameMode = getchar() - '0';
-        switch (gameMode)
-        {
-        case 0:
-            player[0] = HUMAN_CTRL; player[1] = AI_CTRL;
-            break;
-        case 1:
-            player[0] = AI_CTRL; player[1] = HUMAN_CTRL;
-            break;
-        case 2:
-            player[0] = HUMAN_CTRL; player[1] = HUMAN_CTRL;
-            break;
-        case 3:
-            player[0] = AI_CTRL; player[1] = AI_CTRL;
-            break;
-        case 4:
-            player[0] = AI_CTRL; player[1] = OTHERAI_CTRL;
-            break;
-        /*case 5:
-            player[0] = OTHERAI_CTRL; player[1] = AI_CTRL;
-            break;*/
-        default:
-            continue;
-        }
-        break;
-    }
-	cin.ignore();
+	cout << "AI Version : " << AI_VERSION << endl;
+	if (argc == 3) {
+		gameMode = 5;
+		player[0] = OTHERAI_CTRL; player[1] = AI_CTRL;
+		opponentHWND = (HWND)atoi(argv[1]);
+		currTimeStr = argv[2];
+		SendMessageByHWND(opponentHWND, to_string((int)GetConsoleWindow()));
+	}
+	else {
+		GetCurrentTimeString(currTimeStr);
+		for (;;) {
+			cout << "請選擇對手:\n"
+				"(0)玩家vs電腦\n"
+				"(1)電腦vs玩家\n"
+				"(2)玩家對打\n"
+				"(3)電腦對打\n"
+				"(4)電腦對打 本機vs其他程式\n";
+			gameMode = getchar() - '0';
+			cin.ignore();
+			switch (gameMode)
+			{
+			case 0:
+				player[0] = HUMAN_CTRL; player[1] = AI_CTRL;
+				break;
+			case 1:
+				player[0] = AI_CTRL; player[1] = HUMAN_CTRL;
+				break;
+			case 2:
+				player[0] = HUMAN_CTRL; player[1] = HUMAN_CTRL;
+				break;
+			case 3:
+				player[0] = AI_CTRL; player[1] = AI_CTRL;
+				break;
+			case 4:
+				if (!GetOpenFileNameString(gameDirStr)) {
+					continue;
+				}
+				cout << "等待程式開啟...\n";
+				system(("start \"\" \"" + gameDirStr + "\" " + to_string((int)GetConsoleWindow()) + " " + currTimeStr).c_str());
+				int bufHWND;
+				cin >> bufHWND;
+				opponentHWND = (HWND)bufHWND;
+				player[0] = AI_CTRL; player[1] = OTHERAI_CTRL;
+				break;
+			default:
+				continue;
+			}
+			break;
+		}
+	}
 	
 	if (player[0] == AI_CTRL || player[1] == AI_CTRL) {
 		cout << "輸入搜尋的深度\n";
@@ -76,8 +99,15 @@ int main() {
 	cout << "結束時匯出紀錄?\n";
 	Observer::isSaveRecord = getchar() != '0';
 	cin.ignore();
-	cout << "確定要開始? ";
-	system("pause");
+	if (gameMode != 5) {
+		cout << "確定要開始? ";
+		system("pause");
+		SendMessageByHWND(opponentHWND, "");
+	}
+	else {
+		cout << "等待對方程式回應... 請不要按任意鍵 ";
+		system("pause");
+	}
 
     /*int choice;
     cout << "自訂棋盤?0:1 = ";
@@ -101,8 +131,16 @@ int main() {
 	}
 	do {
 		m_Board.Initialize();
-		if (isCustomBoard) {
-			if (!m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
+		if (isCustomBoard && !m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
+			if ((gameMode == 4 || gameMode == 5) && !isSwap) {
+				isSwap = true;
+				swap(player[0], player[1]);
+				readBoardOffset = 0;
+				if (!m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
+					break;
+				}
+			}
+			else {
 				break;
 			}
 		}
@@ -135,7 +173,12 @@ int main() {
 			m_Board.PrintChessBoard();
 			cout << (m_Board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 			if (player[m_Board.GetTurn()] == HUMAN_CTRL) {
-				while (!(action = Human_DoMove(m_Board)));
+				if (m_Board.IsGameOver()) {
+					action = 0;
+				}
+				else {
+					while (!(action = Human_DoMove(m_Board)));
+				}
 			}
 			else if (player[m_Board.GetTurn()] == AI_CTRL) {
 				Observer::StartSearching();
@@ -145,19 +188,16 @@ int main() {
 
 				pv.Print(cout, m_Board.GetTurn());
 				Observer::PrintReport(cout);
-				//if (Observer::searchTime > 60) cout << "\a"; //很吵
+				if (gameMode == 4 || gameMode == 5) {
+					SendMessageByHWND(opponentHWND, to_string(action));
+				}
 			}
-			else {
+			else if (player[m_Board.GetTurn()] == OTHERAI_CTRL) {
 				cin >> action;
 			}
 
-			if (Observer::isSaveRecord) {
-				if (isCustomBoard) {
-					SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
-				}
-				else {
-					SavePlayDetail(currTimeStr + "_PlayDetail.txt", currTimeStr, m_Board, action, pv);
-				}
+			if (Observer::isSaveRecord && player[m_Board.GetTurn()] != OTHERAI_CTRL) {
+				SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
 			}
 			if (!action) {
 				cout << "投降! I'm lose" << endl;
@@ -172,15 +212,13 @@ int main() {
 		Observer::GameOver(!m_Board.GetTurn(), m_Board.GetKifuHash());
 		cout << "-------- Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
 		if (Observer::isSaveRecord) {
-			if (isCustomBoard) {
-				m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
-			}
-			else {
-				m_Board.SaveKifu(currTimeStr + "_Kifu.txt", currTimeStr);
-			}
+			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
 		}
 		if (Observer::isSaveRecord) {
-			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr);
+			string aiType;
+			if (player[0] == AI_CTRL) aiType += "△";
+			if (player[1] == AI_CTRL) aiType += "▼";
+			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr, aiType);
 		}
 		cout << "\n";
 		Observer::PrintGameReport(cout);
@@ -292,7 +330,7 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 	string filepath = REPORT_PATH + filename;
 	fstream file(filepath, ios::out | ios::app);
 	if (!file) {
-		CreateDirectory(LREPORT_PATH, NULL);
+		CreateDirectory(CA2W(REPORT_PATH), NULL);
 		file.open(filepath, ios::out | ios::app);
 	}
 	if (file) {
@@ -319,13 +357,13 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 	return false;
 }
 
-bool SaveAIReport(const string filename, const string comment) {
+bool SaveAIReport(const string filename, const string comment, const string aiType) {
 	if (Observer::searchNum == 0)
 		return false;
 	string filepath = REPORT_PATH + filename;
 	fstream file(filepath, ios::app);
 	if (!file) {
-		CreateDirectory(LREPORT_PATH, NULL);
+		CreateDirectory(CA2W(REPORT_PATH), NULL);
 		file.open(filepath);
 	}
 	if (file) {
@@ -336,6 +374,7 @@ bool SaveAIReport(const string filename, const string comment) {
 		else {
 			file << "\n";
 		}
+		file << "AI Type : " << aiType << AI_VERSION << "\n";
 		Observer::PrintGameReport(file);
 		file.close();
 		cout << "Success Save AI Report to " << filepath << "\n";
@@ -343,4 +382,40 @@ bool SaveAIReport(const string filename, const string comment) {
 	}
 	cout << "Fail Save AI Report to " << filepath << "\n";
 	return false;
+}
+
+void GetCurrentTimeString(string &out) {
+	char buffer[80];
+	time_t rawtime;
+	time(&rawtime);
+	strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", localtime(&rawtime));
+	out.assign(buffer);
+}
+
+bool GetOpenFileNameString(string& out) {
+	char szFile[100];
+	OPENFILENAME ofn;
+
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = GetConsoleWindow();
+	ofn.lpstrFile = (LPWSTR)szFile;
+	ofn.lpstrFile[0] = '\0';
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.lpstrFilter = L"*.exe\0";
+	ofn.nFilterIndex = 1;
+	ofn.lpstrFileTitle = L"選擇對手程式";
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = NULL;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	bool isOK = GetOpenFileName(&ofn);
+	out.assign(CW2A(ofn.lpstrFile));
+	return isOK;
+}
+
+void SendMessageByHWND(const HWND hwnd, const string message) {
+	for (int i = 0; i < message.size(); i++) {
+		PostMessage(hwnd, WM_KEYDOWN, message[i], 0);
+	}
+	PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
 }

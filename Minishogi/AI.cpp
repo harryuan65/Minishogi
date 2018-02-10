@@ -16,8 +16,8 @@ Action IDAS(Board& board, PV &pv) {
 }
 
 int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResearch) {
-	Observer::totalNode++;
-	Observer::researchNode += isResearch;
+	Observer::data[Observer::DataType::totalNode]++;
+	Observer::data[Observer::DataType::researchNode] += isResearch;
 
 	int bestScore = -CHECKMATE;
 	int n = beta;
@@ -25,14 +25,14 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 	U32 accCnt = 0;
 	Zobrist::Zobrist zobrist = board.GetZobristHash();
 
-	Observer::scoutGeneNums++;
+	Observer::data[Observer::DataType::scoutGeneNums]++;
 	pv.count = 0;
-	if (ReadTP(zobrist, depth, alpha, beta, bestScore)) {
+	if (ReadTP(zobrist, depth, alpha, beta, bestScore, board)) {
 		return bestScore;
 	}
 
     if (depth == 0) {
-		//Observer::totalNode--; //不然會重複計數
+		//Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
 		return board.Evaluate();//QuiescenceSearch(board, alpha, beta, turn);
     }
     /* 分三個步驟搜尋 [攻擊 移動 打入] */
@@ -91,28 +91,28 @@ int NegaScout(PV &pv, Board &board, int alpha, int beta, int depth, bool isResea
 
 			if (bestScore >= beta) {
 				/* Beta cutoff */
-				Observer::scoutSearchBranch += accCnt + j;
-				UpdateTP(zobrist, depth, alpha, beta, bestScore);
+				Observer::data[Observer::DataType::scoutSearchBranch] += accCnt + j;
+				UpdateTP(zobrist, depth, alpha, beta, bestScore, board);
 				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // Set up a null window
         }
     }
 	if (accCnt == 0) {
-#ifdef PERFECT_ENDGAME_PV
+#ifdef BEST_ENDGAME_SEARCH
 		bestScore = -CHECKMATE - 10 * depth;
 #else
 		bestScore = -CHECKMATE;
 #endif
 	}
-	UpdateTP(zobrist, depth, alpha, beta, bestScore);
-	Observer::scoutSearchBranch += accCnt;
+	UpdateTP(zobrist, depth, alpha, beta, bestScore, board);
+	Observer::data[Observer::DataType::scoutSearchBranch] += accCnt;
     return bestScore;
 }
 
 int QuiescenceSearch(Board& board, int alpha, int beta) {
-	Observer::totalNode++;
-	Observer::quiesNode++;
+	Observer::data[Observer::DataType::totalNode]++;
+	Observer::data[Observer::DataType::quiesNode]++;
 
     //int bestScore = board.Evaluate();
     //if (bestScore >= beta) return bestScore;
@@ -170,7 +170,6 @@ int QuiescenceSearch(Board& board, int alpha, int beta) {
 	if (!accCnt) return -CHECKMATE;
     return bestScore;
 }
-
 
 int SEE(const Board &board, int dstIndex) {
     int exchangeScore = CHESS_SCORE[board.board[dstIndex]];
@@ -242,17 +241,29 @@ void InitializeTP() {
 #endif
 }
 
-bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value) {
+bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value, Board &board) {
 #ifndef TRANSPOSITION_DISABLE
 	U64 index = ZobristToIndex(zobrist);
 	if (transpositTable[index].zobrist != zobrist) {
-		Observer::collisionNums++;
+		Observer::data[Observer::DataType::indexCollisionNums]++;
 		return false;
 	}
+	//Debug
+	/*if (transpositTable[index].evaluate != board.Evaluate()) {
+		Observer::data[Observer::DataType::evalCollisionNums]++;
+	}*/
+	for (int i = 0; i < 35; i++) {
+		if (transpositTable[index].board[i] != board.board[i]) {
+			Observer::data[Observer::DataType::evalCollisionNums]++;
+			return false;
+		}
+	}
+	//Debug
 	if (transpositTable[index].depth < depth) {
 		return false;
 	}
 
+	Observer::data[Observer::DataType::totalTPDepth] += depth;
 	if (transpositTable[index].state == TransPosition::Unknown) {
 		/* Value在(-Infinity, value] */
 		beta = min(transpositTable[index].value, beta);
@@ -265,8 +276,9 @@ bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& val
 	}*/
 	if (transpositTable[index].value >= beta) {
 		/*自己發生Failed High*/
-		value = beta;
+		value = transpositTable[index].value; //beta;
 		return true;
+		//return false;
 	}
 	if (transpositTable[index].state == TransPosition::FailHigh) {
 		/*Failed-High*/
@@ -281,15 +293,18 @@ bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& val
 #endif
 }
 
-void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value) {
+void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value, Board &board) {
 #ifndef TRANSPOSITION_DISABLE
-	/*if (depth < TPLimit) {
-		return;
-	}*/
-
 	U64 index = ZobristToIndex(zobrist);
+
 	transpositTable[index].zobrist = zobrist;
 	transpositTable[index].value = value;
+	transpositTable[index].depth = depth;
+	//Debug
+	//transpositTable[index].evaluate = board.Evaluate();
+	for (int i = 0; i < 35; i++)
+		transpositTable[index].board[i] = board.board[i];
+	//Debug
 	if (value < alpha) {
 		transpositTable[index].state = TransPosition::Unknown;
 	}

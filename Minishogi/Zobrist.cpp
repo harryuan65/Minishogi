@@ -14,7 +14,6 @@ void Zobrist::Initialize() {
 		for (int j = 0; j < 3; j++)
 			Zobrist::key[i][j] = rand() | (rand() << 16);
 	}
-	//rand() ^ (rand()<<8) ^ (rand()<<16);
 
 	cout << "Zobrist Table Created. Random Seed : " << SEED << "\n";
 }

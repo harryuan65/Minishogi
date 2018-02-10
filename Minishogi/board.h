@@ -3,9 +3,7 @@
 #include "head.h"
 
 #define BOARD_PATH   "board//"
-#define LBOARD_PATH L"board//"
 #define KIFU_PATH    "output//"
-#define LKIFU_PATH  L"output//"
 
 class Board {
 private:
