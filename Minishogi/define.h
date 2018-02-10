@@ -6,11 +6,6 @@ typedef unsigned __int32 U32;
 typedef unsigned __int16 U16;
 typedef unsigned __int32 Action;
 
-/*     Control	*/
-#define HUMAN_CTRL   0
-#define AI_CTRL      1
-#define OTHERAI_CTRL 2
-
 /*     TURN     */
 #define WHITE_TURN 0
 #define BLACK_TURN 1

@@ -14,6 +14,12 @@
 #define AI_VERSION		  "Seed=11, TPSize=0x1000000, TPShift=20" //輸出報告註解用
 using namespace std;
 
+enum PlayerType {
+	Human,
+	AI,
+	OtherAI
+};
+
 Action Human_DoMove(Board &board);
 Action AI_DoMove(Board &board, PV &pv);
 
@@ -27,7 +33,8 @@ void SendMessageByHWND(const HWND hwnd, const string message);
 int main(int argc, char **argv) {
 	Board m_Board;
 	Action action;
-	int player[2];
+	int playerType[2];
+	string playerName[2];
 	int gameMode;
 	bool isCustomBoard;
 	bool isSwap = false;
@@ -40,10 +47,14 @@ int main(int argc, char **argv) {
 	cout << "AI Version : " << AI_VERSION << endl;
 	if (argc == 3) {
 		gameMode = 5;
-		player[0] = OTHERAI_CTRL; player[1] = AI_CTRL;
+		playerType[0] = PlayerType::OtherAI; 
+		playerType[1] = PlayerType::AI;
 		opponentHWND = (HWND)atoi(argv[1]);
 		currTimeStr = argv[2];
 		SendMessageByHWND(opponentHWND, to_string((int)GetConsoleWindow()));
+		SendMessageByHWND(opponentHWND, AI_VERSION);
+		cin >> playerName[0];
+		playerName[1] = AI_VERSION;
 	}
 	else {
 		GetCurrentTimeString(currTimeStr);
@@ -59,16 +70,20 @@ int main(int argc, char **argv) {
 			switch (gameMode)
 			{
 			case 0:
-				player[0] = HUMAN_CTRL; player[1] = AI_CTRL;
+				playerType[0] = PlayerType::Human;
+				playerType[1] = PlayerType::AI;
 				break;
 			case 1:
-				player[0] = AI_CTRL; player[1] = HUMAN_CTRL;
+				playerType[0] = PlayerType::AI;
+				playerType[1] = PlayerType::AI;
 				break;
 			case 2:
-				player[0] = HUMAN_CTRL; player[1] = HUMAN_CTRL;
+				playerType[0] = PlayerType::Human;
+				playerType[1] = PlayerType::Human;
 				break;
 			case 3:
-				player[0] = AI_CTRL; player[1] = AI_CTRL;
+				playerType[0] = PlayerType::AI;
+				playerType[1] = PlayerType::AI;
 				break;
 			case 4:
 				if (!GetOpenFileNameString(gameDirStr)) {
@@ -78,8 +93,12 @@ int main(int argc, char **argv) {
 				system(("start \"\" \"" + gameDirStr + "\" " + to_string((int)GetConsoleWindow()) + " " + currTimeStr).c_str());
 				int bufHWND;
 				cin >> bufHWND;
+				cin >> playerName[1];
+				playerName[0] = AI_VERSION;
+				playerType[0] = PlayerType::AI; 
+				playerType[1] = PlayerType::OtherAI;
 				opponentHWND = (HWND)bufHWND;
-				player[0] = AI_CTRL; player[1] = OTHERAI_CTRL;
+				SendMessageByHWND(opponentHWND, AI_VERSION);
 				break;
 			default:
 				continue;
@@ -88,7 +107,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
-	if (player[0] == AI_CTRL || player[1] == AI_CTRL) {
+	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
 		cout << "輸入搜尋的深度\n";
 		cin >> Observer::depth;
 		cin.ignore();
@@ -126,7 +145,7 @@ int main(int argc, char **argv) {
     else */
 
 	Zobrist::Initialize();
-	if (player[0] == AI_CTRL || player[1] == AI_CTRL) {
+	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
 		InitializeTP();
 	}
 	do {
@@ -134,7 +153,7 @@ int main(int argc, char **argv) {
 		if (isCustomBoard && !m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 			if ((gameMode == 4 || gameMode == 5) && !isSwap) {
 				isSwap = true;
-				swap(player[0], player[1]);
+				swap(playerType[0], playerType[1]);
 				readBoardOffset = 0;
 				if (!m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 					break;
@@ -172,7 +191,7 @@ int main(int argc, char **argv) {
 			cout << "---------- Game " << Observer::gameNum << " Step " << m_Board.GetStep() << " ----------\n";
 			m_Board.PrintChessBoard();
 			cout << (m_Board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
-			if (player[m_Board.GetTurn()] == HUMAN_CTRL) {
+			if (playerType[m_Board.GetTurn()] == PlayerType::Human) {
 				if (m_Board.IsGameOver()) {
 					action = 0;
 				}
@@ -180,7 +199,7 @@ int main(int argc, char **argv) {
 					while (!(action = Human_DoMove(m_Board)));
 				}
 			}
-			else if (player[m_Board.GetTurn()] == AI_CTRL) {
+			else if (playerType[m_Board.GetTurn()] == PlayerType::AI) {
 				Observer::StartSearching();
 				action = AI_DoMove(m_Board, pv);
 				Observer::EndSearching();
@@ -192,11 +211,11 @@ int main(int argc, char **argv) {
 					SendMessageByHWND(opponentHWND, to_string(action));
 				}
 			}
-			else if (player[m_Board.GetTurn()] == OTHERAI_CTRL) {
+			else if (playerType[m_Board.GetTurn()] == PlayerType::OtherAI) {
 				cin >> action;
 			}
 
-			if (Observer::isSaveRecord && player[m_Board.GetTurn()] != OTHERAI_CTRL) {
+			if (Observer::isSaveRecord && playerType[m_Board.GetTurn()] != PlayerType::OtherAI) {
 				SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
 			}
 			if (!action) {
@@ -216,8 +235,8 @@ int main(int argc, char **argv) {
 		}
 		if (Observer::isSaveRecord) {
 			string aiType;
-			if (player[0] == AI_CTRL) aiType += "△";
-			if (player[1] == AI_CTRL) aiType += "▼";
+			if (playerType[0] == PlayerType::AI) aiType += "△";
+			if (playerType[1] == PlayerType::AI) aiType += "▼";
 			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr, aiType);
 		}
 		cout << "\n";
