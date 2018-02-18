@@ -3,21 +3,19 @@
 namespace Observer {
 	// 單一盤面搜尋結果
 	unsigned long long data[DataType::COUNT];
-	double searchTime;
 
 	// 整局結果
+	unsigned long long game_data[DataType::COUNT];
+
 	unsigned long long startZobristHash;
 	unsigned int kifuHash;
-	unsigned int searchNum;
-	bool winner;
+	bool isPlayer1Win;
 	double gamePlayTime;
 
-	unsigned long long game_data[DataType::COUNT];
-	double game_searchTime;
-
-	// 全部
-	unsigned int gameNum;
-	unsigned int whiteWinNum;
+	// 全部結果
+	unsigned long long total_data[DataType::COUNT] = { 0 };
+	unsigned int gameNum = 0;
+	unsigned int player1WinNum = 0;
 
 	// 設定
 	int Observer::depth = 10;

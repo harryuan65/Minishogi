@@ -1,19 +1,33 @@
 #include "Zobrist.h"
 
-Zobrist::HalfZobrist* Zobrist::key[37];
+Zobrist::Zobrist Zobrist::table[35][30];
+Zobrist::Zobrist Zobrist::table2[35][30];
 
 void Zobrist::Initialize() {
-	srand(Zobrist::SEED);
-	for (int i = 0; i < 25; i++) {
-		Zobrist::key[i] = new HalfZobrist[30];
-		for (int j = 0; j < 30; j++)
-			Zobrist::key[i][j] = rand() | (rand() << 16);
-	}
-	for (int i = 25; i < 37; i++) {
-		Zobrist::key[i] = new HalfZobrist[3];
-		for (int j = 0; j < 3; j++)
-			Zobrist::key[i][j] = rand() | (rand() << 16);
-	}
+    std::mt19937_64 gen(Zobrist::SEED);
+    std::uniform_int_distribution<Zobrist> dist;
 
-	cout << "Zobrist Table Created. Random Seed : " << SEED << "\n";
+    int i = 0, j;
+    for (; i < 25; ++i) {
+        for (j = 0; j < 30; ++j) {
+			table[i][j] = dist(gen);
+			if ((j^BLACKCHESS) < 30) {
+				table2[24 - i][j^BLACKCHESS] = table[i][j];
+			}
+        }
+    }
+
+    for (; i < 35; ++i) {
+        for (j = 0; j < 3; ++j) {
+			table[i][j] = dist(gen);
+			if (i < 30) {
+				table2[i + 5][j] = table[i][j];
+			}
+			else {
+				table2[i - 5][j] = table[i][j];
+			}
+        }
+    }
+
+	cout << "Zobrist Table Created. Random Seed : " << Zobrist::SEED << "\n";
 }

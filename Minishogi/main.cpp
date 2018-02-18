@@ -11,7 +11,7 @@
 #include "head.h"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_VERSION		  "Seed=11, TPSize=0x1000000, TPShift=20" //輸出報告註解用
+#define AI_VERSION		  "TPSize=0x8000000 國籍同構" //輸出報告註解用 "無同型表 pv enable"
 using namespace std;
 
 enum PlayerType {
@@ -23,8 +23,11 @@ enum PlayerType {
 Action Human_DoMove(Board &board);
 Action AI_DoMove(Board &board, PV &pv);
 
-bool SavePlayDetail(const string filename, const string comment, Board &board, Action action, PV &pv);
-bool SaveAIReport(const string filename, const string comment, const string aiType);
+bool SavePlayDetail(string filename, string comment, string whiteName, string blackName);
+bool SavePlayDetail(string filename, Board &board, Action action, PV &pv);
+bool SaveAIReport(string filename, string comment, string player1Name, string player2Name);
+bool SaveAIReport(string filename);
+bool SaveAITotalReport(string filename);
 
 void GetCurrentTimeString(string& out);
 bool GetOpenFileNameString(string& out);
@@ -47,13 +50,12 @@ int main(int argc, char **argv) {
 	cout << "AI Version : " << AI_VERSION << endl;
 	if (argc == 3) {
 		gameMode = 5;
-		playerType[0] = PlayerType::OtherAI; 
-		playerType[1] = PlayerType::AI;
 		opponentHWND = (HWND)atoi(argv[1]);
 		currTimeStr = argv[2];
 		SendMessageByHWND(opponentHWND, to_string((int)GetConsoleWindow()));
-		SendMessageByHWND(opponentHWND, AI_VERSION);
-		cin >> playerName[0];
+		playerType[0] = PlayerType::OtherAI;
+		playerType[1] = PlayerType::AI;
+		playerName[0] = "";
 		playerName[1] = AI_VERSION;
 	}
 	else {
@@ -72,18 +74,26 @@ int main(int argc, char **argv) {
 			case 0:
 				playerType[0] = PlayerType::Human;
 				playerType[1] = PlayerType::AI;
+				playerName[0] = "Human";
+				playerName[1] = AI_VERSION;
 				break;
 			case 1:
 				playerType[0] = PlayerType::AI;
-				playerType[1] = PlayerType::AI;
+				playerType[1] = PlayerType::Human;
+				playerName[0] = AI_VERSION;
+				playerName[1] = "Human";
 				break;
 			case 2:
 				playerType[0] = PlayerType::Human;
 				playerType[1] = PlayerType::Human;
+				playerName[0] = "Human";
+				playerName[1] = "Human";
 				break;
 			case 3:
 				playerType[0] = PlayerType::AI;
 				playerType[1] = PlayerType::AI;
+				playerName[0] = AI_VERSION;
+				playerName[1] = AI_VERSION;
 				break;
 			case 4:
 				if (!GetOpenFileNameString(gameDirStr)) {
@@ -93,12 +103,11 @@ int main(int argc, char **argv) {
 				system(("start \"\" \"" + gameDirStr + "\" " + to_string((int)GetConsoleWindow()) + " " + currTimeStr).c_str());
 				int bufHWND;
 				cin >> bufHWND;
-				cin >> playerName[1];
-				playerName[0] = AI_VERSION;
+				opponentHWND = (HWND)bufHWND;
 				playerType[0] = PlayerType::AI; 
 				playerType[1] = PlayerType::OtherAI;
-				opponentHWND = (HWND)bufHWND;
-				SendMessageByHWND(opponentHWND, AI_VERSION);
+				playerName[0] = AI_VERSION;
+				playerName[1] = "";
 				break;
 			default:
 				continue;
@@ -147,6 +156,12 @@ int main(int argc, char **argv) {
 	Zobrist::Initialize();
 	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
 		InitializeTP();
+		if (Observer::isSaveRecord) {
+			if (gameMode != 5)
+				SaveAIReport(currTimeStr + "_AIReport_AI1.txt", currTimeStr, playerName[0], playerName[1]);
+			else
+				SaveAIReport(currTimeStr + "_AIReport_AI2.txt", currTimeStr, playerName[0], playerName[1]);
+		}
 	}
 	do {
 		m_Board.Initialize();
@@ -154,6 +169,7 @@ int main(int argc, char **argv) {
 			if ((gameMode == 4 || gameMode == 5) && !isSwap) {
 				isSwap = true;
 				swap(playerType[0], playerType[1]);
+				swap(playerName[0], playerName[1]);
 				readBoardOffset = 0;
 				if (!m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 					break;
@@ -163,6 +179,13 @@ int main(int argc, char **argv) {
 				break;
 			}
 		}
+		if (Observer::isSaveRecord) {
+			SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", 
+				currTimeStr, playerName[0], playerName[1]);
+			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt",
+				currTimeStr, playerName[0], playerName[1]);
+		}
+		CleanTP();
 		Observer::GameStart(m_Board.GetZobristHash());
 		while (!m_Board.IsGameOver()) {
 			/*cout << (m_Board.GetTurn() ? "GREEN" : "RED") << " turn\n";
@@ -203,8 +226,10 @@ int main(int argc, char **argv) {
 				Observer::StartSearching();
 				action = AI_DoMove(m_Board, pv);
 				Observer::EndSearching();
-				cout << endl;
 
+				cout << "Action : ";
+				PrintAction(cout, action);
+				cout << "\n";
 				pv.Print(cout, m_Board.GetTurn());
 				Observer::PrintReport(cout);
 				if (gameMode == 4 || gameMode == 5) {
@@ -213,10 +238,11 @@ int main(int argc, char **argv) {
 			}
 			else if (playerType[m_Board.GetTurn()] == PlayerType::OtherAI) {
 				cin >> action;
+				PrintAction(cout, action);
 			}
 
 			if (Observer::isSaveRecord && playerType[m_Board.GetTurn()] != PlayerType::OtherAI) {
-				SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", currTimeStr, m_Board, action, pv);
+				SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", m_Board, action, pv);
 			}
 			if (!action) {
 				cout << "投降! I'm lose" << endl;
@@ -228,21 +254,27 @@ int main(int argc, char **argv) {
 			}
 			m_Board.DoMove(action);
 		}
-		Observer::GameOver(!m_Board.GetTurn(), m_Board.GetKifuHash());
+		Observer::GameOver(m_Board.GetTurn() != isSwap, m_Board.GetKifuHash());
 		cout << "-------- Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
 		if (Observer::isSaveRecord) {
-			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt", currTimeStr);
-		}
-		if (Observer::isSaveRecord) {
-			string aiType;
-			if (playerType[0] == PlayerType::AI) aiType += "△";
-			if (playerType[1] == PlayerType::AI) aiType += "▼";
-			SaveAIReport(currTimeStr + "_AiReport.txt", currTimeStr, aiType);
+			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt");
+			if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
+				if (gameMode != 5)
+					SaveAIReport(currTimeStr + "_AIReport_AI1.txt");
+				else
+					SaveAIReport(currTimeStr + "_AIReport_AI2.txt");
+			}
 		}
 		cout << "\n";
 		Observer::PrintGameReport(cout);
 	} while (isCustomBoard);
-	Observer::PrintObserverReport(cout);
+	if (Observer::isSaveRecord && (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI)) {
+		if (gameMode != 5)
+			SaveAITotalReport(currTimeStr + "_AIReport_AI1.txt");
+		else
+			SaveAITotalReport(currTimeStr + "_AIReport_AI2.txt");
+	}
+	Observer::PrintTotalReport(cout);
 
 	cout << "\a\a\a"; //終わり　びびびー
     system("pause");
@@ -345,7 +377,7 @@ Action AI_DoMove(Board &board, PV &pv) {
 	return IDAS(board, pv);
 }
 
-bool SavePlayDetail(const string filename, const string comment, Board &board, Action action, PV &pv) {
+bool SavePlayDetail(string filename, string comment, string whiteName, string blackName) {
 	string filepath = REPORT_PATH + filename;
 	fstream file(filepath, ios::out | ios::app);
 	if (!file) {
@@ -353,10 +385,27 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 		file.open(filepath, ios::out | ios::app);
 	}
 	if (file) {
-		if (board.GetStep() == 0) {
-			file << "#" << comment << "\n";
-			file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
-		}
+		file << "#" << comment << "\n";
+		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
+		if (whiteName != "") file << "△ : " << whiteName << "\n";
+		if (blackName != "") file << "▼ : " << blackName << "\n";
+		file.close();
+		return true;
+	}
+	cout << "Fail Save PlayDetail to " << filepath << endl;
+	return false;
+}
+
+bool SavePlayDetail(string filename, Board &board, Action action, PV &pv) {
+	string filepath = REPORT_PATH + filename;
+	fstream file(filepath, ios::out | ios::app);
+	if (!file) {
+		CreateDirectory(CA2W(REPORT_PATH), NULL);
+		file.open(filepath, ios::out | ios::app);
+		file.close();
+		return true;
+	}
+	if (file) {
 		file << "---------- Game " << Observer::gameNum << " Step " << board.GetStep() << " ----------\n";
 		board.PrintNoncolorBoard(file);
 		file << (board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n");
@@ -376,9 +425,7 @@ bool SavePlayDetail(const string filename, const string comment, Board &board, A
 	return false;
 }
 
-bool SaveAIReport(const string filename, const string comment, const string aiType) {
-	if (Observer::searchNum == 0)
-		return false;
+bool SaveAIReport(string filename, string comment, string player1Name, string player2Name) {
 	string filepath = REPORT_PATH + filename;
 	fstream file(filepath, ios::app);
 	if (!file) {
@@ -386,17 +433,48 @@ bool SaveAIReport(const string filename, const string comment, const string aiTy
 		file.open(filepath);
 	}
 	if (file) {
-		if (Observer::gameNum <= 1) {
-			file << "#" << comment << "\n";
-			file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
-		}
-		else {
-			file << "\n";
-		}
-		file << "AI Type : " << aiType << AI_VERSION << "\n";
-		Observer::PrintGameReport(file);
-		file.close();
+		file << "#" << comment << "\n";
+		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
+		if (player1Name != "") file << "Player 1 : " << player1Name << "\n";
+		if (player2Name != "") file << "Player 2 : " << player2Name << "\n";
 		cout << "Success Save AI Report to " << filepath << "\n";
+		file.close();
+		return true;
+	}
+	cout << "Fail Save AI Report to " << filepath << "\n";
+	return false;
+}
+
+bool SaveAIReport(string filename) {
+	string filepath = REPORT_PATH + filename;
+	fstream file(filepath, ios::app);
+	if (!file) {
+		CreateDirectory(CA2W(REPORT_PATH), NULL);
+		file.open(filepath);
+	}
+	if (file) {
+		Observer::PrintGameReport(file);
+		file << "\n";
+		cout << "Success Save AI Report to " << filepath << "\n";
+		file.close();
+		return true;
+	}
+	cout << "Fail Save AI Report to " << filepath << "\n";
+	return false;
+}
+
+bool SaveAITotalReport(string filename) {
+	string filepath = REPORT_PATH + filename;
+	fstream file(filepath, ios::app);
+	if (!file) {
+		CreateDirectory(CA2W(REPORT_PATH), NULL);
+		file.open(filepath);
+	}
+	if (file) {
+		Observer::PrintTotalReport(file);
+		file << "\n";
+		cout << "Success Save AI Report to " << filepath << "\n";
+		file.close();
 		return true;
 	}
 	cout << "Fail Save AI Report to " << filepath << "\n";

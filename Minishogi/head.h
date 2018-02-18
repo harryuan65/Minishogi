@@ -2,7 +2,7 @@
 #define _HEAD_
 #define _CRT_SECURE_NO_WARNINGS
 #define WINDOWS_10
-//#define PV_DISABLE
+#define PV_DISABLE
 //#define BEST_ENDGAME_SEARCH
 //#define TRANSPOSITION_DISABLE
 using namespace std;
