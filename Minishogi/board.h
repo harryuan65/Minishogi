@@ -1,3 +1,13 @@
+/*
++Example Board
+▼飛▼角▼銀▼金▼玉
+．  ．  ．  ． ▼步
+．  ．  ．  ．  ．
+△步  ．  ．  ．  ．
+△王△金△銀△角△飛
+▼0步0銀0金0角0飛
+△0步0銀0金0角0飛
+*/
 #ifndef _BOARD_
 #define _BOARD_
 #include "head.h"
@@ -24,8 +34,6 @@ public:
     U32 bitboard[32];
     int board[TOTAL_BOARD_SIZE];
 
-    Board();
-    ~Board();
     void Initialize();
     void Initialize(const char *str);
     void PrintChessBoard() const;
@@ -36,7 +44,6 @@ public:
 
     bool SaveBoard(string filename, string comment) const;
     bool LoadBoard(string filename, streamoff &offset);
-	bool SaveKifu(string filename, string comment, string whiteName, string blackName) const;
 	bool SaveKifu(string filename) const;
 
 	bool IsGameOver();

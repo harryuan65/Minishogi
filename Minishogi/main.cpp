@@ -1,17 +1,7 @@
-﻿/*
-+Example Board
-▼飛▼角▼銀▼金▼玉
-．  ．  ．  ． ▼步
-．  ．  ．  ．  ．
-△步 ．  ．  ．  ．
-△王△金△銀△角△飛
-▼0步0銀2金0角0飛
-△0步0銀0金1角0飛
-*/
-#include "head.h"
+﻿#include "head.h"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_VERSION		  "TPSize=0x8000000 國籍同構" //輸出報告註解用 "無同型表 pv enable"
+#define AI_VERSION		  "TPSize=1<<30 國籍同構 舊的ver" //輸出報告註解用
 using namespace std;
 
 enum PlayerType {
@@ -23,30 +13,30 @@ enum PlayerType {
 Action Human_DoMove(Board &board);
 Action AI_DoMove(Board &board, PV &pv);
 
-bool SavePlayDetail(string filename, string comment, string whiteName, string blackName);
-bool SavePlayDetail(string filename, Board &board, Action action, PV &pv);
-bool SaveAIReport(string filename, string comment, string player1Name, string player2Name);
-bool SaveAIReport(string filename);
-bool SaveAITotalReport(string filename);
-
-void GetCurrentTimeString(string& out);
+string GetCurrentTimeString();
 bool GetOpenFileNameString(string& out);
 void SendMessageByHWND(const HWND hwnd, const string message);
+string Action2String(Action action);
 
 int main(int argc, char **argv) {
 	Board m_Board;
 	Action action;
+	PV pv;
+
 	int playerType[2];
 	string playerName[2];
 	int gameMode;
-	bool isCustomBoard;
+	bool isCustomBoard = false;
 	bool isSwap = false;
-	HWND opponentHWND;
+	HWND opponentHWND = 0;
 
-	string currTimeStr;
-	string gameDirStr;
+	fstream file;
 	streamoff readBoardOffset = 0;
+	string currTimeStr;
+	string playDetailStr;
+	string kifuStr;
 
+	/*    遊戲設定     */
 	cout << "AI Version : " << AI_VERSION << endl;
 	if (argc == 3) {
 		gameMode = 5;
@@ -59,7 +49,8 @@ int main(int argc, char **argv) {
 		playerName[1] = AI_VERSION;
 	}
 	else {
-		GetCurrentTimeString(currTimeStr);
+		string gameDirStr;
+		currTimeStr = GetCurrentTimeString();
 		for (;;) {
 			cout << "請選擇對手:\n"
 				"(0)玩家vs電腦\n"
@@ -136,37 +127,20 @@ int main(int argc, char **argv) {
 		cout << "等待對方程式回應... 請不要按任意鍵 ";
 		system("pause");
 	}
+	CreateDirectory(CA2W(REPORT_PATH), NULL);
 
-    /*int choice;
-    cout << "自訂棋盤?0:1 = ";
-    while (cin >> choice && choice != 0 && choice != 1);
-    if (choice) {
-        cout << "黑步 17 | 黑銀 18 | 黑金 19 | 黑角 20 | 黑車 21 | 黑王 22" << endl;
-        cout << "白步  1 | 白銀  2 | 白金  3 | 白角  4 | 白車  5 | 白王  6" << endl << endl;
-        cout << "升變 + 8" << endl;
-        cout << "手排: 步 | 銀 | 金 | 角 | 車 的順序輸入 0~2 (可選)" << endl;
-        cout << "請輸入 25 個數字 (+ 黑白 10 個手排)，並以 '.' 結尾 :" << endl;
-        char s[128];
-        cin.clear(); cin.ignore(128, '\n');
-        cin.getline(s, 128, '.'); // 直到句點結束，所以可以斷行
-        m_Board.Initialize(s);
-    }
-    else */
-
+	/*    AI初始化    */
 	Zobrist::Initialize();
 	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
 		InitializeTP();
-		if (Observer::isSaveRecord) {
-			if (gameMode != 5)
-				SaveAIReport(currTimeStr + "_AIReport_AI1.txt", currTimeStr, playerName[0], playerName[1]);
-			else
-				SaveAIReport(currTimeStr + "_AIReport_AI2.txt", currTimeStr, playerName[0], playerName[1]);
-		}
 	}
 	do {
+		/*    遊戲初始化    */
+		cout << "---------- Game " << Observer::gameNum << " ----------\n";
 		m_Board.Initialize();
 		if (isCustomBoard && !m_Board.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 			if ((gameMode == 4 || gameMode == 5) && !isSwap) {
+				// 先後手交換
 				isSwap = true;
 				swap(playerType[0], playerType[1]);
 				swap(playerName[0], playerName[1]);
@@ -175,108 +149,127 @@ int main(int argc, char **argv) {
 					break;
 				}
 			}
-			else {
+			else { 
+				// 對打結束
 				break;
 			}
 		}
+		playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
+		kifuStr = currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
 		if (Observer::isSaveRecord) {
-			SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", 
-				currTimeStr, playerName[0], playerName[1]);
-			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt",
-				currTimeStr, playerName[0], playerName[1]);
+			file.open(playDetailStr, ios::app);
+			if (file) {
+				if (playerName[0] != "") file << "#△ : " << playerName[0] << "\n";
+				if (playerName[1] != "") file << "#▼ : " << playerName[1] << "\n";
+				file.close();
+			}
+			else cout << "Error : Fail to Save PlayDetail Title.\n";
+			file.open(KIFU_PATH + kifuStr, ios::app);
+			if (file) {
+				if (playerName[0] != "") file << "#△ : " << playerName[0] << "\n";
+				if (playerName[1] != "") file << "#▼ : " << playerName[1] << "\n";
+				file.close();
+			}
+			else cout << "Error : Fail to Save Kifu Title.\n";
 		}
 		CleanTP();
-		Observer::GameStart(m_Board.GetZobristHash());
-		while (!m_Board.IsGameOver()) {
-			/*cout << (m_Board.GetTurn() ? "GREEN" : "RED") << " turn\n";
-			Action moveList[128] = { 0 };
-			U32 cnt = 0;
-			AttackGenerator(m_Board, moveList, cnt);
-			cout << "Atta cnt : " << cnt << "\n";
-			cnt = 0;
-			MoveGenerator(m_Board, moveList, cnt);
-			cout << "Move cnt : " << cnt << "\n";
-			cnt = 0;
-			HandGenerator(m_Board, moveList, cnt);
-			cout << "Hand cnt : " << cnt << "\n";*/
-			/*cout << "是否紀錄 ? : (否: 0 / 存: 1 / 讀 : 2)\n";
-			while (cin >> choice && choice != 0 && choice != 1 && choice != 2);
-			if (choice == 1) {
-				m_Board.SaveBoard("board.txt");
-				continue;
-			}
-			else if (choice == 2) {
-				m_Board.LoadBoard("board.txt");
-				continue;
-			}*/
 
-			PV pv;
+		/*    遊戲開始    */
+		Observer::GameStart();
+		while (!m_Board.IsGameOver()) {
 			cout << "---------- Game " << Observer::gameNum << " Step " << m_Board.GetStep() << " ----------\n";
 			m_Board.PrintChessBoard();
-			cout << (m_Board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
-			if (playerType[m_Board.GetTurn()] == PlayerType::Human) {
-				if (m_Board.IsGameOver()) {
-					action = 0;
-				}
-				else {
-					while (!(action = Human_DoMove(m_Board)));
-				}
-			}
-			else if (playerType[m_Board.GetTurn()] == PlayerType::AI) {
+
+			switch (playerType[m_Board.GetTurn()]) {
+			case Human:
+				while (!(action = Human_DoMove(m_Board)));
+				cout << "Action : " << Action2String(action) << "\n";
+				break;
+			case AI:
 				Observer::StartSearching();
 				action = AI_DoMove(m_Board, pv);
 				Observer::EndSearching();
 
-				cout << "Action : ";
-				PrintAction(cout, action);
-				cout << "\n";
+				cout << "Action : " << Action2String(action) << "\n";
+				//PrintPV(cout, m_Board, Observer::depth);
 				pv.Print(cout, m_Board.GetTurn());
-				Observer::PrintReport(cout);
-				if (gameMode == 4 || gameMode == 5) {
-					SendMessageByHWND(opponentHWND, to_string(action));
+				Observer::PrintSearchReport(cout);
+				SendMessageByHWND(opponentHWND, to_string(action));
+				break;
+			case OtherAI:
+				cin >> action;
+				cout << "Action : " << Action2String(action) << "\n";
+				break;
+			}
+			if (Observer::isSaveRecord && playerType[m_Board.GetTurn()] != PlayerType::OtherAI) {
+				file.open(playDetailStr, ios::app);
+				if (file) {
+					file << "---------- Game " << Observer::gameNum << " Step " << m_Board.GetStep() << " ----------\n";
+					m_Board.PrintNoncolorBoard(file);
+					file << "Action : " << Action2String(action) << "\n";
+					//PrintPV(file, m_Board, Observer::depth);
+					pv.Print(file, m_Board.GetTurn());
+					Observer::PrintSearchReport(file);
+					file.close();
+				}
+				else cout << "Error : Fail to Save PlayDetail.\n";
+			}
+
+			if (action == ACTION_SURRENDER) {
+				cout << (!m_Board.GetTurn() ? "△" : "▼") << "投降! I'm lose\n";
+				break;
+			}
+			else if (action == ACTION_UNDO) {
+				if (m_Board.GetTurn() >= 2) {
+					m_Board.UndoMove();
+					m_Board.UndoMove();
+					cout << "Success Undo!\n";
+				}
+				else {
+					cout << "Error : Cannot Undo!\n";
 				}
 			}
-			else if (playerType[m_Board.GetTurn()] == PlayerType::OtherAI) {
-				cin >> action;
-				PrintAction(cout, action);
+			else if (action == ACTION_SAVEBOARD) {
+				m_Board.SaveBoard(GetCurrentTimeString() + "_Kifu", "");
 			}
-
-			if (Observer::isSaveRecord && playerType[m_Board.GetTurn()] != PlayerType::OtherAI) {
-				SavePlayDetail(currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt", m_Board, action, pv);
-			}
-			if (!action) {
-				cout << "投降! I'm lose" << endl;
-				break;
+			else {
+				m_Board.DoMove(action);
 			}
 			if (m_Board.GetStep() == 100) {
-				cout << "千日手! I'm lose" << endl;
+				cout << "千日手! I'm lose\n";
 				break;
 			}
-			m_Board.DoMove(action);
 		}
+		/*    遊戲結束    */
 		Observer::GameOver(m_Board.GetTurn() != isSwap, m_Board.GetKifuHash());
+		m_Board.PrintChessBoard();
 		cout << "-------- Game Over! " << (m_Board.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
-		if (Observer::isSaveRecord) {
-			m_Board.SaveKifu(currTimeStr + "_Kifu_" + to_string(Observer::gameNum - 1) + ".txt");
-			if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
-				if (gameMode != 5)
-					SaveAIReport(currTimeStr + "_AIReport_AI1.txt");
-				else
-					SaveAIReport(currTimeStr + "_AIReport_AI2.txt");
-			}
-		}
-		cout << "\n";
 		Observer::PrintGameReport(cout);
+
+		if (Observer::isSaveRecord) {
+			if (gameMode != 5) m_Board.SaveKifu(kifuStr);
+			file.open(playDetailStr, ios::app);
+			if (file) {
+				file << "#" << AI_VERSION << "\n";
+				Observer::PrintGameReport(file);
+				file.close();
+			}
+			else cout << "Error : Fail to Save PlayDetail.\n";
+		}
 	} while (isCustomBoard);
-	if (Observer::isSaveRecord && (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI)) {
-		if (gameMode != 5)
-			SaveAITotalReport(currTimeStr + "_AIReport_AI1.txt");
-		else
-			SaveAITotalReport(currTimeStr + "_AIReport_AI2.txt");
+	if (Observer::isSaveRecord) {
+		file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::app);
+		if (file) {
+			file << "#" << AI_VERSION << "\n";
+			Observer::PrintTotalReport(file);
+			file.close();
+		}
+		else cout << "Error : Fail to Save AI Report.\n";
 	}
+	cout << "---------- Game Over ----------\n";
 	Observer::PrintTotalReport(cout);
 
-	cout << "\a\a\a"; //終わり　びびびー
+	cout << "\a\a\a";
     system("pause");
     return 0;
 }
@@ -284,92 +277,45 @@ int main(int argc, char **argv) {
 
 Action Human_DoMove(Board &board) {
 	string cmd;
+	Action action, moveList[MAX_MOVE_NUM] = { 0 };
+	U32 cnt = 0;
+
 	cin.clear();
-	cout << "請輸入移動指令 (例 E5D5+) : " << endl;
+	cout << "請輸入移動指令(E5D5+)或其他指令(UNDO, SURRENDER, SAVEBOARD) : " << endl;
 	cin >> cmd;
 	cin.ignore();
-	if (cmd.length() != 4 && cmd.length() != 5) {
-		cout << "Invalid Move : Wrong input length" << endl;
+	/*    Command    */
+	if (cmd == "SURRENDER" || cmd == "surrender") {
+		return ACTION_SURRENDER;
+	}
+	if (cmd == "UNDO" || cmd == "undo") {
+		return ACTION_UNDO;
+	}
+	if (cmd == "SAVEBOARD" || cmd == "saveboard") {
+		return ACTION_SAVEBOARD;
+	}
+	if (cmd.length() != 4 || (cmd.length() == 5 && cmd[4] != '+')) {
+		cout << "Error : Wrong Command." << endl;
 		return 0;
 	}
-
-	int srcIndex = Input2Index(cmd[0], cmd[1]);
-	int dstIndex = Input2Index(cmd[2], cmd[3]);
-	if (srcIndex == -1 || dstIndex == -1 || (cmd.length() == 5 && cmd[4] != '+')) {
-		cout << "Invalid Move : Bad Input" << endl;
-		return 0;
-
-	}
-	bool isPro = cmd.length() == 5;
-	int srcChess;
-
-	//src位置的棋是什麼
-	if (srcIndex < BOARD_SIZE)
-		srcChess = board.board[srcIndex];
-	else {
-		if (!board.board[srcIndex]) {
-			cout << "Invalid Move: No chess to handmove" << endl;
-			return 0;
-		}
-		srcChess = (srcIndex < 30 ? BLACKCHESS : 0) | (srcIndex % 5 + 1);
-	}
-
-	if (srcChess >> 4 != board.GetTurn()) {
-		cout << "Invalid Move : " << CHESS_WORD[srcChess] << " is not your chess" << endl;
-		return 0;
-	}
-
-	if (srcIndex >= BOARD_SIZE) { // 打入
-		if (isPro) {
-			cout << "Invalid Move : Promotion prohobited on handmove" << endl;
-			return 0;
-		}
-
-		if (board.board[dstIndex]) {
-			cout << "Invalid Move : " << CHESS_WORD[srcChess] << " 該位置有棋子" << endl;
-			return 0;
-		}
-
-		if ((srcChess & 15) == PAWN) {
-			if (!Movement[srcChess][dstIndex]) {
-				cout << "Invalid Move : " << CHESS_WORD[srcChess] << " 打入該位置不能移動" << endl;
+	/*    Move    */
+	action = ((cmd.length() == 5) << 24) | (Input2Index(cmd[2], cmd[3]) << 6) | Input2Index(cmd[0], cmd[1]);
+	AttackGenerator(board, moveList, cnt);
+	MoveGenerator(board, moveList, cnt);
+	HandGenerator(board, moveList, cnt); 
+	for (int i = 0; i < cnt; i++) {
+		if (action == moveList[i]) {
+			if (board.IsCheckAfter(ACTION_TO_SRCINDEX(action), ACTION_TO_DSTINDEX(action))) {
+				cout << "Error : You have been checked." << endl;
 				return 0;
-			}
-
-			if (column_mask(dstIndex) & board.bitboard[srcChess]) {
-				cout << "Invalid Move : " << CHESS_WORD[srcChess] << " 二步" << endl;
-				return 0;
-			}
-
-			/* TODO: 步兵不可立即將死>打步詰(未做) */
-		}
-	}
-	else {
-		//處理升變 + 打入規則一：不能馬上升變
-		if (isPro) {
-			if ((srcChess == PAWN || srcChess == SILVER || srcChess == BISHOP || srcChess == ROOK ||
-				srcChess == (PAWN | BLACKCHESS) || srcChess == (SILVER | BLACKCHESS) || srcChess == (BISHOP | BLACKCHESS) || srcChess == (ROOK | BLACKCHESS))) {
-				//是否在敵區內
-				if (!((1 << dstIndex) & (srcChess < BLACKCHESS ? BLACK_CAMP : WHITE_CAMP)) &&
-					!((1 << srcIndex) & (srcChess < BLACKCHESS ? BLACK_CAMP : WHITE_CAMP))) {
-					cout << "你不在敵區，不能升變" << endl;
-					return 0;
-				}
 			}
 			else {
-				cout << "你又不能升變" << endl;
-				return 0;
+				return action;
 			}
 		}
-
-		//將該位置可走的步法跟目的步法 & 比對，產生該棋的board結果，不合法就會是0
-		if (!(Movable(board, srcIndex) & (1 << dstIndex))) {
-			cout << "Invalid Move :invalid " << CHESS_WORD[srcChess] << " move." << endl;
-			return 0;
-		}
 	}
-
-	return (isPro << 24) | (dstIndex << 6) | srcIndex;
+	cout << "Error : Invaild Move." << endl;
+	return 0;
 }
 
 Action AI_DoMove(Board &board, PV &pv) {
@@ -377,121 +323,19 @@ Action AI_DoMove(Board &board, PV &pv) {
 	return IDAS(board, pv);
 }
 
-bool SavePlayDetail(string filename, string comment, string whiteName, string blackName) {
-	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::out | ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(REPORT_PATH), NULL);
-		file.open(filepath, ios::out | ios::app);
-	}
-	if (file) {
-		file << "#" << comment << "\n";
-		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
-		if (whiteName != "") file << "△ : " << whiteName << "\n";
-		if (blackName != "") file << "▼ : " << blackName << "\n";
-		file.close();
-		return true;
-	}
-	cout << "Fail Save PlayDetail to " << filepath << endl;
-	return false;
-}
-
-bool SavePlayDetail(string filename, Board &board, Action action, PV &pv) {
-	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::out | ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(REPORT_PATH), NULL);
-		file.open(filepath, ios::out | ios::app);
-		file.close();
-		return true;
-	}
-	if (file) {
-		file << "---------- Game " << Observer::gameNum << " Step " << board.GetStep() << " ----------\n";
-		board.PrintNoncolorBoard(file);
-		file << (board.GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n");
-		if (pv.count != 0) {
-			if (action) {
-				file << "Action : ";
-				PrintAction(file, action);
-				file << "\n";
-			}
-			pv.Print(file, board.GetTurn());
-			Observer::PrintReport(file);
-		}
-		file.close();
-		return true;
-	}
-	cout << "Fail Save PlayDetail to " << filepath << endl;
-	return false;
-}
-
-bool SaveAIReport(string filename, string comment, string player1Name, string player2Name) {
-	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(REPORT_PATH), NULL);
-		file.open(filepath);
-	}
-	if (file) {
-		file << "#" << comment << "\n";
-		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
-		if (player1Name != "") file << "Player 1 : " << player1Name << "\n";
-		if (player2Name != "") file << "Player 2 : " << player2Name << "\n";
-		cout << "Success Save AI Report to " << filepath << "\n";
-		file.close();
-		return true;
-	}
-	cout << "Fail Save AI Report to " << filepath << "\n";
-	return false;
-}
-
-bool SaveAIReport(string filename) {
-	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(REPORT_PATH), NULL);
-		file.open(filepath);
-	}
-	if (file) {
-		Observer::PrintGameReport(file);
-		file << "\n";
-		cout << "Success Save AI Report to " << filepath << "\n";
-		file.close();
-		return true;
-	}
-	cout << "Fail Save AI Report to " << filepath << "\n";
-	return false;
-}
-
-bool SaveAITotalReport(string filename) {
-	string filepath = REPORT_PATH + filename;
-	fstream file(filepath, ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(REPORT_PATH), NULL);
-		file.open(filepath);
-	}
-	if (file) {
-		Observer::PrintTotalReport(file);
-		file << "\n";
-		cout << "Success Save AI Report to " << filepath << "\n";
-		file.close();
-		return true;
-	}
-	cout << "Fail Save AI Report to " << filepath << "\n";
-	return false;
-}
-
-void GetCurrentTimeString(string &out) {
+string GetCurrentTimeString() {
 	char buffer[80];
 	time_t rawtime;
 	time(&rawtime);
 	strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", localtime(&rawtime));
-	out.assign(buffer);
+	return string(buffer);
 }
 
 bool GetOpenFileNameString(string& out) {
-	char szFile[100];
+	char szFile[MAX_PATH];
 	OPENFILENAME ofn;
+	wchar_t currDir[MAX_PATH];
+	GetCurrentDirectory(MAX_PATH, currDir);
 
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
@@ -503,7 +347,7 @@ bool GetOpenFileNameString(string& out) {
 	ofn.nFilterIndex = 1;
 	ofn.lpstrFileTitle = L"選擇對手程式";
 	ofn.nMaxFileTitle = 0;
-	ofn.lpstrInitialDir = NULL;
+	ofn.lpstrInitialDir = currDir;
 	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 	bool isOK = GetOpenFileName(&ofn);
 	out.assign(CW2A(ofn.lpstrFile));
@@ -511,8 +355,26 @@ bool GetOpenFileNameString(string& out) {
 }
 
 void SendMessageByHWND(const HWND hwnd, const string message) {
+	if (hwnd == 0) return;
 	for (int i = 0; i < message.size(); i++) {
 		PostMessage(hwnd, WM_KEYDOWN, message[i], 0);
 	}
 	PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
+}
+
+string Action2String(Action action) {
+	if (action == ACTION_SURRENDER) {
+		return "SURRENDER";
+	}
+	else if (action == ACTION_UNDO) {
+		return "UNDO";
+	}
+	else if (action == ACTION_SAVEBOARD) {
+		return "SAVEBOARD";
+	}
+	else {
+		return Index2Input(ACTION_TO_SRCINDEX(action)) +
+			Index2Input(ACTION_TO_DSTINDEX(action)) +
+			(ACTION_TO_ISPRO(action) ? "+" : " ");
+	}
 }

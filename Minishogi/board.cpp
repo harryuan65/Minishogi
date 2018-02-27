@@ -5,10 +5,6 @@
 #define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
 #endif
 
-Board::Board() {}
-
-Board::~Board() {}
-
 void Board::Initialize() {
     Initialize(
         "21 20 18 19 22"
@@ -99,8 +95,8 @@ void Board::PrintChessBoard() const{
         printf("｜%s\n", RANK_NAME[rank_count++]);
     }
 	cout << "Zobrist : " << setw(16) << hex << GetZobristHash() << dec << "\n";
-	//cout << "Zobrist1: " << setw(16) << hex << m_hashcode << dec << "\n";
-	//cout << "Zobrist2: " << setw(16) << hex << m_hashcode2 << dec << "\n";
+	cout << "Evaluate : " << setw(15) << GetEvaluate() << "\n";
+	cout << (GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 }
 
 void Board::PrintNoncolorBoard(ostream &os) const {
@@ -122,6 +118,8 @@ void Board::PrintNoncolorBoard(ostream &os) const {
 	}
 	os << "\n";
 	os << "Zobrist : " << setw(16) << hex << GetZobristHash() << dec << "\n";
+	os << "Evaluate : " << setw(15) << GetEvaluate() << "\n";
+	os << (GetTurn() ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 }
 
 void Board::DoMove(const Action action) {
@@ -228,7 +226,6 @@ void Board::UndoMove() {
 	board[dstIndex] = dstChess; // 還原目的棋
 }
 
-
 bool Board::SaveBoard(string filename, string comment) const {
 	string filepath = BOARD_PATH + filename;
 	fstream file(filepath, ios::out | ios::app);
@@ -293,24 +290,6 @@ bool Board::LoadBoard(string filename, streamoff &offset) {
 	return 0;
 }
 
-bool Board::SaveKifu(string filename, string comment, string whiteName, string blackName) const {
-	string filepath = KIFU_PATH + filename;
-	fstream file(filepath, ios::out | ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(KIFU_PATH), NULL);
-		file.open(filepath, ios::out | ios::app);
-	}
-	if (file) {
-		file << "*" << comment << endl;
-		file << "Zobrist Table Seed : " << Zobrist::SEED << "\n";
-		if (whiteName != "") file << "△ : " << whiteName << "\n";
-		if (blackName != "") file << "▼ : " << blackName << "\n";
-		return true;
-	}
-	cout << "Fail Save Kifu to " << filepath << endl;
-	return false;
-}
-
 bool Board::SaveKifu(string filename) const {
 	string filepath = KIFU_PATH + filename;
 	fstream file(filepath, ios::out | ios::app);
@@ -340,18 +319,17 @@ bool Board::IsGameOver() {
 	Action moveList[MAX_MOVE_NUM] = { 0 };
 	U32 cnt = 0;
 	AttackGenerator(*this, moveList, cnt);
-	if (!cnt)
-		MoveGenerator(*this, moveList, cnt);
-	if (!cnt)
-		HandGenerator(*this, moveList, cnt);
-
-	if (!cnt) {
-		PrintChessBoard();
-		cout << (m_turn ? "White" : "Black") << " Win\n";
-		return true;
+	MoveGenerator(*this, moveList, cnt);
+	HandGenerator(*this, moveList, cnt);
+	for (int i = 0; i < cnt; i++) {
+		if (board[ACTION_TO_DSTINDEX(moveList[i])] & 15 == KING) {
+			return true;
+		}
+		if (!IsCheckAfter(ACTION_TO_SRCINDEX(moveList[i]), ACTION_TO_DSTINDEX(moveList[i]))) {
+			return false;
+		}
 	}
-
-	return false;
+	return true;
 }
 
 // 如果現在盤面曾經出現過 且距離為偶數(代表輪到同個人) 判定為千日手
@@ -371,8 +349,9 @@ bool Board::IsCheckAfter(const int src, const int dst) {
 
 	/************ DoMove ************/
 	if (src < BOARD_SIZE) {
-		if (board[dst]) // 吃
+		if (board[dst]) { // 吃
 			occupied[m_turn ^ 1] ^= dstboard;
+		}
 
 		occupied[m_turn] ^= moveboard;
 		bitboard[board[src]] ^= moveboard;

@@ -116,19 +116,13 @@ void MoveGenerator(Board &board, Action *movelist, U32 &start) {
 }
 
 void HandGenerator(Board &board, Action *movelist, U32 &start) {
-	U32 srcboard = 0, dstboard = blank_board, src = (board.GetTurn() ? 30 : 35), dst, nifu = 0;
+	U32 src = (board.GetTurn() ? 30 : 35);
 
 	// 如果沒有任何手排 直接回傳
 	if (!board.board[src - 1] && !board.board[src - 2] && !board.board[src - 3] && !board.board[src - 4] && !board.board[src - 5])
 		return;
 
-	while (dstboard) {
-		dst = BitScan(dstboard);
-		dstboard ^= 1 << dst;
-		//if (board.IsCheckAfter(src, dst)) continue;
-		srcboard |= 1 << dst;
-	}
-
+	U32 srcboard = blank_board, dstboard, dst, nifu = 0;
 	for (int i = 1; i < 5; i++) { // 步以外的手排
 		if (board.board[--src]) {
 			dstboard = srcboard;

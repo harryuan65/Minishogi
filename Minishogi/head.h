@@ -27,9 +27,9 @@ struct TranspositNode;
 struct PV;
 class Board;
 
-#include "Zobrist.h"
 #include "define.h"
 #include "library.h"
+#include "Zobrist.h"
 #include "Observer.h"
 #include "bitscan.h"
 #include "board.h"

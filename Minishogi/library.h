@@ -24,25 +24,6 @@ const char SAVE_CHESS_WORD[][5] = {
 	"    ","▼ㄈ","▼全","    ","▼馬","▼龍"
 };
 
-
-const int EatToHand[] = {
-    0, 25, 26, 27, 28, 29, 35, 0,//  8,  0- 7
-    0, 25, 26,  0, 28, 29,  0, 0,// 16,  8-15
-    0, 30, 31, 32, 33, 34, 36, 0,// 24, 16-23
-    0, 30, 31,  0, 33, 34,  0, 0,// 32  24-29
-};
-
-const int HandToChess[] = {
-     0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,
-    17, 18, 19, 20, 21,
-     1,  2,  3,  4,  5,
-    22,  6,
-};
-
 /*    Chess    */
 enum {
     BLANK  = 0,
@@ -53,6 +34,43 @@ enum {
 	ROOK   = 5, //飛
 	KING   = 6  //王
 };
+
+const int EatToHand[] = {
+	0, 25, 26, 27, 28, 29, 35, 0,//  8,  0- 7
+	0, 25, 26,  0, 28, 29,  0, 0,// 16,  8-15
+	0, 30, 31, 32, 33, 34, 36, 0,// 24, 16-23
+	0, 30, 31,  0, 33, 34,  0, 0,// 32  24-29
+};
+
+const int HandToChess[] = {
+	0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,
+	17, 18, 19, 20, 21,
+	1,  2,  3,  4,  5,
+	22,  6,
+};
+
+const int CHECKMATE = 30000; // 避免PERFECT_ENDGAME_PV時超過SHRT_MAX
+
+const int CHESS_SCORE[] = {
+	0, -107, -810, -907, -1291, -1670, 0, 0,
+	0, -895, -933,    0, -1985, -2408, 0, 0,
+	0,  107,  810,  907,  1291,  1670, 0, 0,
+	0,  895,  933,    0,  1985,  2408, 0, 0,
+};
+
+const int HAND_SCORE[] = {
+	152,  1110,  1260,  1464,  1998,
+	-152, -1110, -1260, -1464, -1998
+};
+
+/*    Action    */
+const Action ACTION_SURRENDER = 1 << 25;
+const Action ACTION_UNDO      = 2 << 25;
+const Action ACTION_SAVEBOARD = 3 << 25;
 
 inline int Input2Index(char row, char col) {
 	row = toupper(row);
@@ -71,26 +89,6 @@ inline string Index2Input(int index) {
 	return "";
 }
 
-inline void PrintAction(ostream &os, Action action) {
-	os << Index2Input(ACTION_TO_SRCINDEX(action));
-	os << Index2Input(ACTION_TO_DSTINDEX(action));
-	os << (ACTION_TO_ISPRO(action) ? "+" : " ");
-}
-
-/*     Evaluate Value     */
-const int CHECKMATE = 30000; // 避免PERFECT_ENDGAME_PV時超過SHRT_MAX
-
-const int CHESS_SCORE[] = {
-    0, -107, -810, -907, -1291, -1670, 0, 0,
-    0, -895, -933,    0, -1985, -2408, 0, 0,
-    0,  107,  810,  907,  1291,  1670, 0, 0,
-    0,  895,  933,    0,  1985,  2408, 0, 0,
-};
-
-const int HAND_SCORE[] = {
-	 152,  1110,  1260,  1464,  1998,
-    -152, -1110, -1260, -1464, -1998
-};
 
 /*    Attack Gene    */
 const U32 AttackOrdering[] = {
@@ -284,7 +282,7 @@ struct PV {
 		os << "PV: (depth | turn | action | my evaluate)" << "\n";
 		for (int i = 0; i < count; ++i) {
 			os << i << " : " << (((turn + i) & 1) ? "▼" : "△");
-			PrintAction(os, action[i]);
+			//PrintAction(os, action[i]);
 			os << setw(7) << (i % 2 ? -evaluate[i] : evaluate[i]) << "\n";
 		}
 		if (leafEvaluate <= -CHECKMATE || CHECKMATE <= leafEvaluate) {
@@ -292,7 +290,6 @@ struct PV {
 		}
 		os << "PV leaf : " << setw(8) << leafEvaluate << "\n";
 #else
-		os << "PV disable.\n";
 		os << "PV leaf : " << setw(8) << leafEvaluate << "\n";
 #endif
 	}

@@ -1,7 +1,7 @@
 #include "Zobrist.h"
 
-Zobrist::Zobrist Zobrist::table[35][30];
-Zobrist::Zobrist Zobrist::table2[35][30];
+Zobrist::Zobrist Zobrist::table[TOTAL_BOARD_SIZE][30];
+Zobrist::Zobrist Zobrist::table2[TOTAL_BOARD_SIZE][30];
 
 void Zobrist::Initialize() {
     std::mt19937_64 gen(Zobrist::SEED);
@@ -17,14 +17,20 @@ void Zobrist::Initialize() {
         }
     }
 
-    for (; i < 35; ++i) {
+    for (; i < 37; ++i) {
         for (j = 0; j < 3; ++j) {
 			table[i][j] = dist(gen);
 			if (i < 30) {
 				table2[i + 5][j] = table[i][j];
 			}
-			else {
+			else if (i < 35) {
 				table2[i - 5][j] = table[i][j];
+			}
+			else if (i == 35) {
+				table2[36][j] = table[35][j];
+			}
+			else {
+				table2[35][j] = table[36][j];
 			}
         }
     }
