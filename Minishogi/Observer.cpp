@@ -18,6 +18,7 @@ namespace Observer {
 	unsigned int player1WinNum = 0;
 
 	// ³]©w
-	int Observer::depth = 10;
-	bool Observer::isSaveRecord = true;
+	int depth = 10;
+	bool isSaveRecord = true;
+	bool isCanSurrender = true;
 }

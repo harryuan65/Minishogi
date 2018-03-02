@@ -18,13 +18,7 @@
     <ClCompile Include="AI.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
-    <ClCompile Include="board.cpp">
-      <Filter>原始程式檔</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>原始程式檔</Filter>
-    </ClCompile>
-    <ClCompile Include="MoveGene.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
     <ClCompile Include="Observer.cpp">
@@ -33,21 +27,12 @@
     <ClCompile Include="Zobrist.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
+    <ClCompile Include="Minishogi.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="library.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="head.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="define.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="bitscan.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="board.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="AI.h">
@@ -56,10 +41,13 @@
     <ClInclude Include="Observer.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="MoveGene.h">
+    <ClInclude Include="Zobrist.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Zobrist.h">
+    <ClInclude Include="Bitboard.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Minishogi.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

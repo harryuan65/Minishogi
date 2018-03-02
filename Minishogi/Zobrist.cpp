@@ -1,7 +1,7 @@
 #include "Zobrist.h"
 
-Zobrist::Zobrist Zobrist::table[TOTAL_BOARD_SIZE][30];
-Zobrist::Zobrist Zobrist::table2[TOTAL_BOARD_SIZE][30];
+Zobrist::Zobrist Zobrist::table[TOTAL_BOARD_SIZE][Chess::COUNT];
+Zobrist::Zobrist Zobrist::table2[TOTAL_BOARD_SIZE][Chess::COUNT];
 
 void Zobrist::Initialize() {
     std::mt19937_64 gen(Zobrist::SEED);

@@ -1,6 +1,8 @@
 #ifndef _OBSERVER_
 #define _OBSERVER_
-#include "head.h"
+#include <iostream>
+#include <iomanip>
+#include <time.h>
 using namespace std;
 
 namespace Observer {
@@ -34,6 +36,7 @@ namespace Observer {
 	// ³]©w
 	extern int depth;
 	extern bool isSaveRecord;
+	extern bool isCanSurrender;
 
 	inline void StartSearching() {
 		for (int i = 0; i < DataType::COUNT; i++)

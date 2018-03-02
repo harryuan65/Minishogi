@@ -1,5 +1,5 @@
 /*
-+Example Board
++Example Minishogi
 ▼飛▼角▼銀▼金▼玉
 ．  ．  ．  ． ▼步
 ．  ．  ．  ．  ．
@@ -8,14 +8,33 @@
 ▼0步0銀0金0角0飛
 △0步0銀0金0角0飛
 */
-#ifndef _BOARD_
-#define _BOARD_
-#include "head.h"
+#ifndef _MINISHOGI_
+#define _MINISHOGI_
+#include <algorithm>
+#include <assert.h>
+#include <atlstr.h>
+#include <conio.h>
+#include <direct.h>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <iomanip>
+#include <stdlib.h>
+#include <string>
+#include <sstream>
+#include <time.h>
+#include <vector>
+#include <Windows.h>
+
+#include "library.h"
+#include "Zobrist.h"
+#include "Observer.h"
+#include "Bitboard.h"
 
 #define BOARD_PATH   "board//"
 #define KIFU_PATH    "output//"
 
-class Board {
+class Minishogi {
 private:
     bool m_turn;
 	int m_step;
@@ -30,8 +49,8 @@ private:
 	Zobrist::Zobrist recordZobrist2[121];
 
 public:
-    U32 occupied[2];
-    U32 bitboard[32];
+	Bitboard occupied[2];
+	Bitboard bitboard[32];
     int board[TOTAL_BOARD_SIZE];
 
     void Initialize();
@@ -41,15 +60,20 @@ public:
 
 	void DoMove(Action m_Action);
 	void UndoMove();
+	void AttackGenerator(Action *movelist, int &start) const;
+	void MoveGenerator(Action *movelist, int &start) const;
+	void HandGenerator(Action *movelist, int &start);
+	inline Bitboard RookMove(const int pos) const;
+	inline Bitboard BishopMove(const int pos) const;
+	inline Bitboard Movable(const int srcIndex) const;
 
     bool SaveBoard(string filename, string comment) const;
     bool LoadBoard(string filename, streamoff &offset);
 	bool SaveKifu(string filename) const;
 
 	bool IsGameOver();
-	bool IsSennichite() const;
 	bool IsCheckAfter(const int src, const int dst);
-	inline void NextTurn() { m_turn ^= 1; }
+	bool IsSennichite() const;
     inline int GetTurn() const { return m_turn; }
 	inline int GetStep() const { return m_step; }
 	inline int GetEvaluate() const { return m_turn ? m_evaluate : -m_evaluate; };
