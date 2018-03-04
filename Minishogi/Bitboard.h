@@ -1,11 +1,9 @@
 #ifndef _BITBOARD_
 #define _BITBOARD_
-#include "library.h"
 typedef unsigned __int32 Bitboard;
 
-
 /*    Chess Move Area    */
-static const Bitboard Movement[][BOARD_SIZE] = {
+static const Bitboard Movement[][25] = {
 	/* 0 */{ 0 },
 	/* 1 PAWN */
 	{

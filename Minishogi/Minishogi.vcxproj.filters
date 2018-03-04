@@ -32,9 +32,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="library.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
     <ClInclude Include="AI.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
@@ -48,6 +45,12 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="Minishogi.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Action.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Chess.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

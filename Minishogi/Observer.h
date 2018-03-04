@@ -104,6 +104,7 @@ namespace Observer {
 	}
 
 	inline void PrintTotalReport(ostream &os) {
+		if (gameNum == 0) return;
 		os << "Total Result :\n";
 		os << " Game play nums          : " << setw(10) << gameNum << "\n";
 		os << " Player 1 win rate       : " << setw(10) << player1WinNum * 100 / gameNum << "%\n";

@@ -2,16 +2,16 @@
 #define _ZOBRIST_
 #include <iostream>
 #include <random>
-#include "library.h"
-using namespace std;
+#include "Chess.h"
 
 namespace Zobrist {
 	typedef unsigned __int64 Zobrist;
 
-	static const unsigned __int64 SEED = mt19937_64::default_seed;
-	extern Zobrist table[][30];
-	extern Zobrist table2[][30];
+	static const unsigned __int64 SEED = std::mt19937_64::default_seed;
+	extern Zobrist table[35][30];
+	extern Zobrist table2[35][30];
 
 	void Initialize();
 }
+
 #endif

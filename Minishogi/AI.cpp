@@ -1,33 +1,39 @@
 #include "AI.h"
 
+static Action** actionList = nullptr;
 static TransPosition* transpositTable = nullptr;
 
 /*    Negascout Algorithm    */
-Action IDAS(Minishogi& minishogi, PV &pv) {
-	Action bestAction = ACTION_SURRENDER;
-	cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
-#ifdef BEST_ENDGAME_SEARCH
-	pv.leafEvaluate = NegaScout(pv, bestAction, minishogi,
-		-CHECKMATE - 10 * Observer::depth, CHECKMATE + 10 * Observer::depth, Observer::depth, false, true);
-#else
-	pv.leafEvaluate = NegaScout(pv, bestAction, minishogi, -CHECKMATE, CHECKMATE, Observer::depth, false, true);
-#endif
-	if (pv.leafEvaluate <= -CHECKMATE && Observer::isCanSurrender) {
-		return ACTION_SURRENDER;
+void InitializeNS() {
+	actionList = new Action*[Observer::depth];
+	for (int i = 0; i <= Observer::depth; i++) {
+		actionList[i] = new Action[Minishogi::SINGLE_GENE_MAX_ACTIONS];
 	}
-	return bestAction;
 }
 
-int NegaScout(PV &pv, Action &bestAction, Minishogi &minishogi, int alpha, int beta, int depth, bool isResearch, bool isTop) {
+int IDAS(Minishogi& minishogi, Action &bestAction) {
+	int eval;
+	bestAction.mode = Action::SURRENDER;
+	cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
+#ifdef BEST_ENDGAME_SEARCH
+	pv.leafEvaluate = NegaScout(bestAction, minishogi,
+		-CHECKMATE - 10 * Observer::depth, CHECKMATE + 10 * Observer::depth, Observer::depth, false, true);
+#else
+	eval = NegaScout(minishogi, bestAction, -CHECKMATE, CHECKMATE, Observer::depth, false, true);
+#endif
+	if (eval <= -CHECKMATE && Observer::isCanSurrender) {
+		bestAction.mode = Action::SURRENDER;
+	}
+	return eval;
+}
+
+int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int depth, bool isResearch, bool isTop) {
 	Observer::data[Observer::DataType::totalNode]++;
 	Observer::data[Observer::DataType::researchNode] += isResearch;
 	Observer::data[Observer::DataType::scoutGeneNums]++;
-	pv.count = 0;
 
-	int bestScore = -CHECKMATE;
-	int n = beta;
-	PV tempPV;
-	int accCnt = 0;
+	int bestScore = -CHECKMATE, n = beta, searchCnt = 0, cnt;
+	Action *moveList = actionList[depth];
 	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
 
 	if (!isTop && ReadTP(zobrist, depth, alpha, beta, bestScore)) {
@@ -41,8 +47,7 @@ int NegaScout(PV &pv, Action &bestAction, Minishogi &minishogi, int alpha, int b
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
-		Action moveList[MAX_MOVE_NUM], tempAction;
-		int cnt = 0;
+		cnt = 0;
 		switch (i) {
 		case 0:
 			minishogi.AttackGenerator(moveList, cnt);
@@ -54,11 +59,11 @@ int NegaScout(PV &pv, Action &bestAction, Minishogi &minishogi, int alpha, int b
 			minishogi.HandGenerator(moveList, cnt);
 			break;
 		}
-		accCnt += cnt;
+		searchCnt += cnt;
 
-		for (int j = 0; j < cnt; ++j) {
-			if (minishogi.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))) {
-				accCnt--;
+		for (int j = 0; j < cnt; j++) {
+			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)) {
+				searchCnt--;
 				continue;
 			}
 
@@ -66,55 +71,29 @@ int NegaScout(PV &pv, Action &bestAction, Minishogi &minishogi, int alpha, int b
 			if (minishogi.IsSennichite() /*&& !(DoMove()前被將軍)*/) {
 				/* 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍 */
 				minishogi.UndoMove();
-				accCnt--;
+				searchCnt--;
 				continue;
 			}
-			int score = -NegaScout(tempPV, tempAction, minishogi, -n, -max(alpha, bestScore), depth - 1, isResearch, false);
+			int score = -NegaScout(minishogi, bestAction, -n, -max(alpha, bestScore), depth - 1, isResearch, false);
 			if (score > bestScore) {
 				if (depth < 3 || score >= beta || n == beta)
 					bestScore = score;
 				else
-					bestScore = -NegaScout(tempPV, tempAction, minishogi, -beta, -score + 1, depth - 1, true, false);
-				bestAction = moveList[j];
-#ifndef PV_DISABLE
-				pv.action[0] = moveList[j];
-				pv.evaluate[0] = -minishogi.GetEvaluate();
-				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-				pv.count = tempPV.count + 1;
-#else
-				if (depth == Observer::depth) {
-					pv.action[0] = moveList[j];
-					pv.evaluate[0] = -minishogi.GetEvaluate();
-					memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-					memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-					pv.count = tempPV.count + 1;
-				}
-#endif
+					bestScore = -NegaScout(minishogi, bestAction, -beta, -score + 1, depth - 1, true, false);
+				if (isTop) bestAction = moveList[j];
 			}
-#ifndef PV_DISABLE
-			else if (pv.count == 0 && score == -CHECKMATE) {
-				/* moveList的第一個action是必輸的話照樣儲存pv 才能在必輸下得到pv */
-				bestAction = moveList[j];
-				pv.action[0] = moveList[j];
-				pv.evaluate[0] = -minishogi.GetEvaluate();
-				memcpy(pv.action + 1, tempPV.action, tempPV.count * sizeof(Action));
-				memcpy(pv.evaluate + 1, tempPV.evaluate, tempPV.count * sizeof(int));
-				pv.count = tempPV.count + 1;
-		}
-#endif
 			minishogi.UndoMove();
 
 			if (bestScore >= beta) {
 				/* Beta cutoff */
-				Observer::data[Observer::DataType::scoutSearchBranch] += accCnt + j;
+				Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt + j;
 				UpdateTP(zobrist, depth, alpha, beta, bestScore);
 				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // Set up a null window
 	}
 }
-	if (accCnt == 0) {
+	if (searchCnt == 0) {
 #ifdef BEST_ENDGAME_SEARCH
 		bestScore = -CHECKMATE - 10 * depth;
 #else
@@ -122,7 +101,7 @@ int NegaScout(PV &pv, Action &bestAction, Minishogi &minishogi, int alpha, int b
 #endif
 	}
 	UpdateTP(zobrist, depth, alpha, beta, bestScore);
-	Observer::data[Observer::DataType::scoutSearchBranch] += accCnt;
+	Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt;
 	return bestScore;
 }
 
@@ -139,7 +118,7 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
-		Action moveList[MAX_MOVE_NUM];
+		Action moveList[Minishogi::SINGLE_GENE_MAX_ACTIONS];
 		int cnt = 0;
 		switch (i) {
 		case 0:
@@ -155,7 +134,7 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 		accCnt += cnt;
 
 		for (int j = 0; j < cnt; ++j) {
-			if (minishogi.IsCheckAfter(ACTION_TO_SRCINDEX(moveList[j]), ACTION_TO_DSTINDEX(moveList[j]))
+			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)
 				/*|| !我是否被將軍 || !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE >= 0)*/) {
 				accCnt--;
 				continue;
@@ -200,7 +179,7 @@ int SEE(const Minishogi &minishogi, int dstIndex) {
 	vector<int> myMoveChess, opMoveChess;
 
 	// [ Start Add opMoveChess ]
-	const Bitboard psbboard = (minishogi.RookMove(dstIndex) | minishogi.BishopMove(dstIndex));
+	const Bitboard psbboard = (minishogi.RookMovable(dstIndex) | minishogi.BishopMovable(dstIndex));
 	Bitboard srcboard = psbboard & minishogi.occupied[minishogi.GetTurn() ^ 1];
 	Bitboard dstboard = 1 << dstIndex;
 	while (srcboard) {
@@ -287,7 +266,6 @@ bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& val
 	}
 	Observer::data[Observer::DataType::totalTPDepth] += depth;
 
-	//柏勳新的
 	switch (transpositTable[index].state) {
 	case TransPosition::Exact:
 		value = transpositTable[index].value;

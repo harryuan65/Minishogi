@@ -149,10 +149,11 @@
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Action.h" />
     <ClInclude Include="AI.h" />
     <ClInclude Include="Bitboard.h" />
     <ClInclude Include="Minishogi.h" />
-    <ClInclude Include="library.h" />
+    <ClInclude Include="Chess.h" />
     <ClInclude Include="Observer.h" />
     <ClInclude Include="Zobrist.h" />
   </ItemGroup>
