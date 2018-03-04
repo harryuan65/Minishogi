@@ -26,13 +26,22 @@ struct Action {
 	}
 
 	inline unsigned __int32 ToU32() const {
+		if (mode == SURRENDER) {
+			return 0;
+		}
 		return (isPro << 24) | (dstChess << 18) | (srcChess << 12) | (dstIndex << 6) | srcIndex;
 	}
 
 	inline void SetU32(unsigned __int32 u) {
-		srcIndex = u & 0x000003f;
-		dstIndex = u & 0x0000fc0;
-		isPro    = u & 0x1000000;
+		if (u) {
+			mode = Action::DO;
+			srcIndex =  u & 0x000003f;
+			dstIndex = (u & 0x0000fc0) >> 6;
+			isPro    = (u & 0x1000000) >> 24;
+		}
+		else {
+			mode = Action::SURRENDER;
+		}
 	}
 
 	static inline int Input2Index(char row, char col)  {

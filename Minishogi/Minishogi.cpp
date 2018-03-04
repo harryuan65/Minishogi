@@ -564,9 +564,6 @@ bool Minishogi::IsGameOver() {
 	MoveGenerator(moveList, cnt);
 	HandGenerator(moveList, cnt);
 	for (int i = 0; i < cnt; i++) {
-		if ((board[moveList[i].dstIndex] & 15) == KING) {
-			return true;
-		}
 		if (!IsCheckAfter(moveList[i].srcIndex, moveList[i].dstIndex)) {
 			return false;
 		}

@@ -9,7 +9,7 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_VERSION		  "TPSize=1<<30 國籍同構 include第六次修正後 actionList新增" //輸出報告註解用
+#define AI_VERSION		  "TPSize=1<<30 國籍同構 include第七次修正後 對打修正" //輸出報告註解用
 using namespace std;
 
 enum PlayerType {
@@ -144,23 +144,22 @@ int main(int argc, char **argv) {
 	do {
 		/*    遊戲初始化    */
 		minishogi.Initialize();
-		cout << "---------- Game " << Observer::gameNum << " ----------\n";
 		if (isCustomBoard && !minishogi.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 			if ((gameMode == 4 || gameMode == 5) && !isSwap) {
 				// 先後手交換
+				cout << "Swap player.\n";
 				isSwap = true;
 				swap(playerType[0], playerType[1]);
 				swap(playerName[0], playerName[1]);
 				readBoardOffset = 0;
-				if (!minishogi.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
-					break;
-				}
+				continue;
 			}
 			else { 
 				// 對打結束
 				break;
 			}
 		}
+		cout << "---------- Game " << Observer::gameNum << " ----------\n";
 		playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
 		kifuStr = currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
 		if (Observer::isSaveRecord) {
@@ -183,11 +182,15 @@ int main(int argc, char **argv) {
 
 		/*    遊戲開始    */
 		Observer::GameStart();
-		while (!minishogi.IsGameOver()) {
+		while (true) {
 			int actionU32, eval;
 			cout << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 			minishogi.PrintChessBoard();
 
+			if (minishogi.IsGameOver()) {
+				cout << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
+				break;
+			}
 			switch (playerType[minishogi.GetTurn()]) {
 			case Human:
 				while (!Human_DoMove(minishogi, action));
@@ -227,7 +230,7 @@ int main(int argc, char **argv) {
 			}
 
 			if (action.mode == Action::SURRENDER) {
-				cout << (!minishogi.GetTurn() ? "△" : "▼") << "投降! I'm lose\n";
+				cout << (minishogi.GetTurn() ? "▼" : "△") << "投降! I'm lose\n";
 				break;
 			}
 			else if (action.mode == Action::UNDO) {
@@ -253,8 +256,7 @@ int main(int argc, char **argv) {
 		}
 		/*    遊戲結束    */
 		Observer::GameOver(minishogi.GetTurn() != isSwap, minishogi.GetKifuHash());
-		minishogi.PrintChessBoard();
-		cout << "-------- Game Over! " << (minishogi.GetTurn() ? "△" : "▼") << " Win! --------\n\n";
+		cout << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
 		Observer::PrintGameReport(cout);
 
 		if (Observer::isSaveRecord) {
