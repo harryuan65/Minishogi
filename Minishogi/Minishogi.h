@@ -1,9 +1,7 @@
 #ifndef _MINISHOGI_
 #define _MINISHOGI_
-
 #define WINDOWS_10
-//#define BEST_ENDGAME_SEARCH
-//#define TRANSPOSITION_DISABLE
+
 #include <atlstr.h>
 #include <fstream>
 #include <iomanip>

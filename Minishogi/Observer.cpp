@@ -20,5 +20,4 @@ namespace Observer {
 	// ³]©w
 	int depth = 10;
 	bool isSaveRecord = true;
-	bool isCanSurrender = true;
 }

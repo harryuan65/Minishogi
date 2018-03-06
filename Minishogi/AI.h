@@ -1,6 +1,10 @@
 ﻿#ifndef _AI_
 #define _AI_
+
 #include "Minishogi.h"
+#define BEST_ENDGAME_SEARCH
+//#define TRANSPOSITION_DISABLE
+//#define DOUBLETP
 
 typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
@@ -13,7 +17,11 @@ int QuiescenceSearch(Minishogi& board, int alpha, int beta);
 int SEE(const Minishogi &board, int dstIndex);
 
 /*    TransPosition Table    */ 
+#ifdef DOUBLETP
+const U64 TPSize = 1 << 29;
+#else
 const U64 TPSize = 1 << 30;
+#endif
 const U64 TPMask = TPSize - 1;
 
 #pragma pack(push)
@@ -33,8 +41,8 @@ struct TransPosition {
 inline U64 ZobristToIndex(Zobrist::Zobrist zobrist);
 void InitializeTP();
 void CleanTP();
-bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value);
-void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value);
+bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value);
+void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value);
 void PrintPV(ostream &os, Minishogi &board, int depth);
 
 /*    History Heuristic    */

@@ -587,11 +587,11 @@ bool Minishogi::IsLegelAction(Action action) {
 					cout << "Error : You have been checked." << endl;
 					return false;
 				}
-				break;
+				return true;
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 bool Minishogi::IsCheckAfter(const int srcIndex, const int dstIndex) {

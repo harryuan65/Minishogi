@@ -1,12 +1,11 @@
 #include "AI.h"
 
 static Action** actionList = nullptr;
-static TransPosition* transpositTable = nullptr;
 
 /*    Negascout Algorithm    */
 void InitializeNS() {
 	actionList = new Action*[Observer::depth];
-	for (int i = 0; i <= Observer::depth; i++) {
+	for (int i = 1; i <= Observer::depth; i++) {
 		actionList[i] = new Action[Minishogi::SINGLE_GENE_MAX_ACTIONS];
 	}
 }
@@ -15,15 +14,13 @@ int IDAS(Minishogi& minishogi, Action &bestAction) {
 	int eval;
 	bestAction.mode = Action::SURRENDER;
 	cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
-#ifdef BEST_ENDGAME_SEARCH
-	pv.leafEvaluate = NegaScout(bestAction, minishogi,
-		-CHECKMATE - 10 * Observer::depth, CHECKMATE + 10 * Observer::depth, Observer::depth, false, true);
-#else
-	eval = NegaScout(minishogi, bestAction, -CHECKMATE, CHECKMATE, Observer::depth, false, true);
-#endif
-	if (eval <= -CHECKMATE && Observer::isCanSurrender) {
+	eval = NegaScout(minishogi, bestAction, 
+		-CHECKMATE - ((Observer::depth - 1) << 2), CHECKMATE + ((Observer::depth - 1) << 2), Observer::depth, false, true);
+#ifndef BEST_ENDGAME_SEARCH
+	if (eval <= -CHECKMATE) {
 		bestAction.mode = Action::SURRENDER;
 	}
+#endif
 	return eval;
 }
 
@@ -32,11 +29,16 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 	Observer::data[Observer::DataType::researchNode] += isResearch;
 	Observer::data[Observer::DataType::scoutGeneNums]++;
 
-	int bestScore = -CHECKMATE, n = beta, searchCnt = 0, cnt;
+#ifdef BEST_ENDGAME_SEARCH
+	int bestScore = -SHRT_MAX, n = beta, cnt;  //只要比最小的-CHECKMATE - ((Observer::depth - 1) << 2)小就好
+#else
+	int bestScore = -CHECKMATE, n = beta, cnt; //=alpha最好
+#endif
 	Action *moveList = actionList[depth];
+	bool isLose = true;
 	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
 
-	if (!isTop && ReadTP(zobrist, depth, alpha, beta, bestScore)) {
+	if (!isTop && ReadTP(zobrist, minishogi.GetTurn(), depth, alpha, beta, bestScore)) {
 		return bestScore;
 	}
 
@@ -59,49 +61,52 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 			minishogi.HandGenerator(moveList, cnt);
 			break;
 		}
-		searchCnt += cnt;
 
 		for (int j = 0; j < cnt; j++) {
 			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)) {
-				searchCnt--;
 				continue;
 			}
 
 			minishogi.DoMove(moveList[j]);
 			if (minishogi.IsSennichite() /*&& !(DoMove()前被將軍)*/) {
-				/* 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍 */
+				// 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍
 				minishogi.UndoMove();
-				searchCnt--;
 				continue;
 			}
+			isLose = false;
 			int score = -NegaScout(minishogi, bestAction, -n, -max(alpha, bestScore), depth - 1, isResearch, false);
 			if (score > bestScore) {
 				if (depth < 3 || score >= beta || n == beta)
 					bestScore = score;
 				else
 					bestScore = -NegaScout(minishogi, bestAction, -beta, -score + 1, depth - 1, true, false);
-				if (isTop) bestAction = moveList[j];
+				if (isTop) {
+					bestAction = moveList[j];
+				}
+			}
+			if (isTop) {
+				cout << moveList[j]<< " "<< score  << "\n";
 			}
 			minishogi.UndoMove();
 
 			if (bestScore >= beta) {
-				/* Beta cutoff */
-				Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt + j;
-				UpdateTP(zobrist, depth, alpha, beta, bestScore);
+				// Beta cutoff
+				//Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt + j;
+				UpdateTP(zobrist, minishogi.GetTurn(), depth, alpha, beta, bestScore);
 				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // Set up a null window
 	}
 }
-	if (searchCnt == 0) {
+	if (isLose) {
 #ifdef BEST_ENDGAME_SEARCH
-		bestScore = -CHECKMATE - 10 * depth;
+		bestScore = -CHECKMATE - (depth << 2);
 #else
 		bestScore = -CHECKMATE;
 #endif
 	}
-	UpdateTP(zobrist, depth, alpha, beta, bestScore);
-	Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt;
+	UpdateTP(zobrist, minishogi.GetTurn(), depth, alpha, beta, bestScore);
+	//Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt;
 	return bestScore;
 }
 
@@ -231,6 +236,90 @@ inline U64 ZobristToIndex(Zobrist::Zobrist zobrist) {
 	return zobrist & TPMask;
 }
 
+#ifdef DOUBLETP
+static TransPosition** transpositTable = nullptr;
+void InitializeTP() {
+#ifndef TRANSPOSITION_DISABLE
+	transpositTable = new TransPosition*[2];
+	transpositTable[0] = new TransPosition[TPSize];
+	transpositTable[1] = new TransPosition[TPSize];
+	CleanTP();
+	cout << "TransPosition Table Created. ";
+	cout << "Used Size : 2 * " << ((TPSize * sizeof(TransPosition)) >> 20) << "MiB\n";
+#else
+	cout << "TransPosition Table disable.\n";
+#endif
+}
+
+void CleanTP() {
+#ifndef TRANSPOSITION_DISABLE
+	if (transpositTable == nullptr)
+		return;
+	for (int i = 0; i < TPSize; i++) {
+		transpositTable[0][i].zobrist = 0;
+		transpositTable[1][i].zobrist = 0;
+	}
+#else
+	cout << "TransPosition Table disable.\n";
+#endif
+}
+
+inline bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value) {
+#ifndef TRANSPOSITION_DISABLE
+	U64 index = ZobristToIndex(zobrist);
+	TransPosition *tp = &transpositTable[turn][index];
+	if (tp->zobrist != zobrist >> 32) {
+		Observer::data[Observer::DataType::indexCollisionNums]++;
+		return false;
+	}
+	if (tp->depth < depth) {
+		return false;
+	}
+	Observer::data[Observer::DataType::totalTPDepth] += depth;
+
+	switch (tp->state) {
+	case TransPosition::Exact:
+		value = tp->value;
+		return true;
+	case TransPosition::Unknown:
+		beta = min(tp->value, beta);
+		break;
+	case TransPosition::FailHigh:
+		alpha = max(tp->value, alpha);
+		break;
+	}
+	if (alpha >= beta) {
+		value = tp->value;
+		return true;
+	}
+	return false;
+#else
+	return false;
+#endif
+}
+
+inline void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value) {
+#ifndef TRANSPOSITION_DISABLE
+	U64 index = ZobristToIndex(zobrist);
+	TransPosition *tp = &transpositTable[turn][index];
+	//if (transpositTable[index].zobrist == (zobrist >> 32) && transpositTable[index].depth > depth)
+	//	return;
+	tp->zobrist = zobrist >> 32;
+	tp->value = value;
+	tp->depth = depth;
+	if (value < alpha) {
+		tp->state = TransPosition::Unknown;
+	}
+	else if (value >= beta) {
+		tp->state = TransPosition::FailHigh;
+	}
+	else {
+		tp->state = TransPosition::Exact;
+	}
+#endif
+}
+#else
+static TransPosition* transpositTable = nullptr;
 void InitializeTP() {
 #ifndef TRANSPOSITION_DISABLE
 	transpositTable = new TransPosition[TPSize];
@@ -254,7 +343,7 @@ void CleanTP() {
 #endif
 }
 
-bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& value) {
+bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value) {
 #ifndef TRANSPOSITION_DISABLE
 	U64 index = ZobristToIndex(zobrist);
 	if (transpositTable[index].zobrist != zobrist >> 32) {
@@ -287,7 +376,7 @@ bool ReadTP(Zobrist::Zobrist zobrist, int depth, int& alpha, int& beta, int& val
 #endif
 }
 
-void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int value) {
+void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value) {
 #ifndef TRANSPOSITION_DISABLE
 	U64 index = ZobristToIndex(zobrist);
 
@@ -307,7 +396,7 @@ void UpdateTP(Zobrist::Zobrist zobrist, int depth, int alpha, int beta, int valu
 	}
 #endif
 }
-
+#endif
 void PrintPV(ostream &os, Minishogi &minishogi, int depth) {
 	/*int i;
 	os << "PV: (depth | turn | action | my evaluate)" << "\n";

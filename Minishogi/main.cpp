@@ -9,7 +9,6 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_VERSION		  "TPSize=1<<30 國籍同構 include第七次修正後 對打修正" //輸出報告註解用
 using namespace std;
 
 enum PlayerType {
@@ -22,6 +21,7 @@ bool Human_DoMove(Minishogi &board, Action &action);
 int AI_DoMove(Minishogi &board, Action &action);
 
 string GetCurrentTimeString();
+string GetAIVersion();
 bool GetOpenFileNameString(string& out);
 void SendMessageByHWND(HWND hwnd, string message);
 
@@ -38,12 +38,14 @@ int main(int argc, char **argv) {
 
 	fstream file;
 	streamoff readBoardOffset = 0;
+	string aiVersion;
 	string currTimeStr;
 	string playDetailStr;
 	string kifuStr;
 
 	/*    遊戲設定     */
-	cout << "AI Version : " << AI_VERSION << endl;
+	aiVersion = GetAIVersion();
+	cout << "AI Version : " << aiVersion << endl;
 	if (argc == 3) {
 		gameMode = 5;
 		opponentHWND = (HWND)atoi(argv[1]);
@@ -52,7 +54,7 @@ int main(int argc, char **argv) {
 		playerType[0] = PlayerType::OtherAI;
 		playerType[1] = PlayerType::AI;
 		playerName[0] = "";
-		playerName[1] = AI_VERSION;
+		playerName[1] = aiVersion;
 	}
 	else {
 		string gameDirStr;
@@ -72,12 +74,12 @@ int main(int argc, char **argv) {
 				playerType[0] = PlayerType::Human;
 				playerType[1] = PlayerType::AI;
 				playerName[0] = "Human";
-				playerName[1] = AI_VERSION;
+				playerName[1] = aiVersion;
 				break;
 			case 1:
 				playerType[0] = PlayerType::AI;
 				playerType[1] = PlayerType::Human;
-				playerName[0] = AI_VERSION;
+				playerName[0] = aiVersion;
 				playerName[1] = "Human";
 				break;
 			case 2:
@@ -89,8 +91,8 @@ int main(int argc, char **argv) {
 			case 3:
 				playerType[0] = PlayerType::AI;
 				playerType[1] = PlayerType::AI;
-				playerName[0] = AI_VERSION;
-				playerName[1] = AI_VERSION;
+				playerName[0] = aiVersion;
+				playerName[1] = aiVersion;
 				break;
 			case 4:
 				if (!GetOpenFileNameString(gameDirStr)) {
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
 				opponentHWND = (HWND)bufHWND;
 				playerType[0] = PlayerType::AI; 
 				playerType[1] = PlayerType::OtherAI;
-				playerName[0] = AI_VERSION;
+				playerName[0] = aiVersion;
 				playerName[1] = "";
 				break;
 			default:
@@ -116,7 +118,6 @@ int main(int argc, char **argv) {
 	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
 		cout << "輸入搜尋的深度\n";
 		cin >> Observer::depth;
-		cin.ignore();
 	}
 	cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打?\n";
 	isCustomBoard = getchar() != '0';
@@ -189,6 +190,17 @@ int main(int argc, char **argv) {
 
 			if (minishogi.IsGameOver()) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
+				action.mode = Action::SURRENDER;
+				if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
+					file.open(playDetailStr, ios::app);
+					if (file) {
+						file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
+						minishogi.PrintNoncolorBoard(file);
+						file << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
+						file.close();
+					}
+					else cout << "Error : Fail to Save PlayDetail.\n";
+				}
 				break;
 			}
 			switch (playerType[minishogi.GetTurn()]) {
@@ -215,6 +227,7 @@ int main(int argc, char **argv) {
 				cout << "Action : " << action << "\n";
 				break;
 			}
+
 			if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
 				file.open(playDetailStr, ios::app);
 				if (file) {
@@ -263,7 +276,8 @@ int main(int argc, char **argv) {
 			if (gameMode != 5) minishogi.SaveKifu(kifuStr);
 			file.open(playDetailStr, ios::app);
 			if (file) {
-				file << "#" << AI_VERSION << "\n";
+				file << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
+				file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << aiVersion << "\n";
 				Observer::PrintGameReport(file);
 				file.close();
 			}
@@ -273,17 +287,18 @@ int main(int argc, char **argv) {
 	if (Observer::isSaveRecord) {
 		file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::app);
 		if (file) {
-			file << "#" << AI_VERSION << "\n";
+			file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << aiVersion << "\n";
+			file << "Start at : " << currTimeStr << "\nEnd at   : " << GetCurrentTimeString() << "\n";
 			Observer::PrintTotalReport(file);
 			file.close();
 		}
 		else cout << "Error : Fail to Save AI Report.\n";
 	}
-	cout << "---------- Game Over ----------\n";
+	cout << "---------- Total Report ----------\n";
 	Observer::PrintTotalReport(cout);
 
 	cout << "\a\a\a";
-	//delete(transpositTable);
+	// TODO : Delete TP
     system("pause");
     return 0;
 }
@@ -316,6 +331,23 @@ string GetCurrentTimeString() {
 	time(&rawtime);
 	strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", localtime(&rawtime));
 	return string(buffer);
+}
+
+string GetAIVersion() {
+	string str;
+#ifdef BEST_ENDGAME_SEARCH
+	str += "不能投降 ";
+#else
+	str += "可以投降 ";
+#endif
+#ifdef TRANSPOSITION_DISABLE
+	str += "無同型表 ";
+#elif DOUBLETP
+	str += "雙同型表 "+;
+#else
+	str += "國籍同構 ";
+#endif
+	return str;
 }
 
 bool GetOpenFileNameString(string& out) {
