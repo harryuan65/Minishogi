@@ -342,8 +342,9 @@ string GetAIVersion() {
 #endif
 #ifdef TRANSPOSITION_DISABLE
 	str += "無同型表 ";
-#elif DOUBLETP
-	str += "雙同型表 "+;
+#endif
+#ifdef DOUBLETP
+	str += "雙同型表 ";
 #else
 	str += "國籍同構 ";
 #endif

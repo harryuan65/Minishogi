@@ -2,9 +2,9 @@
 #define _AI_
 
 #include "Minishogi.h"
-#define BEST_ENDGAME_SEARCH
+//#define BEST_ENDGAME_SEARCH
 //#define TRANSPOSITION_DISABLE
-//#define DOUBLETP
+#define DOUBLETP
 
 typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;

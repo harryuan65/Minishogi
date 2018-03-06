@@ -80,12 +80,7 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 					bestScore = score;
 				else
 					bestScore = -NegaScout(minishogi, bestAction, -beta, -score + 1, depth - 1, true, false);
-				if (isTop) {
-					bestAction = moveList[j];
-				}
-			}
-			if (isTop) {
-				cout << moveList[j]<< " "<< score  << "\n";
+				if (isTop) bestAction = moveList[j];
 			}
 			minishogi.UndoMove();
 
