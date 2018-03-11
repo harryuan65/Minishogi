@@ -47,7 +47,7 @@ void Minishogi::Initialize(const char *s) {
 	memset(occupied, BLANK, 2 * sizeof(Bitboard));
 	memset(bitboard, BLANK, 32 * sizeof(Bitboard));
 	memset(board, BLANK, TOTAL_BOARD_SIZE * sizeof(int));
-	m_turn = 0; // 先手是白
+	m_turn = 0;
 	m_evaluate = 0;
 	m_step = 0;
 	m_hashcode = 0;
@@ -128,6 +128,8 @@ void Minishogi::DoMove(Action &action) {
 	recordZobrist[m_step] = m_hashcode;
 	recordZobrist2[m_step] = m_hashcode2;
 	m_turn ^= 1;
+	if (m_hashcode == m_hashcode2)
+		Observer::data[Observer::DataType::iosmorphy]++;
 }
 
 void Minishogi::UndoMove() {
@@ -574,7 +576,7 @@ bool Minishogi::IsGameOver() {
 bool Minishogi::IsLegelAction(Action action) {
 	Action moveList[TOTAL_GENE_MAX_ACTIONS];
 	int cnt = 0;
-	if ((board[action.srcIndex] & BLACKCHESS) != GetTurn()) {
+	if (((board[action.srcIndex] & BLACKCHESS) >> 4) != GetTurn()) {
 		return false;
 	}
 	else {

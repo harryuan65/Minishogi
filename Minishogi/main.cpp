@@ -298,7 +298,6 @@ int main(int argc, char **argv) {
 	Observer::PrintTotalReport(cout);
 
 	cout << "\a\a\a";
-	// TODO : Delete TP
     system("pause");
     return 0;
 }

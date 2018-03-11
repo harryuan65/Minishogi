@@ -14,6 +14,7 @@ namespace Observer {
 		scoutGeneNums,
 		scoutSearchBranch,
 		totalTPDepth,
+		iosmorphy,
 		indexCollisionNums,
 		searchTime,
 		COUNT
@@ -74,6 +75,7 @@ namespace Observer {
 		os << " Quies search nodes      : " << setw(10) << data[DataType::quiesNode] << "\n";
 		//os << " Avg scout search branch : " << setw(13) << (float)data[DataType::scoutSearchBranch] / data[DataType::scoutGeneNums] << "\n";
 		os << " Total TP Depth          : " << setw(10) << data[DataType::totalTPDepth] << "\n";
+		os << " Isomorphy position      : " << setw(10) << data[DataType::iosmorphy] << "\n";
 		os << " Index Collision nums    : " << setw(10) << data[DataType::indexCollisionNums] << "\n";
 		os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * data[DataType::indexCollisionNums] / data[DataType::totalNode]) << " %\n";
 		os << " Search time             : " << setw(13) << (float)data[DataType::searchTime] / 1000 << "\n";
@@ -97,6 +99,7 @@ namespace Observer {
 			os << " Quies search nodes      : " << setw(10) << game_data[DataType::quiesNode] / game_data[DataType::searchNum] << "\n";
 			//os << " Avg scout search branch : " << setw(13) << (float)game_data[DataType::scoutSearchBranch] / game_data[DataType::scoutGeneNums] << "\n";
 			os << " Total TP Depth          : " << setw(10) << game_data[DataType::totalTPDepth] / game_data[DataType::searchNum] << "\n";
+			os << " Isomorphy position      : " << setw(10) << game_data[DataType::iosmorphy] / game_data[DataType::searchNum] << "\n";
 			os << " Index Collision nums    : " << setw(10) << game_data[DataType::indexCollisionNums] / game_data[DataType::searchNum] << "\n";
 			os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * game_data[DataType::indexCollisionNums] / game_data[DataType::totalNode]) << " %\n";
 			os << " Search time             : " << setw(13) << (float)game_data[DataType::searchTime] / game_data[DataType::searchNum] / 1000 << "\n";
@@ -120,6 +123,7 @@ namespace Observer {
 			os << " Quies search nodes      : " << setw(10) << total_data[DataType::quiesNode] / total_data[DataType::searchNum] << "\n";
 			//os << " Avg scout search branch : " << setw(13) << (float)total_data[DataType::scoutSearchBranch] / total_data[DataType::scoutGeneNums] << "\n";
 			os << " Total TP Depth          : " << setw(10) << total_data[DataType::totalTPDepth] / total_data[DataType::searchNum] << "\n";
+			os << " Isomorphy position      : " << setw(10) << total_data[DataType::iosmorphy] / total_data[DataType::searchNum] << "\n";
 			os << " Index Collision nums    : " << setw(10) << total_data[DataType::indexCollisionNums] / total_data[DataType::searchNum] << "\n";
 			os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * total_data[DataType::indexCollisionNums] / total_data[DataType::totalNode]) << " %\n";
 			os << " Search time             : " << setw(13) << (float)total_data[DataType::searchTime] / total_data[DataType::searchNum] / 1000 << "\n";

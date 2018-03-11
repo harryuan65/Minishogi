@@ -14,12 +14,11 @@ int IDAS(Minishogi& minishogi, Action &bestAction) {
 	int eval;
 	bestAction.mode = Action::SURRENDER;
 	cout << "IDAS Searching " << Observer::depth << " Depth..." << endl;
-	eval = NegaScout(minishogi, bestAction, 
+#ifdef BEST_ENDGAME_SEARCH
+	eval = NegaScout(minishogi, bestAction,
 		-CHECKMATE - ((Observer::depth - 1) << 2), CHECKMATE + ((Observer::depth - 1) << 2), Observer::depth, false, true);
-#ifndef BEST_ENDGAME_SEARCH
-	if (eval <= -CHECKMATE) {
-		bestAction.mode = Action::SURRENDER;
-	}
+#else
+	eval = NegaScout(minishogi, bestAction, -CHECKMATE, CHECKMATE, Observer::depth, false, true);
 #endif
 	return eval;
 }
@@ -44,7 +43,7 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 
 	if (depth == 0) {
 		//Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
-		return minishogi.GetEvaluate();//QuiescenceSearch(minishogi, alpha, beta, turn);
+		return minishogi.GetEvaluate();//QuiescenceSearch(minishogi, alpha, beta);
 	}
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
@@ -268,6 +267,7 @@ inline bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, in
 		return false;
 	}
 	if (tp->depth < depth) {
+		Observer::data[Observer::DataType::indexCollisionNums]++;
 		return false;
 	}
 	Observer::data[Observer::DataType::totalTPDepth] += depth;
@@ -319,6 +319,11 @@ void InitializeTP() {
 #ifndef TRANSPOSITION_DISABLE
 	transpositTable = new TransPosition[TPSize];
 	CleanTP();
+	//TODO : DEBUG
+	delete[] transpositTable;
+	transpositTable = new TransPosition[TPSize];
+	CleanTP();
+	//TODO : DEBUG
 	cout << "TransPosition Table Created. ";
 	cout << "Used Size : " << ((TPSize * sizeof(TransPosition)) >> 20) << "MiB\n";
 #else
@@ -346,6 +351,7 @@ bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta
 		return false;
 	}
 	if (transpositTable[index].depth < depth) {
+		Observer::data[Observer::DataType::indexCollisionNums]++;
 		return false;
 	}
 	Observer::data[Observer::DataType::totalTPDepth] += depth;
