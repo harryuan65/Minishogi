@@ -1,6 +1,5 @@
 #ifndef _MINISHOGI_
 #define _MINISHOGI_
-#define WINDOWS_10
 
 #include <atlstr.h>
 #include <fstream>
@@ -24,12 +23,14 @@ private:
     bool m_turn;
 	int m_step;
 	int m_evaluate;
+	Zobrist::Zobrist m_initHashcode;
 	Zobrist::Zobrist m_hashcode;
 	Zobrist::Zobrist m_hashcode2;
 	// recordZobrist[0] 經過DoMove(recordAction[0]) 變成recordZobrist[1]
 	Action recordAction[120];
 	Zobrist::Zobrist recordZobrist[121];
 	Zobrist::Zobrist recordZobrist2[121];
+	bool checkstate[121];
 
 public:
 	static const int BOARD_SIZE = 25;
@@ -44,6 +45,7 @@ public:
     void Initialize();
 	// 輸入格式: 前25個輸入棋子ID [後10個輸入手排個數0~2(可選)]
     void Initialize(const char *str);
+	bool Initialize(const string* str);
 
 	void DoMove(Action &action);
 	void UndoMove();
@@ -67,13 +69,16 @@ public:
 
 	bool IsGameOver();
 	bool IsLegelAction(Action action);
+	inline bool IsChecked() const { return checkstate[m_step]; }
 	bool IsCheckAfter(const int srcIndex, const int dstIndex);
 	// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後才能判斷 在此不考慮被連將
 	bool IsSennichite() const;
+	inline bool IsIsomorphic() const { return m_hashcode == m_hashcode2; }
     inline int GetTurn() const { return m_turn; }
 	inline int GetStep() const { return m_step; }
 	inline int GetEvaluate() const { return m_turn ? m_evaluate : -m_evaluate; };
 	inline Zobrist::Zobrist GetZobristHash() const { return m_turn ? m_hashcode2 : m_hashcode; }
+	inline Zobrist::Zobrist GetInitZobristHash() const { return m_initHashcode; }
 	unsigned int GetKifuHash() const ;
 };
 

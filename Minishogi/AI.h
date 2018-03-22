@@ -2,7 +2,7 @@
 #define _AI_
 
 #include "Minishogi.h"
-#define BEST_ENDGAME_SEARCH
+//#define BEST_ENDGAME_SEARCH
 //#define DOUBLETP
 //#define TRANSPOSITION_DISABLE
 
@@ -18,7 +18,7 @@ int SEE(const Minishogi &board, int dstIndex);
 
 /*    TransPosition Table    */ 
 #ifdef DOUBLETP
-const U64 TPSize = 1 << 30;
+const U64 TPSize = 1 << 29;
 #else
 const U64 TPSize = 1 << 30;
 #endif

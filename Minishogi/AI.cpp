@@ -31,13 +31,12 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 #ifdef BEST_ENDGAME_SEARCH
 	int bestScore = -SHRT_MAX, n = beta, cnt;  //只要比最小的-CHECKMATE - ((Observer::depth - 1) << 2)小就好
 #else
-	int bestScore = -CHECKMATE, n = beta, cnt; //=alpha最好
+	int bestScore = -SHRT_MAX, n = beta, cnt; //=alpha(CHECKMATE)最好
 #endif
-	Action *moveList = actionList[depth];
-	bool isLose = true;
 	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
 
 	if (!isTop && ReadTP(zobrist, minishogi.GetTurn(), depth, alpha, beta, bestScore)) {
+		Observer::data[Observer::DataType::ios_read] += minishogi.IsIsomorphic();
 		return bestScore;
 	}
 
@@ -45,6 +44,10 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 		//Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
 		return minishogi.GetEvaluate();//QuiescenceSearch(minishogi, alpha, beta);
 	}
+
+	Action *moveList = actionList[depth];
+	bool isLose = true;
+	bool isChecked = minishogi.IsChecked(); // 若此盤面處於被將 解將不考慮千日手
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
@@ -67,11 +70,13 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 			}
 
 			minishogi.DoMove(moveList[j]);
-			if (minishogi.IsSennichite() /*&& !(DoMove()前被將軍)*/) {
-				// 千日手 且 沒有被將軍 (連將時攻擊者判輸) TODO : 判斷是否被將軍
+			if (!isChecked && minishogi.IsSennichite()) {
 				minishogi.UndoMove();
 				continue;
 			}
+
+			Observer::data[Observer::DataType::ios_write] += minishogi.IsIsomorphic();
+
 			isLose = false;
 			int score = -NegaScout(minishogi, bestAction, -n, -max(alpha, bestScore), depth - 1, isResearch, false);
 			if (score > bestScore) {
@@ -90,8 +95,8 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // Set up a null window
+		}
 	}
-}
 	if (isLose) {
 #ifdef BEST_ENDGAME_SEARCH
 		bestScore = -CHECKMATE - (depth << 2);
@@ -302,6 +307,7 @@ inline void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, i
 	tp->zobrist = zobrist >> 32;
 	tp->value = value;
 	tp->depth = depth;
+	//tp->depth = (value >= CHECKMATE ? SCHAR_MAX : depth);
 	if (value < alpha) {
 		tp->state = TransPosition::Unknown;
 	}
@@ -320,9 +326,9 @@ void InitializeTP() {
 	transpositTable = new TransPosition[TPSize];
 	CleanTP();
 	//TODO : DEBUG
-	delete[] transpositTable;
+	/*delete[] transpositTable;
 	transpositTable = new TransPosition[TPSize];
-	CleanTP();
+	CleanTP();*/
 	//TODO : DEBUG
 	cout << "TransPosition Table Created. ";
 	cout << "Used Size : " << ((TPSize * sizeof(TransPosition)) >> 20) << "MiB\n";
@@ -386,6 +392,7 @@ void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta
 	transpositTable[index].zobrist = zobrist >> 32;
 	transpositTable[index].value = value;
 	transpositTable[index].depth = depth;
+	//transpositTable[index].depth = (value >= CHECKMATE ? SCHAR_MAX : depth);
 	if (value < alpha) {
 		transpositTable[index].state = TransPosition::Unknown;
 	}

@@ -44,6 +44,19 @@ struct Action {
 		}
 	}
 
+	inline string ToString() const {
+		switch (mode) {
+		case DO:
+			return Index2Input(srcIndex) + Index2Input(dstIndex) + (isPro ? "+" : " ");
+		case UNDO:
+			return "UNDO";
+		case SURRENDER:
+			return "SURRENDER";
+		case SAVEBOARD:
+			return "SAVEBOARD";
+		}
+	}
+
 	static inline int Input2Index(char row, char col)  {
 		row = toupper(row);
 		if ('A' <= row && row <= 'G' && '1' <= col && col <= '5') {
@@ -92,21 +105,7 @@ struct Action {
 	}
 
 	friend ostream& operator<< (ostream& os, const Action& action) {
-		switch (action.mode) {
-		case DO:
-			os << Index2Input(action.srcIndex) << Index2Input(action.dstIndex) <<
-				(action.isPro ? "+" : " ");
-			break;
-		case UNDO:
-			os << "UNDO";
-			break;
-		case SURRENDER:
-			os << "SURRENDER";
-			break;
-		case SAVEBOARD:
-			os << "SAVEBOARD";
-			break;
-		}
+		os << action.ToString();
 		return os;
 	}
 };

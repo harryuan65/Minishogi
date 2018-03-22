@@ -76,6 +76,69 @@ void Minishogi::Initialize(const char *s) {
 	}
 	recordZobrist[0] = m_hashcode;
 	recordZobrist2[0] = m_hashcode2;
+	m_initHashcode = GetZobristHash();
+}
+
+bool Minishogi::Initialize(const string* str) {
+	int index = 0;
+	memset(occupied, BLANK, 2 * sizeof(Bitboard));
+	memset(bitboard, BLANK, 32 * sizeof(Bitboard));
+	memset(board, BLANK, TOTAL_BOARD_SIZE * sizeof(int));
+	if (str[index][0] == '+') {
+		m_turn = 0; // 先手是白
+	}
+	else if (str[index][0] == '-') {
+		m_turn = 1; // 先手是黑
+	}
+	else {
+		cout << "Error : Fail to Load Board. There is a unrecognized symbol (turn).\n";
+		return false;
+	}
+	m_evaluate = 0;
+	m_step = 0;
+	m_hashcode = 0;
+	m_hashcode2 = 0;
+
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++, index++) {
+			for (int chess = 0; chess < CHESSCOUNT; chess++) {
+				if (strcmp(SAVE_CHESS_WORD[chess], str[i+1].substr(j * 4, 4).c_str()) == 0) {
+					if (chess != 0) {
+						board[index] = chess;
+						bitboard[chess] |= 1 << index;
+						occupied[chess > BLACKCHESS] |= 1 << index;
+						m_evaluate += CHESS_SCORE[chess];
+						m_hashcode ^= Zobrist::table[index][chess];
+						m_hashcode2 ^= Zobrist::table2[index][chess];
+					}
+					break;
+				}
+				if (chess == CHESSCOUNT - 1) {
+					cout << "Error : Fail to Load Board. There is a unrecognized symbol (board).\n";
+					return false;
+				}
+			}
+		}
+	}
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 5; j++, index++) {
+			int num = str[i+6][2 + 3 * j] - '0';
+			if (num == 1 || num == 2) {
+				board[index] = num;
+				m_evaluate += HAND_SCORE[index] * num;
+				m_hashcode ^= Zobrist::table[index][num];
+				m_hashcode2 ^= Zobrist::table2[index][num];
+			}
+			else if (num != 0) {
+				cout << "Error : Fail to Load Board. There is a unrecognized symbol (hand).\n";
+				return false;
+			}
+		}
+	}
+	recordZobrist[0] = m_hashcode;
+	recordZobrist2[0] = m_hashcode2;
+	m_initHashcode = GetZobristHash();
+	return true;
 }
 
 void Minishogi::DoMove(Action &action) {
@@ -128,8 +191,9 @@ void Minishogi::DoMove(Action &action) {
 	recordZobrist[m_step] = m_hashcode;
 	recordZobrist2[m_step] = m_hashcode2;
 	m_turn ^= 1;
-	if (m_hashcode == m_hashcode2)
-		Observer::data[Observer::DataType::iosmorphy]++;
+
+	// 移動後 會不會造成對方處於被將狀態
+	checkstate[m_step] = Movable(action.dstIndex) & bitboard[KING | (m_turn << 4)];
 }
 
 void Minishogi::UndoMove() {
@@ -462,6 +526,25 @@ bool Minishogi::SaveBoard(string filename, string comment) const {
 bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 	fstream file(BOARD_PATH + filename, ios::in);
 	if (file) {
+		char str[128];
+		string boardStr[8];
+		file.seekg(offset, ios::beg);
+		for (int i = 0; i < 8; i++) {
+			file.getline(str, 128);
+			boardStr[i] = str;
+		}
+		offset = file.tellg();
+		file.close();
+		if (!Initialize(boardStr)) {
+			return false;
+		}
+		return true;
+	}
+	cout << "Error : Fail to Load Board. Cannot find file.\n";
+	return false;
+
+	/*fstream file(BOARD_PATH + filename, ios::in);
+	if (file) {
 		char str[128], chessStr[5] = "    ";
 		int index = 0;
 		file.seekg(offset, ios::beg);
@@ -534,7 +617,7 @@ bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 		return true;
 	}
 	cout << "Error : Fail to Load Board. Cannot find file.\n";
-	return false;
+	return false;*/
 }
 
 bool Minishogi::SaveKifu(string filename) const {
@@ -614,7 +697,7 @@ bool Minishogi::IsCheckAfter(const int srcIndex, const int dstIndex) {
 	/************ DoMove ************/
 
 	/* get the position of the checked king */
-	Bitboard kingboard = bitboard[KING | (m_turn ? BLACKCHESS : 0)];
+	Bitboard kingboard = bitboard[KING | (m_turn << 4)];
 	int kingpos = BitScan(kingboard);
 
 	/* get the possible position which might attack king */
