@@ -91,7 +91,7 @@ bool Minishogi::Initialize(const string* str) {
 		m_turn = 1; // 先手是黑
 	}
 	else {
-		cout << "Error : Fail to Load Board. There is a unrecognized symbol (turn).\n";
+		cout << "Error : Fail to Load Board. There is a unrecognized symbol in TURN section.\n";
 		return false;
 	}
 	m_evaluate = 0;
@@ -114,7 +114,7 @@ bool Minishogi::Initialize(const string* str) {
 					break;
 				}
 				if (chess == CHESSCOUNT - 1) {
-					cout << "Error : Fail to Load Board. There is a unrecognized symbol (board).\n";
+					cout << "Error : Fail to Load Board. There is a unrecognized symbol in BOARD section.\n";
 					return false;
 				}
 			}
@@ -130,7 +130,7 @@ bool Minishogi::Initialize(const string* str) {
 				m_hashcode2 ^= Zobrist::table2[index][num];
 			}
 			else if (num != 0) {
-				cout << "Error : Fail to Load Board. There is a unrecognized symbol (hand).\n";
+				cout << "Error : Fail to Load Board. There is a unrecognized symbol in HAND section.\n";
 				return false;
 			}
 		}
@@ -483,6 +483,7 @@ void Minishogi::PrintChessBoard() const {
 }
 
 void Minishogi::PrintNoncolorBoard(ostream &os) const {
+	os << (GetTurn() ? "-" : "+") << "\n";
 	for (int i = 0; i < BOARD_SIZE; i++) {
 		if (board[i] == BLANK)
 			os << " ． ";
@@ -505,21 +506,16 @@ void Minishogi::PrintNoncolorBoard(ostream &os) const {
 	os << (m_turn ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
 }
 
-bool Minishogi::SaveBoard(string filename, string comment) const {
-	string filepath = BOARD_PATH + filename;
-	fstream file(filepath, ios::out | ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(BOARD_PATH), NULL);
-		file.open(filepath, ios::out | ios::app);
-	}
+bool Minishogi::SaveBoard(string filename) const {
+	fstream file(BOARD_PATH + filename, ios::app);
 	if (file) {
-		file << "+" << comment << endl;
+		file << (GetTurn() ? "-" : "+") << "Step : " << to_string(GetStep()) << "\n";
 		PrintNoncolorBoard(file);
 		file.close();
-		cout << "Success Save Minishogi to " << filepath << endl;
+		cout << "Succeed to Save Board.\n";
 		return true;
-	}
-	cout << "Fail Save Minishogi to " << filepath << endl;
+	} 
+	cout << "Error : Fail to Save Board.\n";
 	return false;
 }
 
@@ -530,6 +526,11 @@ bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 		string boardStr[8];
 		file.seekg(offset, ios::beg);
 		for (int i = 0; i < 8; i++) {
+			if (file.eof()) {
+				cout << "Error : Fail to Load Board. It's eof.\n";
+				file.close();
+				return false;
+			}
 			file.getline(str, 128);
 			boardStr[i] = str;
 		}
@@ -542,104 +543,15 @@ bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 	}
 	cout << "Error : Fail to Load Board. Cannot find file.\n";
 	return false;
-
-	/*fstream file(BOARD_PATH + filename, ios::in);
-	if (file) {
-		char str[128], chessStr[5] = "    ";
-		int index = 0;
-		file.seekg(offset, ios::beg);
-		file.getline(str, 128);
-		if (file.eof() || str[0] == '\0') {
-			cout << "Error : Fail to Load Board. It's eof.\n";
-			return false;
-		}
-		memset(occupied, BLANK, 2 * sizeof(Bitboard));
-		memset(bitboard, BLANK, 32 * sizeof(Bitboard));
-		memset(board, BLANK, TOTAL_BOARD_SIZE * sizeof(int));
-		if (str[0] == '+') {
-			m_turn = 0; // 先手是白
-		}
-		else if(str[0] == '-') {
-			m_turn = 1; // 先手是黑
-		}
-		else {
-			cout << "Error : Fail to Load Board. There is a unrecognized symbol (turn).\n";
-			return false;
-		}
-		m_evaluate = 0;
-		m_step = 0;
-		m_hashcode = 0;
-		m_hashcode2 = 0;
-
-		for (int i = 0; i < 5; i++) {
-			file.getline(str, 128);
-			for (int j = 0; j < 5; j++, index++) {
-				strncpy(chessStr, str + 4 * j, 4);
-				for (int chess = 0; chess < CHESSCOUNT; chess++) {
-					if (strcmp(SAVE_CHESS_WORD[chess], chessStr) == 0) {
-						if (chess != 0) {
-							board[index] = chess;
-							bitboard[chess] |= 1 << index;
-							occupied[chess > BLACKCHESS] |= 1 << index;
-							m_evaluate += CHESS_SCORE[chess];
-							m_hashcode ^= Zobrist::table[index][chess];
-							m_hashcode2 ^= Zobrist::table2[index][chess];
-						}
-						break;
-					}
-					if (chess == CHESSCOUNT - 1) {
-						cout << "Error : Fail to Load Board. There is a unrecognized symbol (board).\n";
-						return false;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < 2; i++) {
-			file.getline(str, 128);
-			for (int j = 0; j < 5; j++, index++) {
-				int num = str[2 + 3 * j] - '0';
-				if (num == 1 || num == 2) {
-					board[index] = num;
-					m_evaluate += HAND_SCORE[index] * num;
-					m_hashcode ^= Zobrist::table[index][num];
-					m_hashcode2 ^= Zobrist::table2[index][num];
-				}
-				else if (num != 0) {
-					cout << "Error : Fail to Load Board. There is a unrecognized symbol (hand).\n";
-					return false;
-				}
-			}
-		}
-		recordZobrist[0] = m_hashcode;
-		recordZobrist2[0] = m_hashcode2;
-		offset = file.tellg();
-		file.close();
-		return true;
-	}
-	cout << "Error : Fail to Load Board. Cannot find file.\n";
-	return false;*/
 }
 
-bool Minishogi::SaveKifu(string filename) const {
-	string filepath = KIFU_PATH + filename;
-	fstream file(filepath, ios::out | ios::app);
-	if (!file) {
-		CreateDirectory(CA2W(KIFU_PATH), NULL);
-		file.open(filepath, ios::out | ios::app);
+void Minishogi::PrintKifu(ostream &os) const {
+	os << "Kifu hash : " << setw(8) << hex << GetKifuHash() << "\n";
+	os << "Initboard : " << setw(18) << hex << recordZobrist[0] << dec << "\n";
+	for (int i = 0; i < m_step; i++) {
+		os << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
+		os << recordAction[i] << setw(18) << hex << recordZobrist[i + 1] << dec << "\n";
 	}
-	if (file) {
-		file << "Kifu hash : " << setw(8) << hex << GetKifuHash() << "\n";
-		file << "Initboard : " << setw(18) << hex << recordZobrist[0] << dec << "\n";
-		for (int i = 0; i < m_step; i++) {
-			file << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
-			file << recordAction[i] << setw(18) << hex << recordZobrist[i + 1] << dec << "\n";
-		}
-		file.close();
-		cout << "Success Save Kifu to " << filepath << endl;
-		return true;
-	}
-	cout << "Fail Save Kifu to " << filepath << endl;
-	return false;
 }
 
 bool Minishogi::IsGameOver() {

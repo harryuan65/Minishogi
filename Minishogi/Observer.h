@@ -25,12 +25,8 @@ namespace Observer {
 
 	enum Winner {
 		PLAYER1,
-		PLAYER2,
-		DRAW
+		PLAYER2
 	};
-
-	static const char WINNER_STR[3][9] = { "Player1", "Player2", "Draw" };
-	static const char WINNER_SIGN[3] = { '+', '-', '*'};
 
 	// 單一盤面搜尋結果
 	extern unsigned long long data[DataType::COUNT];
@@ -73,9 +69,9 @@ namespace Observer {
 			game_data[i] = 0;
 	}
 
-	inline void GameOver(Winner _winner, unsigned __int64 _initHash, unsigned int _kifuHash, bool isSwap) {
+	inline void GameOver(bool _winner, bool isSwap, unsigned __int64 _initHash, unsigned int _kifuHash) {
 		gameNum++;
-		winner = _winner;
+		winner = (Winner)(_winner != isSwap);
 		kifuHash = _kifuHash;
 		if (winner == PLAYER1)
 			player1WinNum++;
@@ -114,9 +110,9 @@ namespace Observer {
 	inline void PrintGameReport(ostream &os) {
 		os << "Game" << setw(3) << gameNum - 1 << "\n";
 		os << "Game Result :\n";
-		os << " Winner                  : " << setw(10) << WINNER_STR[(int)winner] << "\n";
+		os << " Winner                  : " << setw(10) << (winner ? "Player2" : "Player1") << "\n";
 		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
-		os << " Search depths           : " << setw(10) << depth << "\n";
+		os << " Search depths           : " << setw(10) << DEPTH << "\n";
 		os << " Search nums             : " << setw(10) << game_data[DataType::searchNum] << "\n";
 
 		if (game_data[DataType::searchNum] != 0) {
@@ -138,12 +134,9 @@ namespace Observer {
 
 	inline void PrintTotalReport(ostream &os) {
 		if (gameNum == 0) return;
-		os << "Total Result :\n";
-		os << " Game play nums          : " << setw(10) << gameNum << "\n";
-		os << " Player 1 win nums       : " << setw(10) << player1WinNum << "\n";
-		os << " Player 2 win nums       : " << setw(10) << player2WinNum << "\n";
+		os << "Game Result :\n";
+		os << " Search depths           : " << setw(10) << DEPTH << "\n";
 		os << " Search nums             : " << setw(10) << total_data[DataType::searchNum] << "\n";
-
 		if (total_data[DataType::searchNum] != 0) {
 			os << setiosflags(ios::fixed) << setprecision(2);
 			os << "Average Report (per search) :\n";
@@ -161,18 +154,23 @@ namespace Observer {
 		os << endl;
 	}
 
-	inline void PrintWinnerTable(ostream &os) {
+	inline void PrintWinnerReport(ostream &os) {
 		if (gameNum == 0) return;
-		os << "Winner Table :\n";
-		os << "Game |    Init Borad    | A | B\n";
+		os << "Total Result :\n";
+		os << " Game play nums          : " << setw(10) << gameNum << "\n";
+		os << " Player 1 win nums       : " << setw(10) << player1WinNum << "\n";
+		os << " Player 2 win nums       : " << setw(10) << player2WinNum << "\n";
+		os << "Game |    Init Borad    | A | B | Game\n";
 		for (int i = 0; i < winnerTable1.size(); i++) {
-			os << setw(4) << i << " | " << hex << setw(8) << initHash[i] << dec << " | ";
-			os << WINNER_SIGN[(int)winnerTable1[i]] << " | ";
+			os << setw(4) << i << " | " << hex << setw(16) << initHash[i] << dec << " | ";
+			os << (winnerTable1[i] ? "-" : "+") << " | ";
 			if (i < winnerTable2.size()) {
-				os << WINNER_SIGN[winnerTable2[i]];
+				os << (winnerTable2[i] ? "-" : "+") << " | ";
+				os << setw(4) << i + winnerTable1.size();
 			}
 			os << "\n";
 		}
+		os << endl;
 	}
 }
 #endif

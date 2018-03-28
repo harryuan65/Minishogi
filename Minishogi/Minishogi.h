@@ -12,11 +12,9 @@
 #include "Action.h"
 #include "Bitboard.h"
 #include "Chess.h"
-#include "Observer.h"
 #include "Zobrist.h"
 
-#define BOARD_PATH   "board//"
-#define KIFU_PATH    "output//"
+#define BOARD_PATH        "board//"
 
 class Minishogi {
 private:
@@ -27,10 +25,10 @@ private:
 	Zobrist::Zobrist m_hashcode;
 	Zobrist::Zobrist m_hashcode2;
 	// recordZobrist[0] 經過DoMove(recordAction[0]) 變成recordZobrist[1]
-	Action recordAction[120];
-	Zobrist::Zobrist recordZobrist[121];
-	Zobrist::Zobrist recordZobrist2[121];
-	bool checkstate[121];
+	Action recordAction[1000];
+	Zobrist::Zobrist recordZobrist[1001];
+	Zobrist::Zobrist recordZobrist2[1001];
+	bool checkstate[1001];
 
 public:
 	static const int BOARD_SIZE = 25;
@@ -58,14 +56,14 @@ public:
 
 	void PrintChessBoard() const;
 	void PrintNoncolorBoard(ostream &os) const;
-    bool SaveBoard(string filename, string comment) const;
 	/*
 	第一行 +代表白方先 -代表黑方先
 	第二~六行 5*5的棋盤 旗子符號請見Chess.h的SAVE_CHESS_WORD
 	第七~八行 ▼0步0銀0金0角0飛 △0步0銀0金0角0飛
 	*/
+	bool SaveBoard(string filename) const;
     bool LoadBoard(string filename, streamoff &offset);
-	bool SaveKifu(string filename) const;
+	void PrintKifu(ostream &os) const;
 
 	bool IsGameOver();
 	bool IsLegelAction(Action action);

@@ -2,6 +2,7 @@
 #define _AI_
 
 #include "Minishogi.h"
+#include "Observer.h"
 //#define BEST_ENDGAME_SEARCH
 //#define DOUBLETP
 //#define TRANSPOSITION_DISABLE

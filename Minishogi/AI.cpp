@@ -4,8 +4,8 @@ static Action** actionList = nullptr;
 
 /*    Negascout Algorithm    */
 void InitializeNS() {
-	actionList = new Action*[Observer::depth];
-	for (int i = 1; i <= Observer::depth; i++) {
+	actionList = new Action*[Observer::DEPTH];
+	for (int i = 1; i <= Observer::DEPTH; i++) {
 		actionList[i] = new Action[Minishogi::SINGLE_GENE_MAX_ACTIONS];
 	}
 }
@@ -31,7 +31,7 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 #ifdef BEST_ENDGAME_SEARCH
 	int bestScore = -SHRT_MAX, n = beta, cnt;  //只要比最小的-CHECKMATE - ((Observer::depth - 1) << 2)小就好
 #else
-	int bestScore = -SHRT_MAX, n = beta, cnt; //=alpha(CHECKMATE)最好
+	int bestScore = -CHECKMATE, n = beta, cnt; //=alpha(CHECKMATE)最好
 #endif
 	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
 
@@ -41,8 +41,9 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 	}
 
 	if (depth == 0) {
-		//Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
-		return minishogi.GetEvaluate();//QuiescenceSearch(minishogi, alpha, beta);
+		Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
+		//return minishogi.GetEvaluate();
+		return QuiescenceSearch(minishogi, alpha, beta);
 	}
 
 	Action *moveList = actionList[depth];
@@ -105,7 +106,6 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 #endif
 	}
 	UpdateTP(zobrist, minishogi.GetTurn(), depth, alpha, beta, bestScore);
-	//Observer::data[Observer::DataType::scoutSearchBranch] += searchCnt;
 	return bestScore;
 }
 
@@ -113,12 +113,19 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 	Observer::data[Observer::DataType::totalNode]++;
 	Observer::data[Observer::DataType::quiesNode]++;
 
-	//int bestScore = minishogi.Evaluate();
-	//if (bestScore >= beta) return bestScore;
+	int bestScore = minishogi.GetEvaluate();
+	if (bestScore >= beta)
+		return bestScore;
 
-	int bestScore = -CHECKMATE;
+	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
+	if (ReadTP(zobrist, minishogi.GetTurn(), 0, alpha, beta, bestScore)) {
+		Observer::data[Observer::DataType::ios_read] += minishogi.IsIsomorphic();
+		return bestScore;
+	}
+
 	int n = beta;
-	int accCnt = 0;
+	bool isLose = true;
+	bool isChecked = minishogi.IsChecked();
 
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
@@ -135,17 +142,20 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 			minishogi.HandGenerator(moveList, cnt);
 			break;
 		}
-		accCnt += cnt;
 
 		for (int j = 0; j < cnt; ++j) {
-			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)
-				/*|| !我是否被將軍 || !動完是否將軍對方(moveList[j]) || !(i == 0 && SEE >= 0)*/) {
-				accCnt--;
+			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)) {
 				continue;
 			}
+			isLose = false;
 
 			/* Search Depth */
 			minishogi.DoMove(moveList[j]);
+			if (!isChecked || (i == 0 && SEE(minishogi, moveList[j].dstIndex) <= 0)) {
+				minishogi.UndoMove();
+				continue;
+			}
+
 			int score = -QuiescenceSearch(minishogi, -n, -max(alpha, bestScore));
 			if (score > bestScore) {
 				if (score >= beta || n == beta)
@@ -155,26 +165,13 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 			}
 			minishogi.UndoMove();
 			if (bestScore >= beta) {
-				return bestScore; // cut off
+				return bestScore;
 			}
 			n = max(alpha, bestScore) + 1; // set up a null window
 		}
 	}
-	/*U32 cnt = 0;
-	AttackGenerator(minishogi, moveList, cnt);
-	for (U32 i = 0; i < cnt; i++) {
-	minishogi.DoMove(moveList[i]);
-	int score = -QuiescenceSearch(minishogi, -n, -max(alpha, bestScore), 1 - turn);
-	if (score > bestScore)
-	bestScore = ((n == beta) || (score >= beta)) ? score : \
-	- QuiescenceSearch(minishogi, -beta, -score + 1, 1 - turn);
-	minishogi.UndoMove();
-	if (bestScore >= beta) {
-	return bestScore; // cut off
-	}
-	n = max(alpha, bestScore) + 1; // set up a null window
-	}*/
-	if (!accCnt) return -CHECKMATE;
+	if (isLose)
+		return -CHECKMATE;
 	return bestScore;
 }
 

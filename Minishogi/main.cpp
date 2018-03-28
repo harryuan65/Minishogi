@@ -7,11 +7,13 @@
 #include <sstream>
 
 #include "Minishogi.h"
+#include "Observer.h"
 #include "AI.h"
+#include "FileMapping.h"
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_DISCRIPTION    ""
+#define AI_DISCRIPTION    "AI"
 using namespace std;
 
 enum PlayerType {
@@ -26,7 +28,6 @@ int AI_DoMove(Minishogi &board, Action &action);
 string GetCurrentTimeString();
 string GetAIVersion();
 bool GetOpenFileNameString(string& out);
-void SendMessageByHWND(const HWND hwnd, const string message);
 
 int main(int argc, char **argv) {
 	Minishogi minishogi;
@@ -37,33 +38,29 @@ int main(int argc, char **argv) {
 	int gameMode;
 	bool isCustomBoard = false;
 	bool isSwap = false;
-	HWND opponentHWND = 0;
-	Observer::Winner winner;
 
+	FileMapping fileMapping("DoMove");
 	fstream file;
 	streamoff readBoardOffset = 0;
 	string aiVersion;
 	string gameDirStr;
 	string currTimeStr;
 	string playDetailStr;
-	string kifuStr;
 
 	/*    遊戲設定     */
 	aiVersion = GetAIVersion();
 	cout << "AI Version : " << aiVersion << endl;
-	if (argc == 7) {
-		// argv[7] = 遊戲路徑 HWND 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
+	if (argc == 6) {
+		// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
 		gameMode = 5;
-		opponentHWND = (HWND)atoi(argv[1]);
-		currTimeStr = argv[2];
-		SendMessageByHWND(opponentHWND, to_string((int)GetConsoleWindow()));
+		currTimeStr = argv[1];
 		playerType[0] = PlayerType::OtherAI;
 		playerType[1] = PlayerType::AI;
-		playerName[0] = argv[3];
+		playerName[0] = argv[2];
 		playerName[1] = aiVersion;
-		Observer::DEPTH = atoi(argv[4]);
-		isCustomBoard = argv[5][0] != '0';
-		Observer::isSaveRecord = argv[6][0] != '0';
+		Observer::DEPTH = atoi(argv[3]);
+		isCustomBoard = argv[4][0] != '0';
+		Observer::isSaveRecord = argv[5][0] != '0';
 	}
 	else {
 		currTimeStr = GetCurrentTimeString();
@@ -130,18 +127,14 @@ int main(int argc, char **argv) {
 		cout << "確定要開始? ";
 		system("pause");
 		if (gameMode == 4) {
-			cout << "等待對方程式回應...";
-			// argv[7] = 遊戲路徑 HWND 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
+			cout << "等待對方程式回應...\n";
+			// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
 			system(("start \"\" \"" + gameDirStr + "\" " +
-				to_string((int)GetConsoleWindow()) + " " +
 				currTimeStr + " " +
 				"\"" + aiVersion + "\" " +
 				to_string(Observer::DEPTH) + " " +
 				to_string(isCustomBoard) + " " +
 				to_string(Observer::isSaveRecord)).c_str());
-			int bufHWND;
-			cin >> bufHWND;
-			opponentHWND = (HWND)bufHWND;
 		}
 	}
 	CreateDirectory(CA2W(REPORT_PATH), NULL);
@@ -174,7 +167,6 @@ int main(int argc, char **argv) {
 		}
 		cout << "---------- Game " << Observer::gameNum << " ----------\n";
 		playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
-		kifuStr = currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
 		if (Observer::isSaveRecord && gameMode != 4) {
 			file.open(playDetailStr, ios::app);
 			if (file) {
@@ -183,21 +175,13 @@ int main(int argc, char **argv) {
 				file.close();
 			}
 			else cout << "Error : Fail to Save PlayDetail Title.\n";
-			file.open(KIFU_PATH + kifuStr, ios::app);
-			if (file) {
-				file << "#▼ : " << playerName[1] << "\n";
-				file << "#△ : " << playerName[0] << "\n";
-				file.close();
-			}
-			else cout << "Error : Fail to Save Kifu Title.\n";
 		}
 		CleanTP();
 
 		/*    遊戲開始    */
 		Observer::GameStart();
 		while (true) {
-			int eval, inputAction;
-			string* actionU32;
+			int eval = 0;
 			cout << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 			minishogi.PrintChessBoard();
 
@@ -213,12 +197,6 @@ int main(int argc, char **argv) {
 						file.close();
 					}
 					else cout << "Error : Fail to Save PlayDetail.\n";
-				}
-				if (minishogi.GetTurn() == isSwap) {
-					winner = Observer::PLAYER1;
-				}
-				else {
-					winner = Observer::PLAYER2;
 				}
 				break;
 			}
@@ -236,14 +214,17 @@ int main(int argc, char **argv) {
 				cout << "Leaf Eval : " << eval << "\n";
 				//PrintPV(cout, minishogi, Observer::depth);
 				Observer::PrintSearchReport(cout);
-				action.srcChess = 0;
-				action.dstChess = 0;
-				SendMessageByHWND(opponentHWND, to_string(action.ToU32()));
-
+				if (playerType[!minishogi.GetTurn()] == OtherAI) {
+					action.srcChess = 0;
+					action.dstChess = 0;
+					U32 actionU32 = action.ToU32();
+					fileMapping.SendMsg(&actionU32, sizeof(U32));
+				}
 				break;
 			case OtherAI:
-				cin >> inputAction;
-				action.SetU32(inputAction);
+				U32 actionU32;
+				fileMapping.RecvMsg(&actionU32, sizeof(U32));
+				action.SetU32(actionU32);
 				cout << "Action : " << action << "\n";
 				break;
 			}
@@ -265,42 +246,40 @@ int main(int argc, char **argv) {
 
 			if (action.mode == Action::SURRENDER) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << "投降! I'm lose\n";
-				if (minishogi.GetTurn() == isSwap) {
-					winner = Observer::PLAYER1;
-				}
-				else {
-					winner = Observer::PLAYER2;
-				}
 				break;
 			}
 			else if (action.mode == Action::UNDO) {
 				if (minishogi.GetStep() >= 2) {
 					minishogi.UndoMove();
 					minishogi.UndoMove();
-					cout << "Success Undo!\n";
+					cout << "Succeed to Undo!\n";
 				}
 				else {
 					cout << "Error : Cannot Undo!\n";
 				}
 			}
 			else if (action.mode == Action::SAVEBOARD) {
-				minishogi.SaveBoard(GetCurrentTimeString() + "_Kifu", "");
+				minishogi.SaveBoard(GetCurrentTimeString() + "_SaveBoard.txt");
 			}
 			else {
 				minishogi.DoMove(action);
 			}
-			if (minishogi.GetStep() == 100) {
-				cout << "千日手! Draw!\n";
-				winner = Observer::DRAW;
-				break;
-			}
 		}
 		/*    遊戲結束    */
-		Observer::GameOver(winner, minishogi.GetInitZobristHash(), minishogi.GetKifuHash(), isSwap);
+		Observer::GameOver(!minishogi.GetTurn(), isSwap, minishogi.GetInitZobristHash(), minishogi.GetKifuHash());
 		cout << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
 		Observer::PrintGameReport(cout);
 
 		if (Observer::isSaveRecord) {
+			if (gameMode == 5) {
+				char msg[20];
+				fileMapping.RecvMsg(msg, 20);
+				if (strcmp("Save Report", msg)) {
+					cout << "Error : 不同步啦\n";
+					system("pause");
+				}
+			}
+			// Save PlayDetail
 			file.open(playDetailStr, ios::app);
 			if (file) {
 				file << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
@@ -309,24 +288,47 @@ int main(int argc, char **argv) {
 				file.close();
 			}
 			else cout << "Error : Fail to Save PlayDetail.\n";
-			minishogi.SaveKifu(kifuStr);
-			if (gameMode != 5)
-				file.open(REPORT_PATH + currTimeStr + "_AIReport_AI1.txt", ios::out);
-			else
-				file.open(REPORT_PATH + currTimeStr + "_AIReport_AI2.txt", ios::out);
-			if (file) {
-				file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << aiVersion << "\n";
-				file << "Start at : " << currTimeStr << "\nEnd at   : " << GetCurrentTimeString() << "\n\n";
-				Observer::PrintTotalReport(file);
-				Observer::PrintWinnerTable(file);
-				file.close();
+			// Save Kifu
+			if (gameMode != 4) {
+				file.open(REPORT_PATH + currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt",
+					ios::app);
+				if (file) {
+					file << "#▼ : " << playerName[1] << "\n";
+					file << "#△ : " << playerName[0] << "\n";
+					minishogi.PrintKifu(file);
+					file.close();
+				}
+				else cout << "Error : Fail to Save Kifu Title.\n";
 			}
-			else cout << "Error : Fail to Save AI Report.\n";
+			// Save AIReport
+			if (gameMode != 5) {
+				file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::out);
+				if (file) {
+					file << "Start at : " << currTimeStr << "\nEnd at   : " << GetCurrentTimeString() << "\n\n";
+					Observer::PrintWinnerReport(file);
+					file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << aiVersion << "\n";
+					Observer::PrintTotalReport(file);
+					file.close();
+				}
+				else cout << "Error : Fail to Save AI Report.\n";
+			}
+			else {
+				file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::app);
+				if (file) {
+					file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << aiVersion << "\n";
+					Observer::PrintTotalReport(file);
+					file.close();
+				}
+				else cout << "Error : Fail to Save AI Report.\n";
+			}
+			if (gameMode == 4) {
+				fileMapping.SendMsg("Save Report", 13);
+			}
 		}
 	} while (isCustomBoard);
 	cout << "---------- Total Report ----------\n";
+	Observer::PrintWinnerReport(cout);
 	Observer::PrintTotalReport(cout);
-	Observer::PrintWinnerTable(cout);
 
 	cout << "\a\a\a";
     system("pause");
@@ -400,17 +402,4 @@ bool GetOpenFileNameString(string& out) {
 	bool isOK = GetOpenFileName(&ofn);
 	out.assign(CW2A(ofn.lpstrFile));
 	return isOK;
-}
-
-void SendMessageByHWND(const HWND hwnd, const string message) {
-	if (hwnd == 0) return;
-	for (int i = 0; i < message.size(); i++) {
-		if (!islower(message[i])) {
-			PostMessage(hwnd, WM_KEYDOWN, message[i], 0);
-		}
-		else {
-			PostMessage(hwnd, WM_KEYDOWN, toupper(message[i]), 0);
-		}
-	}
-	PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
 }

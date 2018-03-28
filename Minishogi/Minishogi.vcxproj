@@ -152,6 +152,7 @@
     <ClInclude Include="Action.h" />
     <ClInclude Include="AI.h" />
     <ClInclude Include="Bitboard.h" />
+    <ClInclude Include="FileMapping.h" />
     <ClInclude Include="Minishogi.h" />
     <ClInclude Include="Chess.h" />
     <ClInclude Include="Observer.h" />
