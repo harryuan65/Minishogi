@@ -13,7 +13,7 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_DISCRIPTION    "AI"
+#define AI_DISCRIPTION    "AI 老師的寧靜4層 最高8層"
 using namespace std;
 
 enum PlayerType {
@@ -228,7 +228,6 @@ int main(int argc, char **argv) {
 				cout << "Action : " << action << "\n";
 				break;
 			}
-			if (eval <= -CHECKMATE || CHECKMATE <= eval) Observer::depth--;
 
 			if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
 				file.open(playDetailStr, ios::app);
@@ -243,6 +242,7 @@ int main(int argc, char **argv) {
 				}
 				else cout << "Error : Fail to Save PlayDetail.\n";
 			}
+			if (eval < -CHECKMATE || CHECKMATE < eval) Observer::depth--;
 
 			if (action.mode == Action::SURRENDER) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << "投降! I'm lose\n";
@@ -372,11 +372,17 @@ string GetAIVersion() {
 #endif
 #ifdef TRANSPOSITION_DISABLE
 	str += " 無同型表";
+	return str;
 #endif
 #ifdef DOUBLETP
 	str += " 雙同型表";
 #else
 	str += " 國籍同構";
+#endif
+#ifdef QUIES_DISABLE
+	str += " 沒寧靜";
+#else
+	str += " 有寧靜";
 #endif
 	return str;
 }

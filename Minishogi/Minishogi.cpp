@@ -571,21 +571,16 @@ bool Minishogi::IsGameOver() {
 bool Minishogi::IsLegelAction(Action action) {
 	Action moveList[TOTAL_GENE_MAX_ACTIONS];
 	int cnt = 0;
-	if (((board[action.srcIndex] & BLACKCHESS) >> 4) != GetTurn()) {
-		return false;
-	}
-	else {
-		AttackGenerator(moveList, cnt);
-		MoveGenerator(moveList, cnt);
-		HandGenerator(moveList, cnt);
-		for (int i = 0; i < cnt; i++) {
-			if (action == moveList[i]) {
-				if (IsCheckAfter(action.srcIndex, action.dstIndex)) {
-					cout << "Error : You have been checked." << endl;
-					return false;
-				}
-				return true;
+	AttackGenerator(moveList, cnt);
+	MoveGenerator(moveList, cnt);
+	HandGenerator(moveList, cnt);
+	for (int i = 0; i < cnt; i++) {
+		if (action == moveList[i]) {
+			if (IsCheckAfter(action.srcIndex, action.dstIndex)) {
+				cout << "Error : You have been checked." << endl;
+				return false;
 			}
+			return true;
 		}
 	}
 	return false;

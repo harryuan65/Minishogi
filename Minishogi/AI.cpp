@@ -4,7 +4,7 @@ static Action** actionList = nullptr;
 
 /*    Negascout Algorithm    */
 void InitializeNS() {
-	actionList = new Action*[Observer::DEPTH];
+	actionList = new Action*[Observer::DEPTH + 1];
 	for (int i = 1; i <= Observer::DEPTH; i++) {
 		actionList[i] = new Action[Minishogi::SINGLE_GENE_MAX_ACTIONS];
 	}
@@ -41,9 +41,11 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 	}
 
 	if (depth == 0) {
-		Observer::data[Observer::DataType::totalNode]--; //不然會重複計數
-		//return minishogi.GetEvaluate();
-		return QuiescenceSearch(minishogi, alpha, beta);
+#ifdef QUIES_DISABLE
+		return minishogi.GetEvaluate();
+#else
+		return QuiescenceSearch(minishogi, alpha, beta, Observer::QUIE_DEPTH, 0);
+#endif
 	}
 
 	Action *moveList = actionList[depth];
@@ -109,24 +111,21 @@ int NegaScout(Minishogi &minishogi, Action &bestAction, int alpha, int beta, int
 	return bestScore;
 }
 
-int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
-	Observer::data[Observer::DataType::totalNode]++;
+int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta, int depth, int totalDepth) {
 	Observer::data[Observer::DataType::quiesNode]++;
 
-	int bestScore = minishogi.GetEvaluate();
-	if (bestScore >= beta)
-		return bestScore;
-
+	int bestScore = -CHECKMATE;
 	Zobrist::Zobrist zobrist = minishogi.GetZobristHash();
-	if (ReadTP(zobrist, minishogi.GetTurn(), 0, alpha, beta, bestScore)) {
+	if (ReadQTP(zobrist, minishogi.GetTurn(), totalDepth, alpha, beta, bestScore)) {
 		Observer::data[Observer::DataType::ios_read] += minishogi.IsIsomorphic();
 		return bestScore;
 	}
+	if (depth == 0 || totalDepth >= Observer::MAX_QUIE_DEPTH) {
+		return minishogi.GetEvaluate();
+	}
 
-	int n = beta;
-	bool isLose = true;
+	bool isLose = true, isQuiePos = true;
 	bool isChecked = minishogi.IsChecked();
-
 	/* 分三個步驟搜尋 [攻擊 移動 打入] */
 	for (int i = 0; i < 3; i++) {
 		Action moveList[Minishogi::SINGLE_GENE_MAX_ACTIONS];
@@ -143,35 +142,46 @@ int QuiescenceSearch(Minishogi& minishogi, int alpha, int beta) {
 			break;
 		}
 
-		for (int j = 0; j < cnt; ++j) {
+		for (int j = 0; j < cnt; j++) {
 			if (minishogi.IsCheckAfter(moveList[j].srcIndex, moveList[j].dstIndex)) {
 				continue;
 			}
 			isLose = false;
-
-			/* Search Depth */
+			//SEE(minishogi, moveList[j].dstIndex);
+			int eatenChessValue = CHESS_SCORE[minishogi.board[moveList[j].dstIndex]];
 			minishogi.DoMove(moveList[j]);
-			if (!isChecked || (i == 0 && SEE(minishogi, moveList[j].dstIndex) <= 0)) {
+			if (isChecked || minishogi.IsChecked()) { // 如果是將軍或解將
+				if (eatenChessValue - SEE(minishogi, moveList[j].dstIndex) < 0){
+					minishogi.UndoMove();
+					continue;
+				}
+			}
+			else if (i == 0) { // 如果是攻擊
+				if (eatenChessValue - SEE(minishogi, moveList[j].dstIndex) <= 0) {
+					minishogi.UndoMove();
+					continue;
+				}
+			}
+			else {
 				minishogi.UndoMove();
 				continue;
 			}
+			isQuiePos = false;
 
-			int score = -QuiescenceSearch(minishogi, -n, -max(alpha, bestScore));
-			if (score > bestScore) {
-				if (score >= beta || n == beta)
-					bestScore = score;
-				else
-					bestScore = -QuiescenceSearch(minishogi, -beta, -score + 1);
-			}
+			int score = -QuiescenceSearch(minishogi, -beta, -max(bestScore, alpha), i == 0 ? Observer::QUIE_DEPTH : depth - 1, totalDepth + 1);
+			bestScore = max(bestScore, score);
 			minishogi.UndoMove();
 			if (bestScore >= beta) {
+				UpdateQTP(zobrist, minishogi.GetTurn(), totalDepth, alpha, beta, bestScore);
 				return bestScore;
 			}
-			n = max(alpha, bestScore) + 1; // set up a null window
 		}
 	}
 	if (isLose)
-		return -CHECKMATE;
+		bestScore = -CHECKMATE;
+	else if (isQuiePos)
+		bestScore = minishogi.GetEvaluate();
+	UpdateQTP(zobrist, minishogi.GetTurn(), totalDepth, alpha, beta, bestScore);
 	return bestScore;
 }
 
@@ -318,9 +328,11 @@ inline void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, i
 }
 #else
 static TransPosition* transpositTable = nullptr;
+static TransPosition* QtranspositTable = nullptr;
 void InitializeTP() {
 #ifndef TRANSPOSITION_DISABLE
 	transpositTable = new TransPosition[TPSize];
+	QtranspositTable = new TransPosition[TPSize];
 	CleanTP();
 	//TODO : DEBUG
 	/*delete[] transpositTable;
@@ -340,6 +352,7 @@ void CleanTP() {
 		return;
 	for (int i = 0; i < TPSize; i++) {
 		transpositTable[i].zobrist = 0;
+		QtranspositTable[i].zobrist = 0;
 	}
 #else
 	cout << "TransPosition Table disable.\n";
@@ -384,8 +397,8 @@ void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta
 #ifndef TRANSPOSITION_DISABLE
 	U64 index = ZobristToIndex(zobrist);
 
-	//if (transpositTable[index].zobrist == (zobrist >> 32) && transpositTable[index].depth > depth)
-	//	return;
+	if (transpositTable[index].zobrist == (zobrist >> 32) && transpositTable[index].depth > depth)
+		return;
 	transpositTable[index].zobrist = zobrist >> 32;
 	transpositTable[index].value = value;
 	transpositTable[index].depth = depth;
@@ -398,6 +411,59 @@ void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta
 	}
 	else {
 		transpositTable[index].state = TransPosition::Exact;
+	}
+#endif
+}
+
+bool ReadQTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value) {
+#ifndef TRANSPOSITION_DISABLE
+	U64 index = ZobristToIndex(zobrist);
+	TransPosition *tp = &transpositTable[index];
+	if (tp->zobrist != zobrist >> 32) {
+		tp = &QtranspositTable[index];
+		if (tp->zobrist != zobrist >> 32 || tp->depth < depth) {
+			return false;
+		}
+	}
+
+	switch (tp->state) {
+	case TransPosition::Exact:
+		value = tp->value;
+		return true;
+	case TransPosition::Unknown:
+		beta = min(tp->value, beta);
+		break;
+	case TransPosition::FailHigh:
+		alpha = max(tp->value, alpha);
+		break;
+	}
+	if (alpha >= beta) {
+		value = tp->value;
+		return true;
+	}
+	return false;
+#else
+	return false;
+#endif
+}
+
+void UpdateQTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value) {
+#ifndef TRANSPOSITION_DISABLE
+	U64 index = ZobristToIndex(zobrist);
+
+	if (transpositTable[index].zobrist == (zobrist >> 32) && transpositTable[index].depth > depth)
+		return;
+	QtranspositTable[index].zobrist = zobrist >> 32;
+	QtranspositTable[index].value = value;
+	QtranspositTable[index].depth = depth;
+	if (value < alpha) {
+		QtranspositTable[index].state = TransPosition::Unknown;
+	}
+	else if (value >= beta) {
+		QtranspositTable[index].state = TransPosition::FailHigh;
+	}
+	else {
+		QtranspositTable[index].state = TransPosition::Exact;
 	}
 #endif
 }

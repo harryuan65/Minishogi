@@ -49,6 +49,8 @@ namespace Observer {
 	// ³]©w
 	extern int DEPTH;
 	extern int depth;
+	extern int QUIE_DEPTH;
+	extern int MAX_QUIE_DEPTH;
 	extern bool isSaveRecord;
 
 	inline void StartSearching() {
@@ -93,6 +95,8 @@ namespace Observer {
 		if (data[DataType::scoutGeneNums] == 0) data[DataType::scoutGeneNums] = 1;
 		os << setiosflags(ios::fixed) << setprecision(2);
 		os << "Search Report :\n";
+		os << " Search Deapth           : " << setw(10) << depth << "\n";
+		os << " Quies Deapth            : " << setw(10) << QUIE_DEPTH << "\n";
 		os << " Total search nodes      : " << setw(10) << data[DataType::totalNode] << "\n";
 		os << " Research nodes          : " << setw(10) << data[DataType::researchNode] << "\n";
 		os << " Quies search nodes      : " << setw(10) << data[DataType::quiesNode] << "\n";

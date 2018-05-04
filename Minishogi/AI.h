@@ -3,9 +3,10 @@
 
 #include "Minishogi.h"
 #include "Observer.h"
-//#define BEST_ENDGAME_SEARCH
+#define BEST_ENDGAME_SEARCH
 //#define DOUBLETP
 //#define TRANSPOSITION_DISABLE
+//#define QUIES_DISABLE
 
 typedef unsigned __int64 U64;
 typedef unsigned __int32 U32;
@@ -14,7 +15,7 @@ typedef unsigned __int32 U32;
 void InitializeNS();
 int IDAS(Minishogi& board, Action &bestAction);
 int NegaScout(Minishogi& board, Action &bestAction, int alpha, int beta, int depth, bool isResearch, bool isTop);
-int QuiescenceSearch(Minishogi& board, int alpha, int beta);
+int QuiescenceSearch(Minishogi& board, int alpha, int beta, int depth, int totalDepth);
 int SEE(const Minishogi &board, int dstIndex);
 
 /*    TransPosition Table    */ 
@@ -44,6 +45,8 @@ void InitializeTP();
 void CleanTP();
 bool ReadTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value);
 void UpdateTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value);
+bool ReadQTP(Zobrist::Zobrist zobrist, int turn, int depth, int& alpha, int& beta, int& value);
+void UpdateQTP(Zobrist::Zobrist zobrist, int turn, int depth, int alpha, int beta, int value);
 void PrintPV(ostream &os, Minishogi &board, int depth);
 
 /*    History Heuristic    */
