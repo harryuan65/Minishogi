@@ -1,10 +1,9 @@
-#ifndef _ACTION_
-#define _ACTION_
+#ifndef _MOVE_
+#define _MOVE_
 #include <iostream>
 #include <string>
-using namespace std;
-
-struct Action {
+/*
+struct Move {
 	int srcIndex;
 	int dstIndex;
 	int srcChess;
@@ -18,15 +17,19 @@ struct Action {
 		ILLEGAL
 	}mode;
 
+	inline bool IsOk() const {
+		return mode == DO;
+	}
+
 	inline void Set(int si, int di, bool p) {
-		mode = Action::DO;
+		mode = Move::DO;
 		srcIndex = si;
 		dstIndex = di;
 		isPro = p;
 	}
 
 	inline unsigned __int32 ToU32() const {
-		if (mode == SURRENDER) {
+		if (!IsOk()) {
 			return 0;
 		}
 		return (isPro << 24) | (dstChess << 18) | (srcChess << 12) | (dstIndex << 6) | srcIndex;
@@ -34,17 +37,17 @@ struct Action {
 
 	inline void SetU32(unsigned __int32 u) {
 		if (u) {
-			mode = Action::DO;
+			mode = Move::DO;
 			srcIndex =  u & 0x000003f;
 			dstIndex = (u & 0x0000fc0) >> 6;
 			isPro    = (u & 0x1000000) >> 24;
 		}
 		else {
-			mode = Action::SURRENDER;
+			mode = Move::SURRENDER;
 		}
 	}
 
-	inline string ToString() const {
+	inline std::string ToString() const {
 		switch (mode) {
 		case DO:
 			return Index2Input(srcIndex) + Index2Input(dstIndex) + (isPro ? "+" : " ");
@@ -65,9 +68,9 @@ struct Action {
 		return -1;
 	}
 
-	static inline string Index2Input(int index) {
+	static inline std::string Index2Input(int index) {
 		if (0 <= index && index < 35) {
-			string str;
+			std::string str;
 			str.push_back('A' + index / 5);
 			str.push_back('5' - index % 5);
 			return str;
@@ -75,28 +78,28 @@ struct Action {
 		return "";
 	}
 
-	inline bool operator==(const Action& ra) const {
+	inline bool operator==(const Move& ra) const {
 		return mode == ra.mode && srcIndex == ra.srcIndex &&
 			dstIndex == ra.dstIndex && isPro == ra.isPro;
 	}
 
-	friend istream& operator>>(istream &is, Action& action) {
-		string str;
+	friend std::istream& operator>>(std::istream &is, Move& action) {
+		std::string str;
 		is >> str;
 		if (str == "SURRENDER" || str == "surrender") {
-			action.mode = Action::SURRENDER;
+			action.mode = Move::SURRENDER;
 		}
 		else if (str == "UNDO" || str == "undo") {
-			action.mode = Action::UNDO;
+			action.mode = Move::UNDO;
 		}
 		else if (str == "SAVEBOARD" || str == "saveboard") {
-			action.mode = Action::SAVEBOARD;
+			action.mode = Move::SAVEBOARD;
 		}
 		else if (str.length() != 4 || (str.length() == 5 && str[4] != '+')) {
-			action.mode = Action::ILLEGAL;
+			action.mode = Move::ILLEGAL;
 		}
 		else {
-			action.mode = Action::DO;
+			action.mode = Move::DO;
 			action.srcIndex = Input2Index(str[0], str[1]);
 			action.dstIndex = Input2Index(str[2], str[3]);
 			action.isPro = str.length() == 5;
@@ -104,10 +107,26 @@ struct Action {
 		return is;
 	}
 
-	friend ostream& operator<< (ostream& os, const Action& action) {
+	friend std::ostream& operator<< (std::ostream& os, const Move& action) {
 		os << action.ToString();
 		return os;
 	}
 };
 
+struct ExtMove {
+	Move move;
+	int value;
+
+	operator Move() const { return move; }
+	void operator=(Move m) { move = m; }
+
+	// Inhibit unwanted implicit conversions to Move
+	// with an ambiguity that yields to a compile error.
+	operator float() const = delete;
+};
+
+inline bool operator<(const ExtMove& f, const ExtMove& s) {
+	return f.value < s.value;
+}
+*/
 #endif

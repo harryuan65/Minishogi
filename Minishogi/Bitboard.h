@@ -1,9 +1,11 @@
 #ifndef _BITBOARD_
 #define _BITBOARD_
+#include "Types.h"
+
 typedef unsigned __int32 Bitboard;
 
 /*    Chess Move Area    */
-static const Bitboard Movement[][25] = {
+const Bitboard Movement[][BOARD_NB] = {
 	/* 0 */{ 0 },
 	/* 1 PAWN */
 	{
@@ -86,7 +88,7 @@ static const Bitboard Movement[][25] = {
 };
 
 /*    Rook Attack Area    */
-static const Bitboard ColUpper[] = {
+const Bitboard ColUpper[] = {
 	0x0108420,    0x0210840,    0x0421080,    0x0842100,    0x1084200,
 	0x0108400,    0x0210800,    0x0421000,    0x0842000,    0x1084000,
 	0x0108000,    0x0210000,    0x0420000,    0x0840000,    0x1080000,
@@ -94,7 +96,7 @@ static const Bitboard ColUpper[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000
 };
 
-static const Bitboard ColLower[] = {
+const Bitboard ColLower[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000,
 	0x0000001,    0x0000002,    0x0000004,    0x0000008,    0x0000010,
 	0x0000021,    0x0000042,    0x0000084,    0x0000108,    0x0000210,
@@ -103,7 +105,7 @@ static const Bitboard ColLower[] = {
 
 };
 
-static const Bitboard RowUpper[] = {
+const Bitboard RowUpper[] = {
 	0x000001e,    0x000001c,    0x0000018,    0x0000010,    0x0000000,
 	0x00003c0,    0x0000380,    0x0000300,    0x0000200,    0x0000000,
 	0x0007800,    0x0007000,    0x0006000,    0x0004000,    0x0000000,
@@ -111,7 +113,7 @@ static const Bitboard RowUpper[] = {
 	0x1e00000,    0x1c00000,    0x1800000,    0x1000000,    0x0000000
 };
 
-static const Bitboard RowLower[] = {
+const Bitboard RowLower[] = {
 	0x0000000,    0x0000001,    0x0000003,    0x0000007,    0x000000f,
 	0x0000000,    0x0000020,    0x0000060,    0x00000e0,    0x00001e0,
 	0x0000000,    0x0000400,    0x0000c00,    0x0001c00,    0x0003c00,
@@ -121,7 +123,7 @@ static const Bitboard RowLower[] = {
 
 /*    Bishop Attack Area    */
 // slope1 -> '/'
-static const Bitboard Slope1Upper[] = {
+const Bitboard Slope1Upper[] = {
 	0x0000000,    0x0000020,    0x0000440,    0x0008880,    0x0111100,
 	0x0000000,    0x0000400,    0x0008800,    0x0111000,    0x0222000,
 	0x0000000,    0x0008000,    0x0110000,    0x0220000,    0x0440000,
@@ -129,7 +131,7 @@ static const Bitboard Slope1Upper[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000
 };
 
-static const Bitboard Slope1Lower[] = {
+const Bitboard Slope1Lower[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000,
 	0x0000002,    0x0000004,    0x0000008,    0x0000010,    0x0000000,
 	0x0000044,    0x0000088,    0x0000110,    0x0000200,    0x0000000,
@@ -138,7 +140,7 @@ static const Bitboard Slope1Lower[] = {
 };
 
 // slope2 -> '\'
-static const Bitboard Slope2Upper[] = {
+const Bitboard Slope2Upper[] = {
 	0x1041040,    0x0082080,    0x0004100,    0x0000200,    0x0000000,
 	0x0820800,    0x1041000,    0x0082000,    0x0004000,    0x0000000,
 	0x0410000,    0x0820000,    0x1040000,    0x0080000,    0x0000000,
@@ -146,7 +148,7 @@ static const Bitboard Slope2Upper[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000
 };
 
-static const Bitboard Slope2Lower[] = {
+const Bitboard Slope2Lower[] = {
 	0x0000000,    0x0000000,    0x0000000,    0x0000000,    0x0000000,
 	0x0000000,    0x0000001,    0x0000002,    0x0000004,    0x0000008,
 	0x0000000,    0x0000020,    0x0000041,    0x0000082,    0x0000104,
@@ -156,23 +158,23 @@ static const Bitboard Slope2Lower[] = {
 
 
 /*    Bitboard Mask    */
-static const Bitboard BitboardMask = 0x1ffffff;
-static const Bitboard HighestPosMask = 0x1000000;
-static const Bitboard LowestPosMask = 0x0000001;
-static const Bitboard EnemyCampMask[] = { 0x000001f, 0x1f00000 };
+const Bitboard BitboardMask = 0x1ffffff;
+const Bitboard HighestPosMask = 0x1000000;
+const Bitboard LowestPosMask = 0x0000001;
+const Bitboard EnemyCampMask[] = { 0x000001f, 0x1f00000 };
 
-static inline Bitboard RowMask(int pos) { return RowUpper[pos] | RowLower[pos]; }
+inline Bitboard RowMask(int pos) { return RowUpper[pos] | RowLower[pos]; }
 
-static inline Bitboard ColMask(int pos) { return ColUpper[pos] | ColLower[pos]; }
+inline Bitboard ColMask(int pos) { return ColUpper[pos] | ColLower[pos]; }
 
-static inline Bitboard BlankOccupied(const Bitboard* occupied) {
-	return ~(occupied[0] | occupied[1]) & BitboardMask;
+inline Bitboard BlankOccupied(const Bitboard* occupied) {
+	return ~(occupied[WHITE] | occupied[BLACK]) & BitboardMask;
 }
 
 /*    Debrujin    */
-static const unsigned int debrujin32 = 0x7ca26eb;
+const unsigned int debrujin32 = 0x7ca26eb;
 
-static const int index32[] = {
+const int index32[] = {
 	0, 14,  1, 15,  9, 18,  2, 12,
 	16, 10, 26, 28, 19, 22,  3, 30,
 	13,  8, 17, 11, 25, 27, 21, 29,
@@ -180,18 +182,18 @@ static const int index32[] = {
 };
 
 // LSB
-static inline int BitScan(Bitboard bitboard) {
-    return index32[((bitboard ^ (bitboard - 1)) * debrujin32) >> 27];
+inline Square BitScan(Bitboard bitboard) {
+    return (Square)index32[((bitboard ^ (bitboard - 1)) * debrujin32) >> 27];
 }
 
 // MSB
-static inline int BitScanRev(Bitboard bitboard) {
+inline Square BitScanRev(Bitboard bitboard) {
 	bitboard |= bitboard >> 1;
 	bitboard |= bitboard >> 2;
 	bitboard |= bitboard >> 4;
 	bitboard |= bitboard >> 8;
 	bitboard |= bitboard >> 16;
-    return index32[(bitboard * debrujin32) >> 27];
+    return (Square)index32[(bitboard * debrujin32) >> 27];
 }
 
 #endif

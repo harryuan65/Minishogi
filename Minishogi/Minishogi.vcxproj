@@ -142,20 +142,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AI.cpp" />
     <ClCompile Include="Minishogi.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MovePick.cpp" />
     <ClCompile Include="Observer.cpp" />
+    <ClCompile Include="Search.cpp" />
+    <ClCompile Include="Transposition.cpp" />
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Action.h" />
-    <ClInclude Include="AI.h" />
     <ClInclude Include="Bitboard.h" />
     <ClInclude Include="FileMapping.h" />
     <ClInclude Include="Minishogi.h" />
     <ClInclude Include="Chess.h" />
+    <ClInclude Include="MovePick.h" />
     <ClInclude Include="Observer.h" />
+    <ClInclude Include="Search.h" />
+    <ClInclude Include="Transposition.h" />
+    <ClInclude Include="Types.h" />
     <ClInclude Include="Zobrist.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

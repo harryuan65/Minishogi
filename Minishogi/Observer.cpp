@@ -24,7 +24,5 @@ namespace Observer {
 	// ³]©w
 	int DEPTH = 10;
 	int depth = 10;
-	int QUIE_DEPTH = 4;
-	int MAX_QUIE_DEPTH = 8;
 	bool isSaveRecord = true;
 }

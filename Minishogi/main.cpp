@@ -1,15 +1,13 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
+
 #include <atlstr.h>
 #include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <sstream>
 
-#include "Minishogi.h"
-#include "Observer.h"
-#include "AI.h"
 #include "FileMapping.h"
+#include "Minishogi.h"
+#include "Search.h"
+#include "Observer.h"
+#include "Transposition.h"
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
@@ -22,8 +20,7 @@ enum PlayerType {
 	OtherAI
 };
 
-bool Human_DoMove(Minishogi &board, Action &action);
-int AI_DoMove(Minishogi &board, Action &action);
+bool Human_DoMove(Minishogi &board, Move &move);
 
 string GetCurrentTimeString();
 string GetAIVersion();
@@ -31,7 +28,7 @@ bool GetOpenFileNameString(string& out);
 
 int main(int argc, char **argv) {
 	Minishogi minishogi;
-	Action action;
+	Move move;
 
 	int playerType[2];
 	string playerName[2];
@@ -143,8 +140,8 @@ int main(int argc, char **argv) {
 	cout << "---------- Game Initialize ----------\n";
 	Zobrist::Initialize();
 	if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
-		InitializeNS();
-		InitializeTP();
+		Search::Initialize();
+		Transposition::Initialize();
 	}
 	do {
 		/*    遊戲初始化    */
@@ -176,7 +173,7 @@ int main(int argc, char **argv) {
 			}
 			else cout << "Error : Fail to Save PlayDetail Title.\n";
 		}
-		CleanTP();
+		Transposition::Clean();
 
 		/*    遊戲開始    */
 		Observer::GameStart();
@@ -187,7 +184,7 @@ int main(int argc, char **argv) {
 
 			if (minishogi.IsGameOver()) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
-				action.mode = Action::SURRENDER;
+				move = MOVE_NULL;
 				if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
 					file.open(playDetailStr, ios::app);
 					if (file) {
@@ -202,30 +199,27 @@ int main(int argc, char **argv) {
 			}
 			switch (playerType[minishogi.GetTurn()]) {
 			case Human:
-				while (!Human_DoMove(minishogi, action));
-				cout << "Action : " << action << "\n";
+				while (!Human_DoMove(minishogi, move));
+				cout << "Move : " << move << "\n";
 				break;
 			case AI:
 				Observer::StartSearching();
-				eval = AI_DoMove(minishogi, action);
+				eval = Search::IDAS(minishogi, move, nullptr); //TODO
 				Observer::EndSearching();
 
-				cout << "Action : " << action << "\n";
+				cout << "Move : " << move << "\n";
 				cout << "Leaf Eval : " << eval << "\n";
-				//PrintPV(cout, minishogi, Observer::depth);
 				Observer::PrintSearchReport(cout);
 				if (playerType[!minishogi.GetTurn()] == OtherAI) {
-					action.srcChess = 0;
-					action.dstChess = 0;
-					U32 actionU32 = action.ToU32();
-					fileMapping.SendMsg(&actionU32, sizeof(U32));
+					uint32_t actionU32 = toU32(move);
+					fileMapping.SendMsg(&actionU32, sizeof(uint32_t));
 				}
 				break;
 			case OtherAI:
-				U32 actionU32;
-				fileMapping.RecvMsg(&actionU32, sizeof(U32));
-				action.SetU32(actionU32);
-				cout << "Action : " << action << "\n";
+				uint32_t actionU32;
+				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t));
+				move = setU32(actionU32);
+				cout << "Move : " << move << "\n";
 				break;
 			}
 
@@ -234,21 +228,19 @@ int main(int argc, char **argv) {
 				if (file) {
 					file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 					minishogi.PrintNoncolorBoard(file);
-					file << "Action : " << action << "\n";
+					file << "Move : " << move << "\n";
 					file << "Leaf Eval : " << eval << "\n";
-					//PrintPV(file, minishogi, Observer::depth);
 					Observer::PrintSearchReport(file);
 					file.close();
 				}
 				else cout << "Error : Fail to Save PlayDetail.\n";
 			}
-			if (eval < -CHECKMATE || CHECKMATE < eval) Observer::depth--;
 
-			if (action.mode == Action::SURRENDER) {
+			if (move == MOVE_NULL) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << "投降! I'm lose\n";
 				break;
 			}
-			else if (action.mode == Action::UNDO) {
+			else if (move == MOVE_UNDO) {
 				if (minishogi.GetStep() >= 2) {
 					minishogi.UndoMove();
 					minishogi.UndoMove();
@@ -258,15 +250,15 @@ int main(int argc, char **argv) {
 					cout << "Error : Cannot Undo!\n";
 				}
 			}
-			else if (action.mode == Action::SAVEBOARD) {
+			else if (move == MOVE_SAVEBOARD) {
 				minishogi.SaveBoard(GetCurrentTimeString() + "_SaveBoard.txt");
 			}
 			else {
-				minishogi.DoMove(action);
+				minishogi.DoMove(move);
 			}
 		}
 		/*    遊戲結束    */
-		Observer::GameOver(!minishogi.GetTurn(), isSwap, minishogi.GetInitZobristHash(), minishogi.GetKifuHash());
+		Observer::GameOver(!minishogi.GetTurn(), isSwap, minishogi.GetKey(0), minishogi.GetKifuHash());
 		cout << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
 		Observer::PrintGameReport(cout);
 
@@ -336,25 +328,19 @@ int main(int argc, char **argv) {
 }
 
 
-bool Human_DoMove(Minishogi &board, Action &action) {
+bool Human_DoMove(Minishogi &board, Move &move) {
 	cout << "請輸入移動指令(E5D5+)或其他指令(UNDO, SURRENDER, SAVEBOARD) : " << endl;
-	cin >> action;
-	if (action.mode == Action::DO && !board.IsLegelAction(action)) {
-		cout << "Error : Illegal action." << endl;
+	cin >> move;
+	if (IsDoMove(move) && !board.IsLegelAction(move)) {
+		cout << "Error : Illegal move." << endl;
 		return false;
 	}
-	else if (action.mode == Action::ILLEGAL) {
+	else if (move == MOVE_ILLEGAL) {
 		cout << "Error : Unrecognized command." << endl;
 		return false;
 	}
 	return true;
 }
-
-int AI_DoMove(Minishogi &board, Action &action) {
-	cout << "AI 思考中..." << endl;
-	return IDAS(board, action);
-}
-
 string GetCurrentTimeString() {
 	char buffer[80];
 	time_t rawtime;
@@ -363,13 +349,9 @@ string GetCurrentTimeString() {
 	return string(buffer);
 }
 
+//TODO: 改成顯示所有設定
 string GetAIVersion() {
 	string str(AI_DISCRIPTION);
-#ifdef BEST_ENDGAME_SEARCH
-	str += " 不能投降";
-#else
-	str += " 可以投降";
-#endif
 #ifdef TRANSPOSITION_DISABLE
 	str += " 無同型表";
 	return str;

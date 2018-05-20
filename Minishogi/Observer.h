@@ -1,9 +1,6 @@
 #ifndef _OBSERVER_
 #define _OBSERVER_
-#include <iostream>
 #include <iomanip>
-#include <time.h>
-#include <string>
 #include <vector>
 using namespace std;
 
@@ -18,7 +15,8 @@ namespace Observer {
 		totalTPDepth,
 		ios_read,
 		ios_write,
-		indexCollisionNums,
+		ttProbe,
+        ttHit,
 		searchTime,
 		COUNT
 	};
@@ -44,13 +42,11 @@ namespace Observer {
 	extern unsigned int player2WinNum;
 	extern vector<Winner> winnerTable1;
 	extern vector<Winner> winnerTable2;
-	extern vector<unsigned __int64> initHash;
+	extern vector<uint64_t> initHash;
 
 	// ³]©w
 	extern int DEPTH;
 	extern int depth;
-	extern int QUIE_DEPTH;
-	extern int MAX_QUIE_DEPTH;
 	extern bool isSaveRecord;
 
 	inline void StartSearching() {
@@ -96,7 +92,6 @@ namespace Observer {
 		os << setiosflags(ios::fixed) << setprecision(2);
 		os << "Search Report :\n";
 		os << " Search Deapth           : " << setw(10) << depth << "\n";
-		os << " Quies Deapth            : " << setw(10) << QUIE_DEPTH << "\n";
 		os << " Total search nodes      : " << setw(10) << data[DataType::totalNode] << "\n";
 		os << " Research nodes          : " << setw(10) << data[DataType::researchNode] << "\n";
 		os << " Quies search nodes      : " << setw(10) << data[DataType::quiesNode] << "\n";
@@ -104,8 +99,9 @@ namespace Observer {
 		os << " Total TP Depth          : " << setw(10) << data[DataType::totalTPDepth] << "\n";
 		os << " Isomorphic  (read)      : " << setw(10) << data[DataType::ios_read] << "\n";
 		os << " Isomorphic  (write)     : " << setw(10) << data[DataType::ios_write] << "\n";
-		os << " Index Collision nums    : " << setw(10) << data[DataType::indexCollisionNums] << "\n";
-		os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * data[DataType::indexCollisionNums] / data[DataType::totalNode]) << " %\n";
+		os << " Index Hit nums          : " << setw(10) << data[DataType::ttHit] << "\n";
+        os << " Hit rate                : " << setw(13) <<
+            (100.0f * data[DataType::ttHit] / data[DataType::ttProbe]) << " %\n";
 		os << " Search time             : " << setw(13) << (float)data[DataType::searchTime] / 1000 << "\n";
 		os << endl;
 	}
@@ -129,8 +125,9 @@ namespace Observer {
 			os << " Total TP Depth          : " << setw(10) << game_data[DataType::totalTPDepth] / game_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (read)      : " << setw(10) << game_data[DataType::ios_read] / game_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (write)     : " << setw(10) << game_data[DataType::ios_write] / game_data[DataType::searchNum] << "\n";
-			os << " Index Collision nums    : " << setw(10) << game_data[DataType::indexCollisionNums] / game_data[DataType::searchNum] << "\n";
-			os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * game_data[DataType::indexCollisionNums] / game_data[DataType::totalNode]) << " %\n";
+			os << " Index Hit nums          : " << setw(10) << game_data[DataType::ttHit] / game_data[DataType::searchNum] << "\n";
+			os << " Hit rate                : " << setw(13) <<
+                (100.0f * game_data[DataType::ttHit] / game_data[DataType::ttProbe]) << " %\n";
 			os << " Search time             : " << setw(13) << (float)game_data[DataType::searchTime] / game_data[DataType::searchNum] / 1000 << "\n";
 		}
 		os << endl;
@@ -151,8 +148,9 @@ namespace Observer {
 			os << " Total TP Depth          : " << setw(10) << total_data[DataType::totalTPDepth] / total_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (read)      : " << setw(10) << total_data[DataType::ios_read] / total_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (write)     : " << setw(10) << total_data[DataType::ios_write] / total_data[DataType::searchNum] << "\n";
-			os << " Index Collision nums    : " << setw(10) << total_data[DataType::indexCollisionNums] / total_data[DataType::searchNum] << "\n";
-			os << " Hit rate                : " << setw(13) << (100.0f - 100.0f * total_data[DataType::indexCollisionNums] / total_data[DataType::totalNode]) << " %\n";
+			os << " Index Hit nums          : " << setw(10) << total_data[DataType::ttHit] / total_data[DataType::searchNum] << "\n";
+			os << " Hit rate                : " << setw(13) <<
+                (100.0f * total_data[DataType::ttHit] / total_data[DataType::ttProbe]) << " %\n";
 			os << " Search time             : " << setw(13) << (float)total_data[DataType::searchTime] / total_data[DataType::searchNum] / 1000 << "\n";
 		}
 		os << endl;

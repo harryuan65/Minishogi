@@ -1,3 +1,5 @@
+#ifndef _FILEMAPPING_
+#define _FILEMAPPING_
 #include <windows.h>
 #include <string>
 
@@ -94,3 +96,5 @@ public:
 		return get_size;
 	}
 };
+
+#endif
