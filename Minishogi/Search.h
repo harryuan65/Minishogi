@@ -30,8 +30,8 @@ namespace Search {
 
 	void Initialize();
 	Value IDAS(Minishogi& pos, Move &bestMove, Move *pv);
-	Value NegaScout(Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth, bool isResearch);
-	Value QuietSearch(Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth);
+	Value NegaScout(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth, bool isResearch);
+	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth);
 
 	void UpdatePv(Move* pv, Move move, Move* childPv);
 	void UpdateAttackHeuristic(const Minishogi &minishogi, Move move, Move *attackMove, int attackCnt, int bouns);

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <algorithm>
 
 #include "Minishogi.h"
 #include "Zobrist.h"
@@ -255,33 +256,30 @@ void Minishogi::UndoMove() {
 
 bool Minishogi::PseudoLegal(const Move m) const {
 	Square from = from_sq(m), to = to_sq(m);
-	bool pro = is_pro(m);
-    //assert(from < SQUARE_NB);
-    //assert(to < SQUARE_NB);
-	if (from >= SQUARE_NB || to >= SQUARE_NB)
+	// 不超出移動範圍
+	if (from >= SQUARE_NB || to >= BOARD_NB)
 		return false;
 
-    Chess pc = GetChessOn(from), capture = GetChessOn(to);
-	if (pc == EMPTY || (from < BOARD_NB && color_of(pc) == turn)) { //不能打對方的手排
+	Chess pc = GetChessOn(from), capture = GetChessOn(to);
+	// 只能出己方的手排
+	if (pc == EMPTY || color_of(pc) != turn)
 		return false;
-	}
-	if (capture != EMPTY && color_of(capture) == turn) {
+
+	// 如果是吃子，不能是打入，且只能吃對方
+	if (capture != EMPTY && (from >= BOARD_NB || color_of(capture) == turn))
 		return false;
-	}
-	/*if ((1 << from) & occupied[turn]) {
+
+	// 理論上吃不到王，也不能讓自己被將
+	if (type_of(capture) == KING || IsCheckedAfter(m))
 		return false;
-	}*/
-    //assert(type_of(capture) != KING);
-	if (type_of(capture) == KING) {
+
+	// 如果是移動(吃子)，驗證這顆棋子真的走的到
+	if (from < BOARD_NB && !(Movable(from) & (1 << to)))
 		return false;
-	}
-    //assert(!IsCheckedAfter(m));
-    if (IsCheckedAfter(m)) {
-        return false;
-    }
-	if (pro && !Promotable[pc]) {
+
+	// 只允許某些棋子升變
+	if (is_pro(m) && !(Promotable[pc] && ((1 << from | 1 << to) & EnemyCampMask[turn])))
 		return false;
-	}
 
 	return true;
 }

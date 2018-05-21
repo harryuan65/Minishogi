@@ -161,17 +161,17 @@ constexpr bool is_pro(Move m) {
 	return (m >> 12) & 0x1;
 }
 
-inline Move make_move(Square from, Square to, bool isPro) {
+constexpr inline Move make_move(Square from, Square to, bool isPro) {
 	return Move(((isPro << 12) | from << 6) | to);
 }
 
 /// Exclude MOVE_NULL, MOVE_UNDO, MOVE_SAVEBOARD, MOVE_ILLEGAL
 constexpr bool IsDoMove(Move m) {
-	return !(m >> 13);
+	return m && !(m >> 13);
 }
 
 /// uint32_t -> Move, for Communication
-constexpr Move setU32(uint32_t u) {
+const static Move setU32(uint32_t u) {
 	if (!u) {
 		return MOVE_NULL;
 	}
@@ -179,7 +179,7 @@ constexpr Move setU32(uint32_t u) {
 }
 
 /// Move -> uint_t, for Communication
-constexpr int toU32(Move m) {
+const static int toU32(Move m) {
 	if (!IsDoMove(m)) {
 		return 0;
 	}
@@ -195,7 +195,7 @@ static inline Square Input2Index(char row, char col) {
 }
 
 static inline string Index2Input(Square index) {
-	if (0 <= index && index < 35) {
+	if (0 <= index && index < SQUARE_NB) {
 		string str;
 		str.push_back('A' + index / 5);
 		str.push_back('5' - index % 5);
@@ -244,30 +244,28 @@ static ostream& operator<< (ostream& os, const Move& m) {
 	return os;
 }
 
-
-
-static const char CHESS_WORD[][3] = {
+constexpr char CHESS_WORD[][3] = {
 	"  ","步","銀","金","角","飛","王","  ",
 	"  ","ㄈ","全","  ","馬","龍","  ","  ",
 	"  ","步","銀","金","角","飛","玉","  ",
 	"  ","ㄈ","全","  ","馬","龍"
 };
 
-static const char SAVE_CHESS_WORD[][5] = {
+constexpr char SAVE_CHESS_WORD[][5] = {
 	" ． ","△步","△銀","△金","△角","△飛","△王","    ",
 	"    ","△ㄈ","△全","    ","△馬","△龍","    ","    ",
 	"    ","▼步","▼銀","▼金","▼角","▼飛","▼玉","    ",
 	"    ","▼ㄈ","▼全","    ","▼馬","▼龍"
 };
 
-static const int EatToHand[] = {
+constexpr int EatToHand[] = {
 	0, 25, 26, 27, 28, 29, 0, 0,
 	0, 25, 26,  0, 28, 29, 0, 0,
 	0, 30, 31, 32, 33, 34, 0, 0,
 	0, 30, 31,  0, 33, 34
 };
 
-static const Chess HandToChess[] = {
+constexpr Chess HandToChess[] = {
 	EMPTY,EMPTY,EMPTY,EMPTY,EMPTY,
 	EMPTY,EMPTY,EMPTY,EMPTY,EMPTY,
 	EMPTY,EMPTY,EMPTY,EMPTY,EMPTY,
@@ -277,21 +275,21 @@ static const Chess HandToChess[] = {
 	W_PAWN,W_SILVER,W_GOLD,W_BISHOP,W_ROOK
 };
 
-static const bool Promotable[] = {
+constexpr bool Promotable[] = {
 	false,  true,  true, false,  true,  true, false, false,
 	false, false, false, false, false, false, false, false,
 	false,  true,  true, false,  true,  true, false, false,
 	false, false, false, false, false, false
 };
 
-static const int CHESS_SCORE[] = {
+constexpr int CHESS_SCORE[] = {
 	0,  107,  810,  907,  1291,  1670, 0, 0,
 	0,  895,  933,    0,  1985,  2408, 0, 0,
 	0, -107, -810, -907, -1291, -1670, 0, 0,
 	0, -895, -933,    0, -1985, -2408
 };
 
-static const int HAND_SCORE[] = {
+constexpr int HAND_SCORE[] = {
 	0,  0,  0,  0,  0,
 	0,  0,  0,  0,  0,
 	0,  0,  0,  0,  0,

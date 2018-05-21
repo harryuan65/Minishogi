@@ -11,7 +11,7 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_DISCRIPTION    "AI 老師的寧靜4層 最高8層"
+#define AI_DISCRIPTION    "AI 新方法"
 using namespace std;
 
 enum PlayerType {
@@ -212,12 +212,12 @@ int main(int argc, char **argv) {
 				Observer::PrintSearchReport(cout);
 				if (playerType[!minishogi.GetTurn()] == OtherAI) {
 					uint32_t actionU32 = toU32(move);
-					fileMapping.SendMsg(&actionU32, sizeof(uint32_t));
+					fileMapping.SendMsg(&actionU32, sizeof(uint32_t), true);
 				}
 				break;
 			case OtherAI:
 				uint32_t actionU32;
-				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t));
+				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t), true);
 				move = setU32(actionU32);
 				cout << "Move : " << move << "\n";
 				break;
@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
 		if (Observer::isSaveRecord) {
 			if (gameMode == 5) {
 				char msg[20];
-				fileMapping.RecvMsg(msg, 20);
+				fileMapping.RecvMsg(msg, 20, true);
 				if (strcmp("Save Report", msg)) {
 					cout << "Error : 不同步啦\n";
 					system("pause");
@@ -314,7 +314,7 @@ int main(int argc, char **argv) {
 				else cout << "Error : Fail to Save AI Report.\n";
 			}
 			if (gameMode == 4) {
-				fileMapping.SendMsg("Save Report", 13);
+				fileMapping.SendMsg("Save Report", 13, true);
 			}
 		}
 	} while (isCustomBoard);
@@ -365,6 +365,16 @@ string GetAIVersion() {
 	str += " 沒寧靜";
 #else
 	str += " 有寧靜";
+#endif
+#ifdef ITERATIVE_DEEPENING_ENABLE
+	str += " 有IDAS";
+#else
+	str += " 沒IDAS";
+#endif
+#ifdef ASPIRE_WINDOW_ENABLE
+	str += " 有aspire";
+#else
+	str += " 沒aspire";
 #endif
 	return str;
 }

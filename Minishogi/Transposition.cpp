@@ -108,7 +108,9 @@ namespace Transposition {
 			return;
 		memset(transpositTable, 0, TPSize * sizeof(TTnode));
 #else
-        transpositTable[0] = { 0 };
+		if (transpositTable != nullptr) {
+			transpositTable[0] = { 0 };
+		}
 		cout << "Transposition Table disable.\n";
 #endif
 	}
@@ -126,7 +128,7 @@ namespace Transposition {
 		return &transpositTable[index];
 #else
 		ttHit = false;
-		return nullptr;
+		return &transpositTable[0];
 #endif
 	}
 }

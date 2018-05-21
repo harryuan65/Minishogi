@@ -56,14 +56,16 @@ public:
 	bool IsCheckedAfter(const Square srcIndex, const Square dstIndex) const;
 	bool IsSennichite() const;
 	inline bool IsIsomorphic() const { return keyHist[ply] == key2Hist[ply]; }
+
 	inline Color GetTurn() const { return turn; }
-	inline int GetStep() const { return ply; }
+	inline int   GetStep() const { return ply; }
 	inline Value GetEvaluate() const { return turn ? -evalHist[ply] : evalHist[ply]; };
-	inline Key GetKey() const { return turn ? key2Hist[ply] : keyHist[ply]; }
-	inline Key GetKey(int p) const { return turn ^ (p % 2 == 0) ? key2Hist[p] : keyHist[p]; }
+	inline Key   GetKey() const { return turn ? key2Hist[ply] : keyHist[ply]; }
+	inline Key   GetKey(int p) const { return turn ^ (p % 2 == 0) ? key2Hist[p] : keyHist[p]; }
 	inline Chess GetChessOn(int sq) const {
 		return (Chess)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : EMPTY));
 	}
+	inline Chess GetCapture() const { return captureHist[ply - 1]; }
 	inline Chess GetBoard(int sq) const { return (Chess)board[sq]; }
 	unsigned int GetKifuHash() const ;
 };

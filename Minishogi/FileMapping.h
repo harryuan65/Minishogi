@@ -1,11 +1,9 @@
-#ifndef _FILEMAPPING_
-#define _FILEMAPPING_
 #include <windows.h>
 #include <string>
 
 class FileMapping {
 private:
-	const int BUF_SIZE = 256;
+	const size_t BUF_SIZE = (1 << (sizeof(short) * 8)) - 1;
 	HANDLE hMapFile = NULL;
 	LPVOID pBuf = NULL;
 
@@ -65,36 +63,39 @@ public:
 		return pBuf && hMapFile;
 	}
 
-	// Block process until send success
 	// INPUT msg : send data ptr
 	// INPUT len : msg size (Bytes)
-	void SendMsg(const void* msg, size_t len) const {
+	// INPUT isBlocking : Block process until send success when it's true
+	void SendMsg(const void* msg, size_t len, bool isBlocking) const {
 		if (hMapFile == NULL) throw ER_CREATE_MAPPING_FAIL;
 		if (pBuf == NULL) throw ER_ACCESS_MAPPING_FAIL;
 		if (len > BUF_SIZE) throw ER_SIZE_OUT_OF_RANGE;
-		*(BYTE*)pBuf = len;
-		CopyMemory((BYTE*)pBuf + 1, msg, len);
-		while (*(BYTE*)pBuf) { // Block process until msg size = 0
-			Sleep(10);
+		CopyMemory((BYTE*)pBuf, &len, sizeof(short));
+		CopyMemory((BYTE*)pBuf + sizeof(short), msg, len);
+		if (isBlocking) {
+			while (*(BYTE*)pBuf) { // Block process until msg size = 0
+				Sleep(10);
+			}
 		}
 	}
 
-	// Block process until recv success
 	// INPUT msg : recv container ptr
 	// INPUT len : msg max size (Bytes)
+	// INPUT isBlocking : Block process until recv success when it's true
 	// OUTPUT return : recv size (Bytes)
-	int RecvMsg(void* msg, size_t len) {
+	int RecvMsg(void* msg, size_t len, bool isBlocking) {
 		if (hMapFile == NULL) throw ER_CREATE_MAPPING_FAIL;
 		if (pBuf == NULL) throw ER_ACCESS_MAPPING_FAIL;
-		while (!*(BYTE*)pBuf) {  // Block process until msg size > 0
-			Sleep(10);
+		if (isBlocking) {
+			while (!*(BYTE*)pBuf) {  // Block process until msg size > 0
+				Sleep(10);
+			}
 		}
 		if (*(BYTE*)pBuf > len) throw ER_SIZE_NOT_ENOUGH;
-		CopyMemory(msg, (BYTE*)pBuf + 1, *(BYTE*)pBuf);
-		int get_size = *(BYTE*)pBuf;
-		*(BYTE*)pBuf = 0;
+		unsigned short get_size;
+		CopyMemory(&get_size, (BYTE*)pBuf, sizeof(short));
+		CopyMemory(msg, (BYTE*)pBuf + sizeof(short), get_size);
+		memset((BYTE*)pBuf, 0, sizeof(short));
 		return get_size;
 	}
 };
-
-#endif

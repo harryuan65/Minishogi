@@ -5,9 +5,10 @@
 #include "Zobrist.h"
 #include "Observer.h"
 #include "Move.h"
+#include <assert.h>
 
 //#define DOUBLETP
-#define TRANSPOSITION_DISABLE
+//#define TRANSPOSITION_DISABLE
 
 namespace Transposition {
 	struct TTnode {
@@ -15,10 +16,10 @@ namespace Transposition {
 		int16_t  value;    //2Bytes -32767~32767
 		int8_t   depth;    //1Bytes -1~15
 		Move     move;     //4Bytes
-		enum Bound : uint8_t {   //1Bytes 0~2
-			Exact,
-			Unknown,
-			FailHigh
+		enum Bound : uint8_t {   //1Bytes 1~3
+			UNKNOWN = 1,
+			FAILHIGH = 2,
+			EXACT = 3
 		} bound;
 
 		void save(Key k, int d, Value v, Move m, Bound b) {
@@ -29,6 +30,7 @@ namespace Transposition {
 				depth = d;
 				move = m;
 				bound = b;
+				assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 			}
 #endif
 		}
