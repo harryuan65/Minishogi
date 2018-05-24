@@ -2,7 +2,8 @@
 #define _MOVEPICK_
 
 #include <array>
-#define REFUTATION_ENABLE
+//#define MOVEPICK_DISABLE
+#define REFUTATION_DISABLE
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value

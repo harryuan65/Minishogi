@@ -10,7 +10,8 @@ namespace {
 		MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
 		EVASION_TT, EVASION_INIT, EVASION,
 		PROBCUT_TT, PROBCUT_INIT, PROBCUT,
-		QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK
+		QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QPROMOTE_INIT, QPROMOTE, QCHECK_INIT, QCHECK,
+		NONSORT_INIT, NONSORT
 	};
 
 	// Helper filter used with select()
@@ -31,7 +32,7 @@ namespace {
 			}
 	}
 
-} // namespace
+}
 
 
   /// Constructors of the MovePicker class. As arguments we pass information
@@ -48,9 +49,14 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 
 	assert(d > 0);
 
+#ifndef MOVEPICK_DISABLE
 	stage = pos.IsChecked() ? EVASION_TT : MAIN_TT;
 	ttMove = ttm && pos.PseudoLegal(ttm) ? ttm : MOVE_NULL;
 	stage += (ttMove == MOVE_NULL);
+#else
+	stage = NONSORT_INIT;
+	ttMove = MOVE_NULL;
+#endif
 }
 
 /// MovePicker constructor for quiescence search
@@ -60,27 +66,32 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 
 	assert(d <= 0);
 
+//#ifndef MOVEPICK_DISABLE
 	stage = pos.IsChecked() ? EVASION_TT : QSEARCH_TT;
 	ttMove = ttm
 		&& pos.PseudoLegal(ttm)
 		&& (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare) ? ttm : MOVE_NULL;
 	stage += (ttMove == MOVE_NULL);
+/*#else
+	stage = NONSORT_INIT;
+	ttMove = MOVE_NULL;
+#endif*/
 }
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
 /*
 MovePicker::MovePicker(const Minishogi& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-	: pos(p), captureHistory(cph), threshold(th) {
+: pos(p), captureHistory(cph), threshold(th) {
 
-	assert(!pos.checkers());
+assert(!pos.checkers());
 
-	stage = PROBCUT_TT;
-	ttMove = ttm
-		&& pos.pseudo_legal(ttm)
-		&& pos.capture(ttm)
-		&& pos.see_ge(ttm, threshold) ? ttm : MOVE_NULL;
-	stage += (ttMove == MOVE_NULL);
+stage = PROBCUT_TT;
+ttMove = ttm
+&& pos.pseudo_legal(ttm)
+&& pos.capture(ttm)
+&& pos.see_ge(ttm, threshold) ? ttm : MOVE_NULL;
+stage += (ttMove == MOVE_NULL);
 }
 */
 
@@ -158,11 +169,11 @@ top:
 	case GOOD_CAPTURE:
 		if (select<Best>([&]() {
 			return pos.SEE(move, Value(-55 * (cur - 1)->value / 1024)) ?
-				// Move losing capture to endBadCaptures to be tried later
 				true : (*endBadCaptures++ = move, false); })) {
 			return move;
 		}
 
+#ifndef REFUTATION_DISABLE
 		// Prepare the pointers to loop over the refutations array
 		cur = std::begin(refutations);
 		endMoves = std::end(refutations);
@@ -171,12 +182,15 @@ top:
 		if (refutations[0].move == refutations[2].move
 			|| refutations[1].move == refutations[2].move)
 			--endMoves;
+#else
+		refutations[0].move = refutations[1].move = refutations[2].move = MOVE_NULL;
+#endif
 
 		++stage;
 		/* fallthrough */
 
 	case REFUTATION:
-#ifdef REFUTATION_ENABLE
+#ifndef REFUTATION_DISABLE
 		if (select<Next>([&]() { return    move != MOVE_NULL
 			&& !pos.GetChessOn(to_sq(move))
 			&& pos.PseudoLegal(move); }))
@@ -229,26 +243,46 @@ top:
 		return select<Best>([&]() { return pos.SEE(move, threshold); });
 
 	case QCAPTURE:
-		if (select<Best>([&]() { return   depth > DEPTH_QS_RECAPTURES
+		if (select<Best>([&]() { return depth > DEPTH_QS_RECAPTURES
 			|| to_sq(move) == recaptureSquare; }))
 			return move;
+
+		++stage;
+	case QPROMOTE_INIT:
+		cur = endBadCaptures = moves;
+		endMoves = pos.MoveGenerator(cur);
+
+		++stage;
+	case QPROMOTE:
+		if (select<Best>([&]() { return is_pro(move) ? pos.SEE(move)
+			: (*endBadCaptures++ = move, false); })) {
+			return move;
+		}
 
 		// If we did not find any move and we do not try checks, we have finished
 		if (depth != DEPTH_QS_CHECKS)
 			return MOVE_NULL;
 
+		cur = moves;
+		endMoves = endBadCaptures;
+
 		++stage;
 		/* fallthrough */
-
 	case QCHECK_INIT:
-		cur = moves;
-		endMoves = pos.MoveGenerator(endMoves);
-		endMoves = pos.HandGenerator(endMoves);
+		endMoves = pos.HandGenerator(cur);
 
 		++stage;
 		/* fallthrough */
 
 	case QCHECK:
+		return select<Next>([&]() { return pos.SEE(move); });
+	case NONSORT_INIT:
+		cur = moves;
+		endMoves = pos.AttackGenerator(cur);
+		endMoves = pos.MoveGenerator(endMoves);
+		endMoves = pos.HandGenerator(endMoves);
+		stage++;
+	case NONSORT:
 		return select<Next>(Any);
 	}
 

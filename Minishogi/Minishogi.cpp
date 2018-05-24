@@ -63,7 +63,6 @@ void Minishogi::Initialize(const char *s) {
 	evalHist[ply] = VALUE_ZERO;
 	keyHist[ply] = 0;
 	key2Hist[ply] = 0;
-	checker_BB();
 
 	std::stringstream input(s);
 	int i = 0, chess;
@@ -86,6 +85,7 @@ void Minishogi::Initialize(const char *s) {
 				key2Hist[ply] ^= Zobrist::table2[i][chess];
 			}
 	}
+	checker_BB();
 }
 
 bool Minishogi::Initialize(const std::string* str) {
@@ -144,6 +144,7 @@ bool Minishogi::Initialize(const std::string* str) {
 			}
 		}
 	}
+	checker_BB();
 	return true;
 }
 
@@ -297,12 +298,17 @@ ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
 		while (srcboard) {
 			src = BitScan(srcboard);
 			srcboard ^= 1 << src;
-			dstboard = Movable(src) & opboard & attackboard;
+			dstboard = Movable(src) & opboard;
+			if (attackboard && AttackerOrder[i] != KING) dstboard &= attackboard;
 			while (dstboard) {
 				dst = turn ? BitScanRev(dstboard) : BitScan(dstboard);
 				dstboard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
 					Promotable[AttackerOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
+
+				if (AttackerOrder[i] == SILVER && is_pro(*(moveList - 1))) {
+					*moveList++ = make_move(src, dst, 0);
+				}
 			}
 		}
 	}
@@ -327,6 +333,10 @@ ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
 				dstboard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
 					Promotable[MoverOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
+				
+				if (MoverOrder[i] == SILVER && is_pro(*(moveList - 1))) {
+					*moveList++ = make_move(src, dst, 0);
+				}
 			}
 		}
 	}
@@ -504,35 +514,88 @@ inline Bitboard Minishogi::attackers_to(const int dstIndex, const Bitboard occup
 }
 
 inline void Minishogi::checker_BB() {
+	checker_bb[ply] = 0;
+
 	/* get the position of my king */
 	const Bitboard kingboard = bitboard[KING | (turn << 4)];
 	const int kingpos = BitScan(kingboard);
 
 	/* get the possible position which might attack king */
-	const Bitboard rook_bb = RookMovable(kingpos);
-	Bitboard attackboard = rook_bb & occupied[~turn], attack_path;
-	checker_bb[ply] = 0;
+	const Bitboard Occupied = occupied[0] | occupied[1];
+	Bitboard upper, lower, attackboard, attack_path;
+
+	// row "-"
+	upper = (Occupied & RowUpper[kingpos]) | HighestPosMask;
+	lower = (Occupied & RowLower[kingpos]) | LowestPosMask;
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+	const Bitboard rank = (upper - lower) & RowMask(kingpos);
+	attackboard = rank & occupied[~turn];
 
 	/* search the rook direction possible position */
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & rook_bb) | (1 << attsrc);
+			checker_bb[ply] |= (attack_path & rank) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
 
-	const Bitboard bishop_bb = BishopMovable(kingpos);
-	attackboard = bishop_bb & occupied[~turn];
+	// column "|"
+	upper = (Occupied & ColUpper[kingpos]) | HighestPosMask;
+	lower = (Occupied & ColLower[kingpos]) | LowestPosMask;
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+	const Bitboard file = (upper - lower) & ColMask(kingpos);
+	attackboard = file & occupied[~turn];
 
-	/* search the bishop direction possible position */
+	/* search the rook direction possible position */
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & bishop_bb) | (1 << attsrc);
+			checker_bb[ply] |= (attack_path & file) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
+
+	// slope1 "/"
+	upper = (Occupied & Slope1Upper[kingpos]) | HighestPosMask;
+	lower = (Occupied & Slope1Lower[kingpos]) | LowestPosMask;
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+	const Bitboard slope1 = (upper - lower) & (Slope1Upper[kingpos] | Slope1Lower[kingpos]);
+	attackboard = slope1 & occupied[~turn];
+
+	/* search the rook direction possible position */
+	while (attackboard) {
+		int attsrc = BitScan(attackboard);
+		attack_path = Movable(attsrc);
+		if (attack_path & kingboard)
+			checker_bb[ply] |= (attack_path & slope1) | (1 << attsrc);
+		attackboard ^= 1 << attsrc;
+	}
+
+	// slope2 "\"
+	upper = (Occupied & Slope2Upper[kingpos]) | HighestPosMask;
+	lower = (Occupied & Slope2Lower[kingpos]) | LowestPosMask;
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+	const Bitboard slope2 = (upper - lower) & (Slope2Upper[kingpos] | Slope2Lower[kingpos]);
+	attackboard = slope2 & occupied[~turn];
+
+	/* search the rook direction possible position */
+	while (attackboard) {
+		int attsrc = BitScan(attackboard);
+		attack_path = Movable(attsrc);
+		if (attack_path & kingboard)
+			checker_bb[ply] |= (attack_path & slope2) | (1 << attsrc);
+		attackboard ^= 1 << attsrc;
+	}
+	/*if (checker_bb[ply]) {
+		PrintChessBoard();
+		cout << hex << checker_bb[ply];
+		system("pause");
+	}*/
 }
 
 void Minishogi::PrintChessBoard() const {
@@ -714,6 +777,42 @@ bool Minishogi::IsCheckedAfter(const Square srcIndex, const Square dstIndex) con
 	return false;
 }
 
+bool Minishogi::IsCheckingAfter(const Move m) {
+	const Square srcIndex = from_sq(m), dstIndex = to_sq(m);
+	const int dstChess = board[dstIndex];
+	board[dstIndex] = GetChessOn(srcIndex);
+	const bool isCheckable = Movable(dstIndex) & bitboard[KING | ((~turn) << 4)];
+	board[dstIndex] = dstChess;
+
+	if (srcIndex >= BOARD_NB) return isCheckable;
+	else if (isCheckable) return true;
+
+	const Bitboard my_occupied = occupied[turn] ^ (1 << srcIndex);
+	const Bitboard tmp_occupied = occupied[~turn] | my_occupied;
+
+	/* get the position of the checking king */
+	const int kingpos = BitScan(bitboard[KING | ((~turn) << 4)]);
+
+	/* get my possible position which might attack the opponent king */
+	Bitboard attackboard = RookMovable(kingpos, tmp_occupied) & my_occupied;
+
+	/* search the possible position */
+	while (attackboard) {
+		int attsrc = BitScan(attackboard);
+		if (board[attsrc] & 7 == ROOK) return true;
+		attackboard ^= 1 << attsrc;
+	}
+
+	attackboard = BishopMovable(kingpos, tmp_occupied) & my_occupied;
+	while (attackboard) {
+		int attsrc = BitScan(attackboard);
+		if (board[attsrc] & 7 == BISHOP) return true;
+		attackboard ^= 1 << attsrc;
+	}
+
+	return false;
+}
+
 /// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後才能判斷 在此不考慮被連將
 bool Minishogi::IsSennichite() const {
 	for (int i = ply - 4; i >= 0; i -= 2) {
@@ -777,13 +876,6 @@ bool Minishogi::SEE(const Move move, Value threshold) const {
 			balance -= myChessValue[my++];
 		else break;
 	}
-
-	// debug 用
-	/*if (op_count > 2 && my_count > 2) {
-		PrintChessBoard();
-		cout << (balance >= threshold ? "true" : "false") << CHESS_WORD[board[dstIndex]] << move << endl;
-		system("pause");
-	}*/
 
 	return balance >= threshold;
 }

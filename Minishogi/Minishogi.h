@@ -2,7 +2,6 @@
 #define _MINISHOGI_
 
 #include "Bitboard.h"
-
 using std::string;
 #define BOARD_PATH        "board//"
 
@@ -54,6 +53,7 @@ public:
 	inline bool IsChecked() const { return checker_bb[ply]; }
 	inline bool IsCheckedAfter(const Move m) const;
 	bool IsCheckedAfter(const Square srcIndex, const Square dstIndex) const;
+	bool IsCheckingAfter(const Move m);
 	bool IsSennichite() const;
 	inline bool IsIsomorphic() const { return keyHist[ply] == key2Hist[ply]; }
 

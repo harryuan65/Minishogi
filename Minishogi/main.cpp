@@ -354,27 +354,35 @@ string GetAIVersion() {
 	string str(AI_DISCRIPTION);
 #ifdef TRANSPOSITION_DISABLE
 	str += " 無同型表";
-	return str;
-#endif
-#ifdef DOUBLETP
+#elif DOUBLETP
 	str += " 雙同型表";
 #else
 	str += " 國籍同構";
 #endif
-#ifdef QUIES_DISABLE
-	str += " 沒寧靜";
-#else
-	str += " 有寧靜";
-#endif
-#ifdef ITERATIVE_DEEPENING_ENABLE
+#ifndef ITERATIVE_DEEPENING_DISABLE
 	str += " 有IDAS";
 #else
 	str += " 沒IDAS";
 #endif
-#ifdef ASPIRE_WINDOW_ENABLE
+#ifndef ASPIRE_WINDOW_DISABLE
 	str += " 有aspire";
 #else
 	str += " 沒aspire";
+#endif
+#ifndef PVS_DISABLE
+	str += " 有pvs";
+#else
+	str += " 沒pvs";
+#endif
+#ifndef QUIES_DISABLE
+	str += " 有寧靜";
+#else
+	str += " 沒寧靜";
+#endif
+#ifndef MOVEPICK_DISABLE
+	str += " 有movepick";
+#else
+	str += " 沒movepick";
 #endif
 	return str;
 }

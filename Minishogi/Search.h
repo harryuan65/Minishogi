@@ -3,9 +3,10 @@
 
 #include "MovePick.h"
 
+//#define ITERATIVE_DEEPENING_DISABLE
+//#define ASPIRE_WINDOW_DISABLE
+//#define PVS_DISABLE
 //#define QUIES_DISABLE
-#define ITERATIVE_DEEPENING_ENABLE
-#define ASPIRE_WINDOW_ENABLE
 
 namespace Search {
 	extern ButterflyHistory mainHistory;

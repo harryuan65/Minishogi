@@ -40,7 +40,7 @@ namespace Transposition {
 #ifdef DOUBLETP
 	const uint64_t TPSize = 1 << 29;
 #else
-	const uint64_t TPSize = 1 << 27;
+	const uint64_t TPSize = 1 << 30;
 #endif
 #else
     const uint64_t TPSize = 1;
