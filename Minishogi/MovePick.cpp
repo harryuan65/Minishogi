@@ -10,7 +10,7 @@ namespace {
 		MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
 		EVASION_TT, EVASION_INIT, EVASION,
 		PROBCUT_TT, PROBCUT_INIT, PROBCUT,
-		QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QPROMOTE_INIT, QPROMOTE, QCHECK_INIT, QCHECK,
+		QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK,
 		NONSORT_INIT, NONSORT
 	};
 
@@ -135,7 +135,8 @@ Move MovePicker::select(Pred filter) {
 
 		move = *cur++;
 
-		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsCheckedAfter(move)) && type_of(pos.GetChessOn(to_sq(move))) != KING)
+		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsCheckedAfter(move))
+			&& type_of(pos.GetChessOn(to_sq(move))) != KING && !pos.IsSennichite())
 			return move;
 	}
 	return move = MOVE_NULL;
@@ -247,35 +248,22 @@ top:
 			|| to_sq(move) == recaptureSquare; }))
 			return move;
 
-		++stage;
-	case QPROMOTE_INIT:
-		cur = endBadCaptures = moves;
-		endMoves = pos.MoveGenerator(cur);
-
-		++stage;
-	case QPROMOTE:
-		if (select<Best>([&]() { return is_pro(move) ? pos.SEE(move)
-			: (*endBadCaptures++ = move, false); })) {
-			return move;
-		}
-
 		// If we did not find any move and we do not try checks, we have finished
-		if (depth != DEPTH_QS_CHECKS)
-			return MOVE_NULL;
-
-		cur = moves;
-		endMoves = endBadCaptures;
+		//if (depth != DEPTH_QS_CHECKS)
+		//	return MOVE_NULL;
 
 		++stage;
-		/* fallthrough */
+
 	case QCHECK_INIT:
+		cur = moves;
 		endMoves = pos.HandGenerator(cur);
-
+		endMoves = pos.MoveGenerator(endMoves);
 		++stage;
-		/* fallthrough */
 
 	case QCHECK:
-		return select<Next>([&]() { return pos.SEE(move); });
+		return select<Next>([&]() { return depth > DEPTH_QS_RECAPTURES
+			&& pos.IsCheckingAfter(move) && pos.SEE(move); });
+
 	case NONSORT_INIT:
 		cur = moves;
 		endMoves = pos.AttackGenerator(cur);
