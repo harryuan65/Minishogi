@@ -1,5 +1,4 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
-
 #include <atlstr.h>
 #include <fstream>
 
@@ -11,7 +10,8 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_DISCRIPTION    "AI 新方法"
+#define AI_DISCRIPTION    "AI 老師的寧靜4層 最高8層"
+#define UI_CONNECT        false
 using namespace std;
 
 enum PlayerType {
@@ -29,7 +29,9 @@ bool GetOpenFileNameString(string& out);
 int main(int argc, char **argv) {
 	Minishogi minishogi;
 	Move move;
-
+	FileMapping fm_mg("GUI_mg");
+	FileMapping fm_gm("GUI_gm");
+	int buffer[200 * sizeof(int)];
 	int playerType[2];
 	string playerName[2];
 	int gameMode;
@@ -47,6 +49,9 @@ int main(int argc, char **argv) {
 	/*    遊戲設定     */
 	aiVersion = GetAIVersion();
 	cout << "AI Version : " << aiVersion << endl;
+	if (UI_CONNECT) {
+		cout << "UI Connecting\n";
+	}
 	if (argc == 6) {
 		// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
 		gameMode = 5;
@@ -69,6 +74,8 @@ int main(int argc, char **argv) {
 				"(3)電腦對打\n"
 				"(4)電腦對打 本機vs其他程式\n";
 			cin >> gameMode;
+			buffer[0] = gameMode;
+			fm_mg.SendMsg(buffer, sizeof(buffer), UI_CONNECT);//*********Send gamemode
 			switch (gameMode)
 			{
 			case 0:
@@ -99,7 +106,7 @@ int main(int argc, char **argv) {
 				if (!GetOpenFileNameString(gameDirStr)) {
 					continue;
 				}
-				playerType[0] = PlayerType::AI; 
+				playerType[0] = PlayerType::AI;
 				playerType[1] = PlayerType::OtherAI;
 				playerName[0] = aiVersion;
 				playerName[1] = "";
@@ -157,7 +164,7 @@ int main(int argc, char **argv) {
 				readBoardOffset = 0;
 				continue;
 			}
-			else { 
+			else {
 				// 對打結束
 				break;
 			}
@@ -179,6 +186,9 @@ int main(int argc, char **argv) {
 		Observer::GameStart();
 		while (true) {
 			int eval = 0;
+			int indicator[1];
+			Move legalMoves[TOTAL_GENE_MAX_ACTIONS], *endMove;
+			Move pv[MAX_PLY + 1];
 			cout << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 			minishogi.PrintChessBoard();
 
@@ -199,25 +209,43 @@ int main(int argc, char **argv) {
 			}
 			switch (playerType[minishogi.GetTurn()]) {
 			case Human:
-				while (!Human_DoMove(minishogi, move));
+				endMove = minishogi.GetLegalMoves(legalMoves);
+				//Movelist indicator
+				indicator[0] = 1;
+				fm_mg.SendMsg(indicator, sizeof(int), UI_CONNECT);
+				fm_mg.SendMsg(legalMoves, (endMove - legalMoves) * sizeof(Move), UI_CONNECT);
+				//fm.Send: Movelist
+				do {
+					if (UI_CONNECT) {
+						cout << "Waiting for player..." << endl;
+						fm_gm.RecvMsg(buffer, sizeof(buffer), UI_CONNECT); //Recv Playermove
+						if (buffer[0] == 2)//GUI = Ack
+							move = (Move)buffer[1];
+					}
+				} while (!Human_DoMove(minishogi, move));
 				cout << "Move : " << move << "\n";
 				break;
 			case AI:
 				Observer::StartSearching();
-				eval = Search::IDAS(minishogi, move, nullptr); //TODO
+				eval = Search::IDAS(minishogi, move, pv); //TODO
 				Observer::EndSearching();
+
+				indicator[0] = 2;//AI
+				fm_mg.SendMsg(indicator, sizeof(indicator), UI_CONNECT);
+				fm_mg.SendMsg(pv, sizeof(pv), false);
+
 
 				cout << "Move : " << move << "\n";
 				cout << "Leaf Eval : " << eval << "\n";
 				Observer::PrintSearchReport(cout);
 				if (playerType[!minishogi.GetTurn()] == OtherAI) {
 					uint32_t actionU32 = toU32(move);
-					fileMapping.SendMsg(&actionU32, sizeof(uint32_t), true);
+					fileMapping.SendMsg(&actionU32, sizeof(uint32_t), false);
 				}
 				break;
 			case OtherAI:
 				uint32_t actionU32;
-				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t), true);
+				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t), false);
 				move = setU32(actionU32);
 				cout << "Move : " << move << "\n";
 				break;
@@ -265,7 +293,7 @@ int main(int argc, char **argv) {
 		if (Observer::isSaveRecord) {
 			if (gameMode == 5) {
 				char msg[20];
-				fileMapping.RecvMsg(msg, 20, true);
+				fileMapping.RecvMsg(msg, 20, false);
 				if (strcmp("Save Report", msg)) {
 					cout << "Error : 不同步啦\n";
 					system("pause");
@@ -314,7 +342,7 @@ int main(int argc, char **argv) {
 				else cout << "Error : Fail to Save AI Report.\n";
 			}
 			if (gameMode == 4) {
-				fileMapping.SendMsg("Save Report", 13, true);
+				fileMapping.SendMsg("Save Report", 13, false);
 			}
 		}
 	} while (isCustomBoard);
@@ -323,15 +351,18 @@ int main(int argc, char **argv) {
 	Observer::PrintTotalReport(cout);
 
 	cout << "\a\a\a";
-    system("pause");
-    return 0;
+	system("pause");
+	return 0;
 }
 
 
 bool Human_DoMove(Minishogi &board, Move &move) {
-	cout << "請輸入移動指令(E5D5+)或其他指令(UNDO, SURRENDER, SAVEBOARD) : " << endl;
-	cin >> move;
-	if (IsDoMove(move) && !board.IsLegelAction(move)) {
+	if (!false) {
+		cout << "請輸入移動指令(E5D5+)或其他指令(UNDO, SURRENDER, SAVEBOARD) : " << endl;
+		cin >> move;
+	}
+	if (IsDoMove(move) && !board.IsLegelAction(move) && 
+		!board.IsLegelAction(make_move(from_sq(move), to_sq(move), true))) {
 		cout << "Error : Illegal move." << endl;
 		return false;
 	}
@@ -349,7 +380,6 @@ string GetCurrentTimeString() {
 	return string(buffer);
 }
 
-//TODO: 改成顯示所有設定
 string GetAIVersion() {
 	string str(AI_DISCRIPTION);
 #ifdef TRANSPOSITION_DISABLE

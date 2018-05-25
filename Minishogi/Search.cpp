@@ -141,12 +141,16 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 	int captureCount = 0, quietCount = 0;
 
 	while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
-		ss->moveCount++;
-
 		ss->currentMove = move;
 		ss->contHistory = &contHistory[pos.GetBoard(from_sq(move))][to_sq(move)];
 
 		pos.DoMove(move);
+		if ((pos.GetTurn() == WHITE || pos.IsChecked()) && pos.IsSennichite()) {
+			pos.UndoMove();
+			continue;
+		}
+
+		ss->moveCount++;
 #ifndef PVS_DISABLE
 		if (depth > 3 && ss->moveCount > 1) {
 			value = -NegaScout(pvNode, pos, ss + 1, -(alpha + 1), -alpha, depth - 1, isResearch);
@@ -169,7 +173,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 				if (pvNode) {
 					UpdatePv(ss->pv, bestMove, (ss + 1)->pv);
 				}
-				if (value < beta) {
+				if (pvNode && value < beta) {
 					alpha = value;
 				}
 			}
@@ -210,7 +214,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 		UpdateContinousHeuristic(ss - 1, pos.GetChessOn(prevSq), prevSq, stat_bonus(depth));
 	}
 	ttn->save(pos.GetKey(), depth, value_to_tt(bestValue, ss->ply), bestMove,
-		pvNode && bestMove ? TTnode::FAILHIGH : (pvNode && bestMove) ? TTnode::UNKNOWN : TTnode::EXACT);
+		bestValue >= beta ? TTnode::FAILHIGH : (pvNode && bestMove) ? TTnode::EXACT : TTnode::UNKNOWN);
 	assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 	return bestValue;
 }
