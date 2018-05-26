@@ -53,7 +53,7 @@ void Minishogi::Initialize() {
         " 6  3  2  4  5");
 }
 
-/// 輸入格式: 前25個輸入棋子ID [後10個輸入手排個數0~2(可選)]
+/// 輸入格式: 前25個輸入棋子ID [後10個輸入手排個數0~2(可選)] No used
 void Minishogi::Initialize(const char *s) {
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, CHESS_NB * sizeof(Bitboard));
@@ -83,6 +83,10 @@ void Minishogi::Initialize(const char *s) {
 				evalHist[ply] += HAND_SCORE[i] * chess;
 				keyHist[ply] ^= Zobrist::table[i][chess];
 				key2Hist[ply] ^= Zobrist::table2[i][chess];
+				if (chess == 2) {
+					keyHist[ply] ^= Zobrist::table[chess][2];
+					key2Hist[ply] ^= Zobrist::table2[chess][2];
+				}
 			}
 	}
 	checker_BB();
@@ -135,8 +139,12 @@ bool Minishogi::Initialize(const std::string* str) {
 			if (num == 1 || num == 2) {
 				board[index] = num;
 				evalHist[ply] += HAND_SCORE[index] * num;
-				keyHist[ply] ^= Zobrist::table[index][num];
-				key2Hist[ply] ^= Zobrist::table2[index][num];
+				keyHist[ply] ^= Zobrist::table[index][1];
+				key2Hist[ply] ^= Zobrist::table2[index][1];
+				if (num == 2) {
+					keyHist[ply] ^= Zobrist::table[index][2];
+					key2Hist[ply] ^= Zobrist::table2[index][2];
+				}
 			}
 			else if (num != 0) {
 				cerr << "Error : Fail to Load Board. There is a unrecognized symbol in HAND section.\n";
@@ -175,7 +183,7 @@ void Minishogi::DoMove(Move m) {
 			board[toHand]++;     // 轉為該方手牌
 
 			evalHist[ply] += HAND_SCORE[toHand] - CHESS_SCORE[captured];
-			keyHist[ply] ^= Zobrist::table[from][captured]
+			keyHist[ply] ^= Zobrist::table[to][captured]
 						 ^ Zobrist::table[toHand][board[toHand]];
 			key2Hist[ply] ^= Zobrist::table2[to][captured]
 					      ^ Zobrist::table2[toHand][board[toHand]];

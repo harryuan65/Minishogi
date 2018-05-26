@@ -154,7 +154,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 
 	while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 		ss->currentMove = move;
-		ss->contHistory = &contHistory[pos.GetBoard(from_sq(move))][to_sq(move)];
+		ss->contHistory = &contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 
 		pos.DoMove(move);
 		if ((pos.GetTurn() == BLACK || pos.IsChecked()) && pos.IsSennichite()) {
@@ -339,7 +339,7 @@ void Search::UpdateQuietHeuristic(const Minishogi& pos, Stack* ss, Move move, Mo
 
 	Color us = pos.GetTurn();
 	mainHistory[us][from_sq(move)][to_sq(move)] << bonus;
-	UpdateContinousHeuristic(ss, pos.GetBoard(from_sq(move)), to_sq(move), bonus);
+	UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(move)), to_sq(move), bonus);
 
 	if ((ss - 1)->currentMove != MOVE_NULL) {
 		int prevSq = to_sq((ss - 1)->currentMove);
@@ -354,7 +354,6 @@ void Search::UpdateQuietHeuristic(const Minishogi& pos, Stack* ss, Move move, Mo
 }
 
 void Search::UpdateContinousHeuristic(Stack* ss, Chess pc, Square to, int bonus) {
-	Stack *s4 = ss - 4;
 	for (int i : {1, 2, 4})
 		if ((ss - i)->currentMove != MOVE_NULL)
 			(*(ss - i)->contHistory)[pc][to] << bonus;

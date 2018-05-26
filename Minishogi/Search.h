@@ -4,7 +4,7 @@
 #include "MovePick.h"
 
 //#define ITERATIVE_DEEPENING_DISABLE
-#define ASPIRE_WINDOW_DISABLE
+//#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
 //#define QUIES_DISABLE
 

@@ -250,8 +250,8 @@ top:
 			return move;
 
 		// If we did not find any move and we do not try checks, we have finished
-		//if (depth != DEPTH_QS_CHECKS)
-		//	return MOVE_NULL;
+		if (depth < DEPTH_QS_RECAPTURES)
+			return MOVE_NULL;
 
 		++stage;
 
@@ -262,8 +262,7 @@ top:
 		++stage;
 
 	case QCHECK:
-		return select<Next>([&]() { return depth > DEPTH_QS_RECAPTURES
-			&& pos.IsCheckingAfter(move) && pos.SEE(move); });
+		return select<Next>([&]() { return pos.IsCheckingAfter(move) && pos.SEE(move); });
 
 	case NONSORT_INIT:
 		cur = moves;

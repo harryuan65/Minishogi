@@ -66,7 +66,6 @@ public:
 		return (Chess)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : EMPTY));
 	}
 	inline Chess GetCapture() const { return captureHist[ply - 1]; }
-	inline Chess GetBoard(int sq) const { return (Chess)board[sq]; }
 	unsigned int GetKifuHash() const ;
 };
 

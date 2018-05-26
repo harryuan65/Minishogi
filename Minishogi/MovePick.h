@@ -2,7 +2,7 @@
 #define _MOVEPICK_
 
 #include <array>
-#define MOVEPICK_DISABLE
+//#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
 
 /// StatsEntry stores the stat table value. It is usually a number but could
