@@ -10,7 +10,7 @@
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
-#define AI_DISCRIPTION    "AI 老師的寧靜4層 最高8層"
+#define AI_DISCRIPTION    "AI 新版本"
 #define UI_CONNECT        false
 using namespace std;
 
@@ -131,6 +131,7 @@ int main(int argc, char **argv) {
 		cout << "確定要開始? ";
 		system("pause");
 		if (gameMode == 4) {
+			fileMapping.SendMsg(nullptr, 0, false);
 			cout << "等待對方程式回應...\n";
 			// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
 			system(("start \"\" \"" + gameDirStr + "\" " +
@@ -182,31 +183,44 @@ int main(int argc, char **argv) {
 		}
 		Transposition::Clean();
 
-		/*    遊戲開始    */
+		// Start Game Loop
 		Observer::GameStart();
 		while (true) {
 			int eval = 0;
 			int indicator[1];
 			Move legalMoves[TOTAL_GENE_MAX_ACTIONS], *endMove;
 			Move pv[MAX_PLY + 1];
+			string pvStr = "";
+
 			cout << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 			minishogi.PrintChessBoard();
 
+			// Write ChessBoard
+			if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != OtherAI) {
+				file.open(playDetailStr, ios::app);
+				if (file) {
+					file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
+					minishogi.PrintNoncolorBoard(file);
+					if (minishogi.IsGameOver()) {
+						file << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
+					}
+					file.close();
+				}
+				else cout << "Error : Fail to Save PlayDetail.\n";
+			}
+
+			// Game Over, Break game loop
 			if (minishogi.IsGameOver()) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
 				move = MOVE_NULL;
-				if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
-					file.open(playDetailStr, ios::app);
-					if (file) {
-						file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
-						minishogi.PrintNoncolorBoard(file);
-						file << (minishogi.GetTurn() ? "▼" : "△") << " Cannot Move.\n";
-						file.close();
-					}
-					else cout << "Error : Fail to Save PlayDetail.\n";
-				}
+				indicator[0] = 4;
+				fm_mg.SendMsg(indicator, sizeof(int), UI_CONNECT);
+				indicator[0] = minishogi.GetTurn();
+				fm_mg.SendMsg(indicator, sizeof(int), UI_CONNECT);
 				break;
 			}
+
+			// Input Move
 			switch (playerType[minishogi.GetTurn()]) {
 			case Human:
 				endMove = minishogi.GetLegalMoves(legalMoves);
@@ -223,47 +237,48 @@ int main(int argc, char **argv) {
 							move = (Move)buffer[1];
 					}
 				} while (!Human_DoMove(minishogi, move));
-				cout << "Move : " << move << "\n";
 				break;
 			case AI:
 				Observer::StartSearching();
-				eval = Search::IDAS(minishogi, move, pv); //TODO
+				eval = Search::IDAS(minishogi, move, pv, &pvStr);
 				Observer::EndSearching();
 
 				indicator[0] = 2;//AI
 				fm_mg.SendMsg(indicator, sizeof(indicator), UI_CONNECT);
 				fm_mg.SendMsg(pv, sizeof(pv), false);
 
-
-				cout << "Move : " << move << "\n";
-				cout << "Leaf Eval : " << eval << "\n";
 				Observer::PrintSearchReport(cout);
-				if (playerType[!minishogi.GetTurn()] == OtherAI) {
-					uint32_t actionU32 = toU32(move);
-					fileMapping.SendMsg(&actionU32, sizeof(uint32_t), false);
-				}
+				cout << "Move : " << move << "\n";
 				break;
 			case OtherAI:
 				uint32_t actionU32;
-				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t), false);
+				fileMapping.RecvMsg(&actionU32, sizeof(uint32_t), true);
 				move = setU32(actionU32);
 				cout << "Move : " << move << "\n";
 				break;
 			}
 
-			if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != PlayerType::OtherAI) {
+			// Write Search Report
+			if (Observer::isSaveRecord && playerType[minishogi.GetTurn()] != OtherAI) {
 				file.open(playDetailStr, ios::app);
 				if (file) {
-					file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
-					minishogi.PrintNoncolorBoard(file);
+					if (playerType[minishogi.GetTurn()] == AI) {
+						file << pvStr;
+						Observer::PrintSearchReport(file);
+					}
 					file << "Move : " << move << "\n";
-					file << "Leaf Eval : " << eval << "\n";
-					Observer::PrintSearchReport(file);
 					file.close();
 				}
 				else cout << "Error : Fail to Save PlayDetail.\n";
 			}
 
+			// Send to another program
+			if (playerType[!minishogi.GetTurn()] == OtherAI) {
+				uint32_t actionU32 = toU32(move);
+				fileMapping.SendMsg(&actionU32, sizeof(uint32_t), true);
+			}
+
+			// Analyze Move Type
 			if (move == MOVE_NULL) {
 				cout << (minishogi.GetTurn() ? "▼" : "△") << "投降! I'm lose\n";
 				break;
@@ -293,7 +308,7 @@ int main(int argc, char **argv) {
 		if (Observer::isSaveRecord) {
 			if (gameMode == 5) {
 				char msg[20];
-				fileMapping.RecvMsg(msg, 20, false);
+				fileMapping.RecvMsg(msg, 20, true);
 				if (strcmp("Save Report", msg)) {
 					cout << "Error : 不同步啦\n";
 					system("pause");
@@ -342,7 +357,7 @@ int main(int argc, char **argv) {
 				else cout << "Error : Fail to Save AI Report.\n";
 			}
 			if (gameMode == 4) {
-				fileMapping.SendMsg("Save Report", 13, false);
+				fileMapping.SendMsg("Save Report", 13, true);
 			}
 		}
 	} while (isCustomBoard);

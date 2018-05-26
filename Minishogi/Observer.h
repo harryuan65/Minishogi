@@ -55,6 +55,14 @@ namespace Observer {
 		beginTime = clock();
 	}
 
+	inline void PauseSearching() {
+		data[DataType::searchTime] = clock() - beginTime;
+	}
+
+	inline void ResumeSearching() {
+		beginTime = clock();
+	}
+
 	inline void EndSearching() {
 		data[DataType::searchNum]++;
 		data[DataType::searchTime] = clock() - beginTime;

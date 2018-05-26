@@ -136,7 +136,7 @@ Move MovePicker::select(Pred filter) {
 		move = *cur++;
 
 		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsCheckedAfter(move))
-			&& type_of(pos.GetChessOn(to_sq(move))) != KING && !pos.IsSennichite())
+			&& type_of(pos.GetChessOn(to_sq(move))) != KING)
 			return move;
 	}
 	return move = MOVE_NULL;

@@ -4,7 +4,7 @@
 #include "MovePick.h"
 
 //#define ITERATIVE_DEEPENING_DISABLE
-//#define ASPIRE_WINDOW_DISABLE
+#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
 //#define QUIES_DISABLE
 
@@ -30,7 +30,7 @@ namespace Search {
 	};
 
 	void Initialize();
-	Value IDAS(Minishogi& pos, Move &bestMove, Move *pv);
+	Value IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output);
 	Value NegaScout(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth, bool isResearch);
 	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth);
 

@@ -31,9 +31,11 @@ void Search::Initialize() {
 	contHistory[EMPTY][0].fill(Search::CounterMovePruneThreshold - 1);
 }
 
-Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv) {
+Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output) {
 	Stack stack[MAX_PLY + 7], *ss = stack + 4; // To reference from (ss-4) to (ss+2)
 	Value bestValue, alpha, beta, delta;
+	stringstream os; 
+	bool isresearch;
 #ifndef ITERATIVE_DEEPENING_DISABLE
 	int rootDepth = 1;
 #else
@@ -48,7 +50,9 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv) {
 	bestMove = MOVE_NULL;
 
 	for (; rootDepth <= Observer::DEPTH; rootDepth++) {
-		cout << "Searching " << rootDepth << " Depth...\n";
+		cout << "Depth " << setw(2) << rootDepth << ",";
+		if (output) os << "Depth " << setw(2) << rootDepth << ",";
+		Observer::ResumeSearching();
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
 			delta = Value(18);
@@ -56,9 +60,10 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv) {
 			beta = min(bestValue + delta, VALUE_INFINITE);
 		}
 #endif
+		isresearch = false;
 		while (true) {
 			ss->pv[0] = MOVE_NULL;
-			bestValue = NegaScout(true, pos, ss, alpha, beta, rootDepth, false);
+			bestValue = NegaScout(true, pos, ss, alpha, beta, rootDepth, isresearch);
 			bestMove = ss->pv[0];
 
 			if (bestValue <= alpha)	{
@@ -72,9 +77,15 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv) {
 				break;
 			}
 			delta += delta / 4 + 5;
+			isresearch = true;
 		}
-		cout << "Best Value : " << bestValue << "\nPV : ";
+		Observer::PauseSearching();
+		cout << "Value " << setw(6) << bestValue << ",PV ";
 		PrintPV(cout, ss->pv);
+		if (output) {
+			os << "Value " << setw(6) << bestValue << ",PV ";
+			PrintPV(os, ss->pv);
+		}
 		if (bestValue >= VALUE_MATE_IN_MAX_PLY || bestValue <= VALUE_MATED_IN_MAX_PLY) {
 			break;
 		}
@@ -82,6 +93,7 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv) {
 	for (int i = 0; ss->pv[i] != MOVE_NULL && pv != nullptr; i++) {
 		pv[i] = ss->pv[i];
 	}
+	if (output)	*output = os.str();
 	return bestValue;
 }
 
@@ -145,7 +157,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 		ss->contHistory = &contHistory[pos.GetBoard(from_sq(move))][to_sq(move)];
 
 		pos.DoMove(move);
-		if ((pos.GetTurn() == WHITE || pos.IsChecked()) && pos.IsSennichite()) {
+		if ((pos.GetTurn() == BLACK || pos.IsChecked()) && pos.IsSennichite()) {
 			pos.UndoMove();
 			continue;
 		}
