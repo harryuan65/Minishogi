@@ -181,7 +181,10 @@ int main(int argc, char **argv) {
 			}
 			else cout << "Error : Fail to Save PlayDetail Title.\n";
 		}
-		Transposition::Clean();
+		if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI) {
+			Search::Initialize();
+			Transposition::Clean();
+		}
 
 		// Start Game Loop
 		Observer::GameStart();

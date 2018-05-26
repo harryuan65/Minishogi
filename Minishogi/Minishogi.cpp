@@ -169,7 +169,6 @@ void Minishogi::DoMove(Move m) {
 
 	if (from < BOARD_NB) { // 移動
 		if (captured) { // 吃
-			assert(type_of(captured) != KING);
 			int toHand = EatToHand[captured];
 			occupied[~turn] ^= dstboard; // 更新對方場上狀況
 			bitboard[captured] ^= dstboard;   // 更新對方手牌
@@ -195,13 +194,13 @@ void Minishogi::DoMove(Move m) {
 		board[from] = EMPTY;      // 原本清空
 	}
 	else { // 打入
+		evalHist[ply] += CHESS_SCORE[pc] - HAND_SCORE[from];
+		keyHist[ply] ^= Zobrist::table[from][board[from]];
+		key2Hist[ply] ^= Zobrist::table2[from][board[from]];
+
 		occupied[turn] ^= dstboard;    // 打入場上的位置
 		bitboard[pc] ^= dstboard;      // 打入該手牌的位置
 		board[from]--;                 // 減少該手牌
-
-		evalHist[ply] += CHESS_SCORE[pc] - HAND_SCORE[from];
-		keyHist[ply] ^= Zobrist::table[from][pc];
-		key2Hist[ply] ^= Zobrist::table2[from][pc];
 	}
 	board[to] = pc;  // 放置到目的
 	assert(board[0] < CHESS_NB && board[0] >= 0);

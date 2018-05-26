@@ -91,6 +91,7 @@ public:
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*,  const CapturePieceToHistory*, Square);
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Move, Move*);
 	Move GetNextMove(bool skipQuiets = false);
+	int stage;
 
 private:
 	template<PickType T, typename Pred> Move select(Pred);
@@ -104,7 +105,6 @@ private:
 	const PieceToHistory** contHistory;
 	Move ttMove;
 	ExtMove refutations[3], *cur, *endMoves, *endBadCaptures;
-	int stage;
 	Move move;
 	Square recaptureSquare;
 	Value threshold;

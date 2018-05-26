@@ -155,6 +155,7 @@ top:
 	case QSEARCH_TT:
 	case PROBCUT_TT:
 		++stage;
+		//assert(pos.IsLegelAction(ttMove));
 		return ttMove;
 
 	case CAPTURE_INIT:
