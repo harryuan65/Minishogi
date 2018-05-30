@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 		/*    AI初始化    */
 		cout << "---------- Game Initialize ----------\n";
 		Zobrist::Initialize();
-		if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI || gameMode == 5) {
+		if (playerType[0] == PlayerType::AI || playerType[1] == PlayerType::AI || gameMode == 6) {
 			Search::Initialize();
 			Transposition::Initialize();
 		}
