@@ -61,6 +61,8 @@ namespace Observer {
 
 	inline void ResumeSearching() {
 		beginTime = clock();
+		for (int i = 0; i < searchTime; i++)
+			data[i] = 0;
 	}
 
 	inline void EndSearching() {
@@ -104,6 +106,8 @@ namespace Observer {
 		os << " Research nodes          : " << setw(10) << data[DataType::researchNode] << "\n";
 		os << " Quies search nodes      : " << setw(10) << data[DataType::quiesNode] << "\n";
 		os << " Avg scout search branch : " << setw(13) << (float)data[DataType::scoutSearchBranch] / data[DataType::scoutGeneNums] << "\n";
+		os << " scoutSearchBranch       : " << setw(10) << data[DataType::scoutSearchBranch] << "\n";
+		os << " scoutGeneNums           : " << setw(10) << data[DataType::scoutGeneNums] << "\n";
 		os << " Total TP Depth          : " << setw(10) << data[DataType::totalTPDepth] << "\n";
 		os << " Isomorphic  (read)      : " << setw(10) << data[DataType::ios_read] << "\n";
 		os << " Isomorphic  (write)     : " << setw(10) << data[DataType::ios_write] << "\n";
@@ -130,6 +134,8 @@ namespace Observer {
 			os << " Research nodes          : " << setw(10) << game_data[DataType::researchNode] / game_data[DataType::searchNum] << "\n";
 			os << " Quies search nodes      : " << setw(10) << game_data[DataType::quiesNode] / game_data[DataType::searchNum] << "\n";
 			os << " Avg scout search branch : " << setw(13) << (float)game_data[DataType::scoutSearchBranch] / game_data[DataType::scoutGeneNums] << "\n";
+			os << " scoutSearchBranch       : " << setw(10) << game_data[DataType::scoutSearchBranch] / game_data[DataType::searchNum] << "\n";
+			os << " scoutGeneNums           : " << setw(10) << game_data[DataType::scoutGeneNums] / game_data[DataType::searchNum] << "\n";
 			os << " Total TP Depth          : " << setw(10) << game_data[DataType::totalTPDepth] / game_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (read)      : " << setw(10) << game_data[DataType::ios_read] / game_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (write)     : " << setw(10) << game_data[DataType::ios_write] / game_data[DataType::searchNum] << "\n";
@@ -153,6 +159,8 @@ namespace Observer {
 			os << " Research nodes          : " << setw(10) << total_data[DataType::researchNode] / total_data[DataType::searchNum] << "\n";
 			os << " Quies search nodes      : " << setw(10) << total_data[DataType::quiesNode] / total_data[DataType::searchNum] << "\n";
 			os << " Avg scout search branch : " << setw(13) << (float)total_data[DataType::scoutSearchBranch] / total_data[DataType::scoutGeneNums] << "\n";
+			os << " scoutSearchBranch       : " << setw(10) << total_data[DataType::scoutSearchBranch] / total_data[DataType::searchNum] << "\n";
+			os << " scoutGeneNums           : " << setw(10) << total_data[DataType::scoutGeneNums] / total_data[DataType::searchNum] << "\n";
 			os << " Total TP Depth          : " << setw(10) << total_data[DataType::totalTPDepth] / total_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (read)      : " << setw(10) << total_data[DataType::ios_read] / total_data[DataType::searchNum] << "\n";
 			os << " Isomorphic  (write)     : " << setw(10) << total_data[DataType::ios_write] / total_data[DataType::searchNum] << "\n";

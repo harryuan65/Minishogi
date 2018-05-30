@@ -167,6 +167,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 		if (depth > 3 && ss->moveCount > 1) {
 			value = -NegaScout(pvNode, pos, ss + 1, -(alpha + 1), -alpha, depth - 1, isResearch);
 			if (alpha < value && value < beta) {
+				ss->moveCount++;
 				value = -NegaScout(pvNode, pos, ss + 1, -beta, -(value - 1), depth - 1, true);
 			}
 		}
@@ -250,6 +251,11 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, V
 	ttn = Probe(key, ttHit);
 	ttValue = ttHit ? value_from_tt((Value)ttn->value, ss->ply) : VALUE_NONE;
 	ttMove = ttHit ? ttn->move : MOVE_NULL;
+	if (ttHit && ttValue != VALUE_NONE && ttMove && !pos.PseudoLegal(ttMove)) {
+		ttValue = VALUE_NONE;
+		ttMove = MOVE_NULL;
+	}
+	
 	if (!pvNode
 		&& ttHit
 		&& ttn->depth >= ttDepth
@@ -303,7 +309,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, V
 		}
 	}
 	if (isChecked && bestValue == -VALUE_INFINITE)
-		return -VALUE_MATE;
+		return mated_in(ss->ply);
 
 	ttn->save(key, ttDepth, value_to_tt(bestValue, ss->ply), bestMove, bestValue > oldAlpha ? TTnode::EXACT : TTnode::UNKNOWN);
 	assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
