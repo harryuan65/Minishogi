@@ -55,7 +55,7 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output) {
 		Observer::ResumeSearching();
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
-			delta = Value(18);
+			delta = Value(100);
 			alpha = max(bestValue - delta, -VALUE_INFINITE);
 			beta = min(bestValue + delta, VALUE_INFINITE);
 		}
@@ -67,16 +67,17 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output) {
 			bestMove = ss->pv[0];
 
 			if (bestValue <= alpha)	{
-				beta = (alpha + beta) / 2;
 				alpha = max(bestValue - delta, -VALUE_INFINITE);
+				beta = min(bestValue + delta, VALUE_INFINITE);
 			}
 			else if (bestValue >= beta) {
+				alpha = max(bestValue - delta, -VALUE_INFINITE);
 				beta = min(bestValue + delta, VALUE_INFINITE);
 			}
 			else {
 				break;
 			}
-			delta += delta / 4 + 5;
+			delta += delta;
 			isresearch = true;
 		}
 		Observer::PauseSearching();
