@@ -107,9 +107,8 @@ int main(int argc, char **argv) {
 				playerName[1] = aiVersion;
 				break;
 			case 4:
-				if (!GetOpenFileNameString(gameDirStr)) {
+				if (!GetOpenFileNameString(gameDirStr))
 					continue;
-				}
 				playerType[0] = PlayerType::AI;
 				playerType[1] = PlayerType::OtherAI;
 				playerName[0] = aiVersion;
@@ -155,6 +154,9 @@ int main(int argc, char **argv) {
 				to_string(isCustomBoard) + " " +
 				to_string(Observer::isSaveRecord)).c_str());
 		}
+		else if (gameMode == 6) {
+			system(("start Shogi.exe " + currTimeStr).c_str());
+		}
 	}
 	CreateDirectory(CA2W(REPORT_PATH), NULL);
 
@@ -168,7 +170,6 @@ int main(int argc, char **argv) {
 
 	do {
 		if (gameMode == 6) {
-			system(("start Shogi.exe " + currTimeStr).c_str());
 			cout << "[NewGame]Waiting for UI's gamemode..." << endl;
 			fm_gm.RecvMsg(buffer, sizeof(buffer), true);//*********Recv gamemode
 			if (buffer[0] == GAMEMODE) {
@@ -499,14 +500,14 @@ string GetAIVersion() {
 	str += " 國籍同構";
 #endif
 #ifndef ITERATIVE_DEEPENING_DISABLE
-	str += " 有IDAS";
+	str += " 有ID";
 #else
-	str += " 沒IDAS";
+	str += " 沒ID";
 #endif
 #ifndef ASPIRE_WINDOW_DISABLE
-	str += " 有aspire";
+	str += " 有asp";
 #else
-	str += " 沒aspire";
+	str += " 沒asp";
 #endif
 #ifndef PVS_DISABLE
 	str += " 有pvs";
@@ -519,9 +520,9 @@ string GetAIVersion() {
 	str += " 沒寧靜";
 #endif
 #ifndef MOVEPICK_DISABLE
-	str += " 有movepick";
+	str += " 有mpk";
 #else
-	str += " 沒movepick";
+	str += " 沒mpk";
 #endif
 	return str;
 }
