@@ -22,7 +22,8 @@ namespace Observer {
 	vector<unsigned __int64> initHash;
 
 	// ³]©w
-	int DEPTH = 10;
 	int depth = 10;
+	int limitTime = 2500;
 	bool isSaveRecord = true;
+	string playDetailStr = "";
 }

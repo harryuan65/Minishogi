@@ -2,15 +2,20 @@
 #define _MINISHOGI_
 
 #include "Bitboard.h"
+#include "Types.h"
 using std::string;
-#define BOARD_PATH        "board//"
+
+class Thread;
 
 class Minishogi {
 private:
 	Color turn;
 	int ply;
+	Bitboard occupied[COLOR_NB];
+	Bitboard bitboard[CHESS_NB];
+	int board[SQUARE_NB];
+	Thread *thisThread;
 
-	// Stats
 	Move moveHist[MAX_HISTORY_PLY];
 	Chess captureHist[MAX_HISTORY_PLY];
 	Value evalHist[MAX_HISTORY_PLY + 1];
@@ -21,13 +26,10 @@ private:
 	inline void checker_BB();
 
 public:
-	Bitboard occupied[COLOR_NB];
-	Bitboard bitboard[CHESS_NB];
-	int board[SQUARE_NB];
-
 	void Initialize();
 	void Initialize(const char *str);
 	bool Initialize(const string* str);
+	void Set(const Minishogi &m, Thread *th);
 
 	void DoMove(Move m);
 	void UndoMove();
@@ -57,16 +59,17 @@ public:
 	bool IsSennichite() const;
 	inline bool IsIsomorphic() const { return keyHist[ply] == key2Hist[ply]; }
 
-	inline Color GetTurn() const { return turn; }
-	inline int   GetStep() const { return ply; }
-	inline Value GetEvaluate() const { return turn ? -evalHist[ply] : evalHist[ply]; };
-	inline Key   GetKey() const { return turn ? key2Hist[ply] : keyHist[ply]; }
-	inline Key   GetKey(int p) const { return turn ^ (p % 2 == 0) ? key2Hist[p] : keyHist[p]; }
-	inline Chess GetChessOn(int sq) const {
+	Thread* GetThread() const { return thisThread; }
+	inline Color   GetTurn() const { return turn; }
+	inline int     GetStep() const { return ply; }
+	inline Value   GetEvaluate() const { return turn ? -evalHist[ply] : evalHist[ply]; };
+	inline Key     GetKey() const { return turn ? key2Hist[ply] : keyHist[ply]; }
+	inline Key     GetKey(int p) const { return turn ^ (p % 2 == 0) ? key2Hist[p] : keyHist[p]; }
+	inline Chess   GetChessOn(int sq) const {
 		return (Chess)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : EMPTY));
 	}
-	inline Chess GetCapture() const { return captureHist[ply - 1]; }
-	unsigned int GetKifuHash() const ;
+	inline Chess   GetCapture() const { return captureHist[ply - 1]; }
+	unsigned int   GetKifuHash() const ;
 };
 
 //+Example Board

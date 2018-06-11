@@ -13,6 +13,7 @@
 #else
 #define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
 #endif
+#define BOARD_PATH  "board//"
 using std::cout;
 
 // AttackGene moveList order by attacker
@@ -42,7 +43,6 @@ static const int MoverOrder[] = {
 	PAWN,
 	KING
 };
-
 
 void Minishogi::Initialize() {
     Initialize(
@@ -108,9 +108,9 @@ bool Minishogi::Initialize(const std::string* str) {
 		return false;
 	}
 	ply = 0;
-	evalHist[ply] = VALUE_ZERO;
-	keyHist[ply] = 0;
-	key2Hist[ply] = 0;
+	evalHist[0] = VALUE_ZERO;
+	keyHist[0] = 0;
+	key2Hist[0] = 0;
 
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++, index++) {
@@ -120,9 +120,9 @@ bool Minishogi::Initialize(const std::string* str) {
 						board[index] = chess;
 						bitboard[chess] |= 1 << index;
 						occupied[chess > BLACKCHESS] |= 1 << index;
-						evalHist[ply] += CHESS_SCORE[chess];
-						keyHist[ply] ^= Zobrist::table[index][chess];
-						key2Hist[ply] ^= Zobrist::table2[index][chess];
+						evalHist[0] += CHESS_SCORE[chess];
+						keyHist[0] ^= Zobrist::table[index][chess];
+						key2Hist[0] ^= Zobrist::table2[index][chess];
 					}
 					break;
 				}
@@ -138,12 +138,12 @@ bool Minishogi::Initialize(const std::string* str) {
 			int num = str[i + 6][2 + 3 * j] - '0';
 			if (num == 1 || num == 2) {
 				board[index] = num;
-				evalHist[ply] += HAND_SCORE[index] * num;
-				keyHist[ply] ^= Zobrist::table[index][1];
-				key2Hist[ply] ^= Zobrist::table2[index][1];
+				evalHist[0] += HAND_SCORE[index] * num;
+				keyHist[0] ^= Zobrist::table[index][1];
+				key2Hist[0] ^= Zobrist::table2[index][1];
 				if (num == 2) {
-					keyHist[ply] ^= Zobrist::table[index][2];
-					key2Hist[ply] ^= Zobrist::table2[index][2];
+					keyHist[0] ^= Zobrist::table[index][2];
+					key2Hist[0] ^= Zobrist::table2[index][2];
 				}
 			}
 			else if (num != 0) {
@@ -154,6 +154,19 @@ bool Minishogi::Initialize(const std::string* str) {
 	}
 	checker_BB();
 	return true;
+}
+
+void Minishogi::Set(const Minishogi &m, Thread *th) {
+	thisThread    = th;
+	ply           = 0;
+	turn          = m.turn;
+	evalHist[0]   = m.evalHist[m.ply];
+	keyHist[0]    = m.keyHist[m.ply];
+	key2Hist[0]   = m.key2Hist[m.ply];
+	checker_bb[0] = m.checker_bb[m.ply];
+	for (int i = 0; i < COLOR_NB; i++) occupied[i] = m.occupied[i];
+	for (int i = 0; i < CHESS_NB; i++) bitboard[i] = m.bitboard[i];
+	for (int i = 0; i < SQUARE_NB; i++)   board[i] = m.board[i];
 }
 
 void Minishogi::DoMove(Move m) {
@@ -611,10 +624,10 @@ void Minishogi::PrintChessBoard() const {
 	int chess, rank_count = 0, board_count = 0;
 
 	SetConsoleTextAttribute(hConsole, 7);
-	puts("  ｜ 5｜ 4｜ 3｜ 2｜ 1｜");
+	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
 	for (int i = 0; i < 9; i++) {
 		puts(LINE_STRING);
-		if (i == 5) puts("  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n");
+		if (i == 5) cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n\n";
 
 		printf("%s", RANK_NAME[rank_count]);
 		for (int j = 0; j < 5; j++, board_count++) {
@@ -649,7 +662,7 @@ void Minishogi::PrintChessBoard() const {
 	}
 	cout << "Zobrist : " << std::setw(16) << std::hex << GetKey() << std::dec << "\n";
 	cout << "Evaluate : " << std::setw(15) << GetEvaluate() << "\n";
-	cout << (turn ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
+	cout << (turn ? "[▼ Turn]\n" : "[△ Turn]\n");
 }
 
 void Minishogi::PrintNoncolorBoard(std::ostream &os) const {

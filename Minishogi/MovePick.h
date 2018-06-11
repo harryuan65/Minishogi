@@ -2,6 +2,8 @@
 #define _MOVEPICK_
 
 #include <array>
+#include "Minishogi.h"
+
 //#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
 
@@ -79,6 +81,8 @@ enum GenType {
 	NON_EVASIONS,
 	LEGAL
 };
+
+class Minishogi;
 
 class MovePicker{
 

@@ -28,7 +28,7 @@ namespace Observer {
 
 	// 單一盤面搜尋結果
 	extern unsigned long long data[DataType::COUNT];
-	static clock_t beginTime;
+	static clock_t beginTime = 0;
 
 	// 整局結果
 	extern unsigned long long game_data[DataType::COUNT];
@@ -45,31 +45,32 @@ namespace Observer {
 	extern vector<uint64_t> initHash;
 
 	// 設定
-	extern int DEPTH;
 	extern int depth;
+	extern int limitTime;
 	extern bool isSaveRecord;
+	extern string playDetailStr;
 
 	inline void StartSearching() {
 		for (int i = 0; i < DataType::COUNT; i++)
 			data[i] = 0;
 		beginTime = clock();
 	}
-
+	/*
 	inline void PauseSearching() {
-		data[DataType::searchTime] = clock() - beginTime;
+		data[DataType::searchTime] += clock() - beginTime;
+		beginTime = 0;
 	}
 
 	inline void ResumeSearching() {
 		beginTime = clock();
-		for (int i = 0; i < searchTime; i++)
-			data[i] = 0;
 	}
-
+	*/
 	inline void EndSearching() {
 		data[DataType::searchNum]++;
-		data[DataType::searchTime] = clock() - beginTime;
+		data[DataType::searchTime] += clock() - beginTime;
 		for (int i = 0; i < DataType::COUNT; i++)
 			game_data[i] += data[i];
+		beginTime = 0;
 	}
 
 	inline void GameStart() {
@@ -96,7 +97,8 @@ namespace Observer {
 			total_data[i] += game_data[i];
 	}
 
-	inline void PrintSearchReport(std::ostream &os) {
+	inline void PrintSearchReport(ostream &os) {
+		if (!os) return;
 		if (data[DataType::searchNum] == 0) return;
 		if (data[DataType::scoutGeneNums] == 0) data[DataType::scoutGeneNums] = 1;
 		os << setiosflags(ios::fixed) << setprecision(2);
@@ -118,13 +120,13 @@ namespace Observer {
 		os << endl;
 	}
 
-
 	inline void PrintGameReport(ostream &os) {
+		if (!os) return;
 		os << "Game" << setw(3) << gameNum - 1 << "\n";
 		os << "Game Result :\n";
 		os << " Winner                  : " << setw(10) << (winner ? "Player2" : "Player1") << "\n";
 		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
-		os << " Search depths           : " << setw(10) << DEPTH << "\n";
+		os << " Search depths           : " << setw(10) << depth << "\n";
 		os << " Search nums             : " << setw(10) << game_data[DataType::searchNum] << "\n";
 
 		if (game_data[DataType::searchNum] != 0) {
@@ -148,9 +150,10 @@ namespace Observer {
 	}
 
 	inline void PrintTotalReport(ostream &os) {
+		if (!os) return;
 		if (gameNum == 0) return;
 		os << "Game Result :\n";
-		os << " Search depths           : " << setw(10) << DEPTH << "\n";
+		os << " Search depths           : " << setw(10) << depth << "\n";
 		os << " Search nums             : " << setw(10) << total_data[DataType::searchNum] << "\n";
 		if (total_data[DataType::searchNum] != 0) {
 			os << setiosflags(ios::fixed) << setprecision(2);
@@ -173,6 +176,7 @@ namespace Observer {
 	}
 
 	inline void PrintWinnerReport(ostream &os) {
+		if (!os) return;
 		if (gameNum == 0) return;
 		os << "Total Result :\n";
 		os << " Game play nums          : " << setw(10) << gameNum << "\n";

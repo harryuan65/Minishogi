@@ -1,18 +1,14 @@
 #include <assert.h>
+#include <fstream>
+#include <windows.h>
 
-#include "Minishogi.h"
-#include "Transposition.h"
 #include "Search.h"
+#include "Thread.h"
+#include "MovePick.h"
+#include "Transposition.h"
 
 using namespace Search;
 using namespace Transposition;
-
-namespace Search {
-	ButterflyHistory mainHistory;
-	CapturePieceToHistory captureHistory;
-	PieceToHistory contHistory[CHESS_NB][SQUARE_NB];
-	CounterMoveHistory counterMoves;
-}
 
 Value value_to_tt(Value v, int ply);
 Value value_from_tt(Value v, int ply);
@@ -21,58 +17,52 @@ inline int stat_bonus(int d) {
 	return d > 17 ? 0 : 32 * d * d + 64 * d - 64;
 }
 
-void Search::Initialize() {
-	counterMoves.fill(MOVE_NULL);
-	mainHistory.fill(0);
-	captureHistory.fill(0);
-	for (int i = 0; i < CHESS_NB; i++)
-		for (int j = 0; j < SQUARE_NB; j++)
-			contHistory[i][j].fill(0);
-	contHistory[EMPTY][0].fill(Search::CounterMovePruneThreshold - 1);
-}
-
-Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output) {
-	Stack stack[MAX_PLY + 7], *ss = stack + 4; // To reference from (ss-4) to (ss+2)
-	Value bestValue, alpha, beta, delta;
-	stringstream os; 
+void Thread::IDAS(RootMove &rm, int depth) {
+	Value value, alpha, beta, delta;
+	fstream file;
 	bool isresearch;
+	int rootDepth;
+
 #ifndef ITERATIVE_DEEPENING_DISABLE
-	int rootDepth = 1;
+	rootDepth = 1;
 #else
-	int rootDepth = Observer::DEPTH;
+	rootDepth = depth;
 #endif
-
-	std::memset(ss - 4, 0, 7 * sizeof(Stack));
-	for (int i = 4; i > 0; i--)
-		(ss - i)->contHistory = &contHistory[EMPTY][0]; // Use as sentinel
-	bestValue = alpha = delta = -VALUE_INFINITE;
+	value = alpha = delta = -VALUE_INFINITE;
 	beta = VALUE_INFINITE;
-	bestMove = MOVE_NULL;
+	if (rm.depth) {
+		if (rm.depth >= depth) {
+			return;
+		}
+		else {
+			value = rm.value; 
+			rootDepth = rm.depth + 1;
+		}
+	}
 
-	for (; rootDepth <= Observer::DEPTH; rootDepth++) {
-		cout << "Depth " << setw(2) << rootDepth << ",";
-		if (output) os << "Depth " << setw(2) << rootDepth << ",";
-		Observer::ResumeSearching();
+	for (; rootDepth <= depth && !IsStop(); rootDepth++) {
+		//Observer::ResumeSearching();
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
 			delta = Value(100);
-			alpha = max(bestValue - delta, -VALUE_INFINITE);
-			beta = min(bestValue + delta, VALUE_INFINITE);
+			alpha = max(value - delta, -VALUE_INFINITE);
+			beta = min(value + delta, VALUE_INFINITE);
 		}
 #endif
 		isresearch = false;
 		while (true) {
 			ss->pv[0] = MOVE_NULL;
-			bestValue = NegaScout(true, pos, ss, alpha, beta, rootDepth, isresearch);
-			bestMove = ss->pv[0];
-
-			if (bestValue <= alpha)	{
-				alpha = max(bestValue - delta, -VALUE_INFINITE);
-				beta = min(bestValue + delta, VALUE_INFINITE);
+			value = NegaScout(true, rootPos, ss, rm.enemyMove, alpha, beta, rootDepth, isresearch);
+			
+			if (IsStop())
+				break;
+			if (value <= alpha)	{
+				alpha = max(value - delta, -VALUE_INFINITE);
+				beta = min(value + delta, VALUE_INFINITE);
 			}
-			else if (bestValue >= beta) {
-				alpha = max(bestValue - delta, -VALUE_INFINITE);
-				beta = min(bestValue + delta, VALUE_INFINITE);
+			else if (value >= beta) {
+				alpha = max(value - delta, -VALUE_INFINITE);
+				beta = min(value + delta, VALUE_INFINITE);
 			}
 			else {
 				break;
@@ -80,28 +70,82 @@ Value Search::IDAS(Minishogi& pos, Move &bestMove, Move *pv, string *output) {
 			delta += delta;
 			isresearch = true;
 		}
-		Observer::PauseSearching();
-		cout << "Value " << setw(6) << bestValue << ",PV ";
-		PrintPV(cout, ss->pv);
-		if (output) {
-			os << "Value " << setw(6) << bestValue << ",PV ";
-			PrintPV(os, ss->pv);
-		}
-		if (bestValue >= VALUE_MATE_IN_MAX_PLY || bestValue <= VALUE_MATED_IN_MAX_PLY) {
+		//Observer::PauseSearching();
+		if (IsStop())
 			break;
-		}
+
+		/*cout << RootMove::PV(rootDepth, value, ss->pv) << endl;
+		file.open(Observer::playDetailStr, ios::app);
+		if (file) file << RootMove::PV(rootDepth, value, ss->pv) << endl;
+		file.close();*/
+
+		int i = 0;
+		rm.depth = rootDepth;
+		rm.value = value;
+		do {
+			rm.pv[i] = ss->pv[i];
+		} while (ss->pv[i++] != MOVE_NULL);
+
+		// value => 必勝或必輸, beginTime => 有時間壓力, ss->moveCount => 只有一個合法步
+		if (CheckStop(rm.enemyMove) || 
+			value >= VALUE_MATE_IN_MAX_PLY || 
+			value <= VALUE_MATED_IN_MAX_PLY ||
+			(beginTime && ss->moveCount == 1))
+			break;
 	}
-	for (int i = 0; ss->pv[i] != MOVE_NULL && pv != nullptr; i++) {
-		pv[i] = ss->pv[i];
-	}
-	if (output)	*output = os.str();
-	return bestValue;
 }
 
-Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Value beta, int depth, bool isResearch) {
+void Thread::PreIDAS() {
+	Move move;
+	int depth = Observer::depth;
+	bool ttHit, isWin = false;
+
+	rootMoves.clear();
+	const TTnode *ttn = Probe(rootPos.GetKey(), ttHit); // Save TT?
+	const Move ttMove = ttHit ? ttn->move : MOVE_NULL;
+	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
+	const Move counterMove = counterMoves[rootPos.GetChessOn(to_sq((ss - 1)->currentMove))][to_sq((ss - 1)->currentMove)];
+	MovePicker mp(rootPos, ttMove, depth, &mainHistory, &captureHistory, contHist, counterMove, ss->killers);
+	sync_cout << "Thread " << us << " : Preseaching Depth " << depth << sync_endl;
+	while (!IsStop() && ((move = mp.GetNextMove(false)) != MOVE_NULL)) {
+		rootMoves.emplace_back();
+		rootMoves.back().enemyMove = move;
+		rootPos.DoMove(move);
+		IDAS(rootMoves.back(), depth);
+		rootPos.UndoMove();
+		if (CheckStop(move))
+			break;
+	}
+	if (!rootMoves.size()) {
+		isExit = true;
+		return;
+	}
+	depth++;
+
+	while (!IsStop() && !isWin) {
+		isWin = true;
+		sync_cout << "Thread " << us << " : Preseaching Depth " << depth << sync_endl;
+		for (int i = 0; !IsStop() && i < rootMoves.size(); i++) {
+			if (rootMoves[i].value >= VALUE_MATE_IN_MAX_PLY) 
+				continue;
+			isWin = false;
+			rootPos.DoMove(rootMoves[i].enemyMove);
+			IDAS(rootMoves[i], depth);
+			rootPos.UndoMove();
+			if (CheckStop(move))
+				break;
+		}
+		depth++;
+	}
+	while (isWin && !CheckStop(move))
+		Sleep(10);
+}
+
+Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isResearch) {
 	Observer::data[Observer::DataType::totalNode]++;
 	Observer::data[Observer::DataType::researchNode] += isResearch;
 
+	Thread *thisThread = pos.GetThread();
 	Value value, bestValue, ttValue;
 	Move move, ttMove, bestMove;
 	TTnode *ttn;
@@ -109,13 +153,16 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 	bool ttHit;
 	const bool rootNode = ss->ply == 0;
 
+	if (thisThread->CheckStop(rootMove))
+		return VALUE_ZERO;
+
 	bestValue = -VALUE_INFINITE;
 	ss->moveCount = 0;
 
 	ss->pv[0] = MOVE_NULL;
 	(ss + 1)->ply = ss->ply + 1;
 	ss->currentMove = bestMove = MOVE_NULL;
-	ss->contHistory = &contHistory[EMPTY][0];
+	ss->contHistory = &thisThread->contHistory[EMPTY][0];
 	(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
 	prevSq = to_sq((ss - 1)->currentMove);
 
@@ -132,7 +179,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 			}
 			else if (!pos.GetChessOn(to_sq(ttMove))) {
 				int penalty = -stat_bonus(depth);
-				mainHistory[pos.GetTurn()][from_sq(ttMove)][to_sq(ttMove)] << penalty;
+				thisThread->mainHistory[pos.GetTurn()][from_sq(ttMove)][to_sq(ttMove)] << penalty;
 				UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(ttMove)), to_sq(ttMove), penalty);
 			}
 		}
@@ -141,21 +188,21 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 
 	if (depth == 0) {
 #ifndef QUIES_DISABLE
-		return QuietSearch(pvNode, pos, ss, alpha, beta, 0);
+		return QuietSearch(pvNode, pos, ss, rootMove, alpha, beta, 0);
 #else
 		return pos.GetEvaluate();
 #endif
 	}
 
 	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
-	Move capturesSearched[32], quietsSearched[64], countermove = counterMoves[pos.GetChessOn(prevSq)][prevSq];
-	MovePicker mp(pos, ttMove, depth, &mainHistory, &captureHistory, contHist, countermove, ss->killers);
+	Move capturesSearched[32], quietsSearched[64], countermove = thisThread->counterMoves[pos.GetChessOn(prevSq)][prevSq];
+	MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
 	bool isChecked = pos.IsChecked(); // 若此盤面處於被將 解將不考慮千日手
 	int captureCount = 0, quietCount = 0;
 
 	while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 		ss->currentMove = move;
-		ss->contHistory = &contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
+		ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 
 		pos.DoMove(move);
 		if ((pos.GetTurn() == BLACK || pos.IsChecked()) && pos.IsSennichite()) {
@@ -166,14 +213,14 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 		ss->moveCount++;
 #ifndef PVS_DISABLE
 		if (depth > 3 && ss->moveCount > 1) {
-			value = -NegaScout(pvNode, pos, ss + 1, -(alpha + 1), -alpha, depth - 1, isResearch);
+			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -(alpha + 1), -alpha, depth - 1, isResearch);
 			if (alpha < value && value < beta) {
 				ss->moveCount++;
-				value = -NegaScout(pvNode, pos, ss + 1, -beta, -(value - 1), depth - 1, true);
+				value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -(value - 1), depth - 1, true);
 			}
 		}
 		else {
-			value = -NegaScout(pvNode, pos, ss + 1, -beta, -alpha, depth - 1, isResearch);
+			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 		}
 #else
 		value = -NegaScout(pvNode, pos, ss + 1, -beta, -alpha, depth - 1, isResearch);
@@ -233,9 +280,10 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Value alpha, Val
 	return bestValue;
 }
 
-Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, Value beta, int depth = 0) {
+Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth = 0) {
 	Observer::data[Observer::DataType::quiesNode]++;
 
+	Thread *thisThread = pos.GetThread();
 	const bool isChecked = pos.IsChecked();
 	const Key key = pos.GetKey();
 	Value bestValue, ttValue, oldAlpha = alpha;
@@ -243,6 +291,9 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, V
 	TTnode *ttn;
 	bool ttHit;
 	int ttDepth = isChecked || depth >= 0 ? 0 : -1;
+
+	if (thisThread->CheckStop(rootMove))
+		return VALUE_ZERO;
 
 	bestValue = -VALUE_INFINITE;
 	ss->moveCount = 0;
@@ -285,13 +336,13 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Value alpha, V
 			alpha = bestValue;
 	}
 
-	MovePicker mp(pos, ttMove, depth, &mainHistory, &captureHistory, to_sq((ss - 1)->currentMove));
+	MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, to_sq((ss - 1)->currentMove));
 
 	while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 		ss->currentMove = move;
 
 		pos.DoMove(move);
-		Value value = -QuietSearch(pvNode, pos, ss + 1, -beta, -alpha, depth - 1);
+		Value value = -QuietSearch(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1);
 		pos.UndoMove();
 
 		if (value > bestValue) {
@@ -327,13 +378,13 @@ void Search::UpdatePv(Move* pv, Move move, Move* childPv) {
 void Search::UpdateAttackHeuristic(const Minishogi& pos, Move move, Move* captures, int captureCnt, int bonus) {
 	Chess moved_piece = pos.GetChessOn(from_sq(move));
 	Chess captured = type_of(pos.GetChessOn(to_sq(move)));
-	captureHistory[moved_piece][to_sq(move)][captured] << bonus;
+	pos.GetThread()->captureHistory[moved_piece][to_sq(move)][captured] << bonus;
 
 	// Decrease all the other played capture moves
 	for (int i = 0; i < captureCnt; ++i) {
 		moved_piece = pos.GetChessOn(from_sq(captures[i]));
 		captured = type_of(pos.GetChessOn(to_sq(captures[i])));
-		captureHistory[moved_piece][to_sq(captures[i])][captured] << -bonus;
+		pos.GetThread()->captureHistory[moved_piece][to_sq(captures[i])][captured] << -bonus;
 	}
 }
 
@@ -345,17 +396,17 @@ void Search::UpdateQuietHeuristic(const Minishogi& pos, Stack* ss, Move move, Mo
 	}
 
 	Color us = pos.GetTurn();
-	mainHistory[us][from_sq(move)][to_sq(move)] << bonus;
+	pos.GetThread()->mainHistory[us][from_sq(move)][to_sq(move)] << bonus;
 	UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(move)), to_sq(move), bonus);
 
 	if ((ss - 1)->currentMove != MOVE_NULL) {
 		int prevSq = to_sq((ss - 1)->currentMove);
-		counterMoves[pos.GetChessOn(prevSq)][prevSq] = move;
+		pos.GetThread()->counterMoves[pos.GetChessOn(prevSq)][prevSq] = move;
 	}
 
 	// Decrease all the other played quiet moves
 	for (int i = 0; i < quietsCnt; ++i) {
-		mainHistory[us][from_sq(quiets[i])][to_sq(quiets[i])] << -bonus;
+		pos.GetThread()->mainHistory[us][from_sq(quiets[i])][to_sq(quiets[i])] << -bonus;
 		UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(quiets[i])), to_sq(quiets[i]), -bonus);
 	}
 }
@@ -386,9 +437,9 @@ Value value_from_tt(Value v, int ply) {
 		: v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
 }
 
-void Search::PrintPV(ostream &os, Move *move) {
+/*void Search::PrintPV(ostream &os, Move *move) {
 	for (int i = 0; move[i] != MOVE_NULL; i++) {
 		os << move[i] << " ";
 	}
 	os << "\n";
-}
+}*/

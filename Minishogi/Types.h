@@ -1,10 +1,17 @@
 #ifndef _TYPES_
 #define _TYPES_
 #include <sstream>
+#include <mutex>
 
 using namespace std;
 
 typedef uint64_t Key;
+
+enum SyncCout { IO_LOCK, IO_UNLOCK };
+std::ostream& operator<<(std::ostream& os, SyncCout sc);
+
+#define sync_cout std::cout << IO_LOCK
+#define sync_endl std::endl << IO_UNLOCK
 
 constexpr int SINGLE_GENE_MAX_ACTIONS = 112;
 constexpr int TOTAL_GENE_MAX_ACTIONS = 162;  // AtkGene 21, MoveGene 29, HandGene 112
@@ -46,7 +53,7 @@ enum Square : int {
 enum Move : int {
 	MOVE_NULL,
 	MOVE_UNDO = 1 << 13,
-	MOVE_SAVEBOARD = 2 << 13,
+	//MOVE_SAVEBOARD = 2 << 13,
 	MOVE_ILLEGAL = 3 << 13
 };
 
@@ -213,9 +220,9 @@ static istream& operator>>(istream &is, Move& m) {
 	else if (str == "UNDO" || str == "undo") {
 		m = MOVE_UNDO;
 	}
-	else if (str == "SAVEBOARD" || str == "saveboard") {
+	/*else if (str == "SAVEBOARD" || str == "saveboard") {
 		m = MOVE_SAVEBOARD;
-	}
+	}*/
 	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+')) {
 		m = MOVE_ILLEGAL;
 	}
@@ -235,9 +242,9 @@ static ostream& operator<< (ostream& os, const Move& m) {
 	case MOVE_UNDO:
 		os << "UNDO";
 		break;
-	case MOVE_SAVEBOARD:
+	/*case MOVE_SAVEBOARD:
 		os << "SAVEBOARD";
-		break;
+		break;*/
 	default:
 		os << Index2Input(from_sq(m)) << Index2Input(to_sq(m)) << (is_pro(m) ? "+" : " ");
 	}

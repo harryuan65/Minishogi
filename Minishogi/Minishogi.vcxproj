@@ -147,7 +147,9 @@
     <ClCompile Include="MovePick.cpp" />
     <ClCompile Include="Observer.cpp" />
     <ClCompile Include="Search.cpp" />
+    <ClCompile Include="Thread.cpp" />
     <ClCompile Include="Transposition.cpp" />
+    <ClCompile Include="Types.cpp" />
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +159,7 @@
     <ClInclude Include="MovePick.h" />
     <ClInclude Include="Observer.h" />
     <ClInclude Include="Search.h" />
+    <ClInclude Include="Thread.h" />
     <ClInclude Include="Transposition.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Zobrist.h" />

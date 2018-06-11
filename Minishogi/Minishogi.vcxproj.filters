@@ -36,6 +36,12 @@
     <ClCompile Include="Search.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
+    <ClCompile Include="Thread.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="Types.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Observer.h">
@@ -63,6 +69,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="Search.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Thread.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
