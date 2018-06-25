@@ -149,7 +149,6 @@
     <ClCompile Include="Search.cpp" />
     <ClCompile Include="Thread.cpp" />
     <ClCompile Include="Transposition.cpp" />
-    <ClCompile Include="Types.cpp" />
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>

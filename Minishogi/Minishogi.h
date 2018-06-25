@@ -19,11 +19,13 @@ private:
 	Move moveHist[MAX_HISTORY_PLY];
 	Chess captureHist[MAX_HISTORY_PLY];
 	Value evalHist[MAX_HISTORY_PLY + 1];
+	Value pinHist[MAX_HISTORY_PLY + 1];
 	Key keyHist[MAX_HISTORY_PLY + 1];
 	Key key2Hist[MAX_HISTORY_PLY + 1];
 	Bitboard checker_bb[MAX_HISTORY_PLY + 1];
 
 	inline void checker_BB();
+	inline void pin_score();
 
 public:
 	void Initialize();
@@ -62,7 +64,9 @@ public:
 	Thread* GetThread() const { return thisThread; }
 	inline Color   GetTurn() const { return turn; }
 	inline int     GetStep() const { return ply; }
-	inline Value   GetEvaluate() const { return turn ? -evalHist[ply] : evalHist[ply]; };
+	inline Value   GetEvaluate() const {
+		return turn ? -evalHist[ply] - pinHist[ply] : evalHist[ply] + pinHist[ply];
+	};
 	inline Key     GetKey() const { return turn ? key2Hist[ply] : keyHist[ply]; }
 	inline Key     GetKey(int p) const { return turn ^ (p % 2 == 0) ? key2Hist[p] : keyHist[p]; }
 	inline Chess   GetChessOn(int sq) const {

@@ -14,7 +14,7 @@
 #define AI_DISCRIPTION    "AI 背景搜索"
 using namespace std;
 
-// TODO : custom_board 不需放在資料夾裡, 三個輸出檔整合成一個, 統整設定輸入輸出, 整理sync_cout, 整理isSaveRecord
+// TODO : custom_board 不需放在資料夾裡, 統整設定輸入輸出, 整理sync_cout, 整理isSaveRecord
 
 struct Players {
 	enum PlayerType : int {

@@ -8,7 +8,14 @@ using namespace std;
 typedef uint64_t Key;
 
 enum SyncCout { IO_LOCK, IO_UNLOCK };
-std::ostream& operator<<(std::ostream& os, SyncCout sc);
+inline ostream& operator<<(ostream& os, SyncCout sc) {
+	static std::mutex m;
+
+	if (sc == IO_LOCK) m.lock();
+	if (sc == IO_UNLOCK) m.unlock();
+
+	return os;
+}
 
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
@@ -304,6 +311,13 @@ constexpr int HAND_SCORE[] = {
 	0,  0,  0,  0,  0,
 	-152, -1110, -1260, -1464, -1998,
 	 152,  1110,  1260,  1464,  1998
+};
+
+constexpr int PIN_SCORE[] = {
+	0,    2, -204, -377,  -375,  -500,    0,    0,
+	0,    0,    0,    0,  -525,  -650,    0,    0,
+	0,   -2,  204,  377,   375,   500,    0,    0,
+	0,    0,    0,    0,   525,   650,    0,    0
 };
 
 constexpr Chess promote(Chess c) {

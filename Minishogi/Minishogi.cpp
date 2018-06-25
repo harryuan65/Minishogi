@@ -60,9 +60,10 @@ void Minishogi::Initialize(const char *s) {
 	memset(board, EMPTY, SQUARE_NB * sizeof(int));
 	turn = WHITE;
 	ply = 0;
-	evalHist[ply] = VALUE_ZERO;
-	keyHist[ply] = 0;
-	key2Hist[ply] = 0;
+	evalHist[0] = VALUE_ZERO;
+	pinHist[0] = VALUE_ZERO;
+	keyHist[0] = 0;
+	key2Hist[0] = 0;
 
 	std::stringstream input(s);
 	int i = 0, chess;
@@ -109,6 +110,7 @@ bool Minishogi::Initialize(const std::string* str) {
 	}
 	ply = 0;
 	evalHist[0] = VALUE_ZERO;
+	pinHist[0] = VALUE_ZERO;
 	keyHist[0] = 0;
 	key2Hist[0] = 0;
 
@@ -153,6 +155,7 @@ bool Minishogi::Initialize(const std::string* str) {
 		}
 	}
 	checker_BB();
+	pin_score();
 	return true;
 }
 
@@ -161,6 +164,7 @@ void Minishogi::Set(const Minishogi &m, Thread *th) {
 	ply           = 0;
 	turn          = m.turn;
 	evalHist[0]   = m.evalHist[m.ply];
+	pinHist[0]    = m.pinHist[m.ply];
 	keyHist[0]    = m.keyHist[m.ply];
 	key2Hist[0]   = m.key2Hist[m.ply];
 	checker_bb[0] = m.checker_bb[m.ply];
@@ -234,6 +238,7 @@ void Minishogi::DoMove(Move m) {
 	moveHist[ply] = m;
 
 	checker_BB(); // 移動後 會不會造成對方處於被將狀態
+	pin_score();  // 計算雙方被 pin 的總和價值
 }
 
 void Minishogi::UndoMove() {
@@ -618,6 +623,41 @@ inline void Minishogi::checker_BB() {
 	}*/
 }
 
+inline void Minishogi::pin_score() {
+	pinHist[ply] = VALUE_ZERO;
+
+	/* get the position of WHITE king */
+	int kingpos = BitScan(bitboard[KING]);
+
+	Bitboard pinner, snipper, totalOccupied = occupied[WHITE] | occupied[BLACK];
+	snipper = (bitboard[ROOK | BLACKCHESS] | bitboard[ROOK | BLACKCHESS | PROMOTE] & RookMask[kingpos]) |
+		(bitboard[BISHOP | BLACKCHESS] | bitboard[BISHOP | BLACKCHESS | PROMOTE] & BishopMask[kingpos]);
+
+	while (snipper) {
+		int attsrc = BitScan(snipper);
+		snipper ^= 1 << attsrc;
+		pinner = BetweenBB[kingpos][attsrc] & totalOccupied;
+		if (pinner && !more_than_one(pinner) && pinner & occupied[WHITE]) {
+			pinHist[ply] += PIN_SCORE[board[BitScan(pinner)]];
+		}
+	}
+
+	/* get the position of BLACK king */
+	kingpos = BitScan(bitboard[KING | BLACKCHESS]);
+
+	snipper = (bitboard[ROOK] | bitboard[ROOK | PROMOTE] & RookMask[kingpos]) |
+		(bitboard[BISHOP] | bitboard[BISHOP | PROMOTE] & BishopMask[kingpos]);
+
+	while (snipper) {
+		int attsrc = BitScan(snipper);
+		snipper ^= 1 << attsrc;
+		pinner = BetweenBB[kingpos][attsrc] & totalOccupied;
+		if (pinner && !more_than_one(pinner) && pinner & occupied[BLACK]) {
+			pinHist[ply] += PIN_SCORE[board[BitScan(pinner)]];
+		}
+	}
+}
+
 void Minishogi::PrintChessBoard() const {
 	static const char *RANK_NAME[] = { " A", " B", " C", " D", " E", " F", "  ", " G", "  " };
 	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -762,7 +802,6 @@ bool Minishogi::IsLegelAction(Move m) {
 	Move moveList[TOTAL_GENE_MAX_ACTIONS], *end = GetLegalMoves(moveList);
 	return end != std::find(moveList, end, m);
 }
-
 
 inline bool Minishogi::IsCheckedAfter(const Move m) const {
 	return IsCheckedAfter(from_sq(m), to_sq(m));
