@@ -9,7 +9,7 @@
 #include "Observer.h"
 #include "Transposition.h"
 
-#define AI_VERSION		  "Add Pinner"
+#define AI_VERSION		  "#95"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
 #define BUFFER_SIZE		  200 * sizeof(int)
@@ -253,8 +253,7 @@ int main(int argc, char **argv) {
 		players.InitThread(minishogi);
 
 		// Write Title
-		string titleStr = "Minishogi - " AI_VERSION " Game " + to_string(Observer::gameNum);
-		SetConsoleTitle(CA2W(titleStr.c_str()));
+		SetConsoleTitle(CA2W(("Minishogi - " AI_VERSION " Game " + to_string(Observer::gameNum)).c_str()));
 		sync_cout << "---------- Game " << Observer::gameNum << " ----------" << sync_endl;
 		if (Observer::isSaveRecord) {
 			playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";

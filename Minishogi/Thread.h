@@ -1,12 +1,13 @@
 /*
-* 正確流程 : 
+* 正常流程 : 
+* GameLoop : Set enemy move to Thread 0
 * GameLoop : Waiting move from Thread 0
+* Thread 0 : Stop Presearch
+* Thread 0 : IDAS (or) Hit rootMoves
 * Thread 0 : Domove
 * Thread 0 : Presearching
 * GameLoop : Thread 0 Finished
 * ......等別人動.......
-* GameLoop : Set enemy move to Thread 0
-* Thread 0 : Stop Presearch
 * 回到第一步
 */
 

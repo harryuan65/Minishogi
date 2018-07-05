@@ -91,7 +91,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 void Thread::PreIDAS() {
 	Move move;
 	int depth = Observer::depth;
-	bool ttHit, isWin = false;
+	bool ttHit, isTerminal = false;
 
 	rootMoves.clear();
 	const TTnode *ttn = Probe(rootPos.GetKey(), ttHit); // Save TT?
@@ -115,13 +115,14 @@ void Thread::PreIDAS() {
 	}
 	depth++;
 
-	while (!IsStop() && !isWin) {
-		isWin = true;
+	while (!IsStop() && !isTerminal) {
+		isTerminal = true;
 		sync_cout << "Thread " << us << " : Preseaching Depth " << depth << sync_endl;
 		for (int i = 0; !IsStop() && i < rootMoves.size(); i++) {
-			if (rootMoves[i].value >= VALUE_MATE_IN_MAX_PLY) 
+			if (rootMoves[i].value >= VALUE_MATE_IN_MAX_PLY || 
+				rootMoves[i].value <= VALUE_MATED_IN_MAX_PLY)
 				continue;
-			isWin = false;
+			isTerminal = false;
 			rootPos.DoMove(rootMoves[i].enemyMove);
 			IDAS(rootMoves[i], depth);
 			rootPos.UndoMove();
@@ -130,7 +131,7 @@ void Thread::PreIDAS() {
 		}
 		depth++;
 	}
-	while (isWin && !CheckStop(move))
+	while (isTerminal && !CheckStop(move))
 		Sleep(10);
 }
 
