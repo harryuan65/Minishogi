@@ -41,7 +41,6 @@ void Thread::IDAS(RootMove &rm, int depth) {
 	}
 
 	for (; rootDepth <= depth && !IsStop(); rootDepth++) {
-		//Observer::ResumeSearching();
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
 			delta = Value(100);
@@ -70,14 +69,8 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			delta += delta;
 			isresearch = true;
 		}
-		//Observer::PauseSearching();
 		if (IsStop())
 			break;
-
-		/*cout << RootMove::PV(rootDepth, value, ss->pv) << endl;
-		file.open(Observer::playDetailStr, ios::app);
-		if (file) file << RootMove::PV(rootDepth, value, ss->pv) << endl;
-		file.close();*/
 
 		int i = 0;
 		rm.depth = rootDepth;
@@ -417,6 +410,48 @@ void Search::UpdateContinousHeuristic(Stack* ss, Chess pc, Square to, int bonus)
 			(*(ss - i)->contHistory)[pc][to] << bonus;
 }
 
+string Search::GetSettingStr() {
+	stringstream ss;
+	ss << "Main Depth          : " << Observer::depth << "\n";
+	ss << "Time Limit          : " << (Observer::limitTime ? to_string(Observer::limitTime) + " ms" : "Disable") << "\n";
+	ss << "Transposition Table : " << (Transposition::IsEnable() ? "Enable" : "Disable") << "\n";
+	if (Transposition::IsEnable()) {
+#ifndef DOUBLETP
+		ss << "Transposition Type  : Single TT\n";
+#else
+		ss << "Transposition Type  : Double TT\n";
+#endif
+		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTnode)) >> 20) << " MiB\n";
+
+#ifndef ITERATIVE_DEEPENING_DISABLE
+		ss << "Iterative Deepening : Enable\n";
+#else
+		ss << "Iterative Deepening : Disable\n";
+#endif
+#ifndef ASPIRE_WINDOW_DISABLE
+		ss << "Aspire Window       : Enable\n";
+#else
+		ss << "Aspire Window       : Disable\n";
+#endif
+#ifndef PVS_DISABLE
+		ss << "PVS                 : Enable\n";
+#else
+		ss << "PVS                 : Disable\n";
+#endif
+#ifndef QUIES_DISABLE
+		ss << "Quiet Search        : Enable\n";
+#else
+		ss << "Quiet Search        : Disable\n";
+#endif
+#ifndef MOVEPICK_DISABLE
+		ss << "MovePicker          : Enable\n";
+#else
+		ss << "MovePicker          : Disable\n";
+#endif
+		return ss.str();
+	}
+}
+
 
 // value_to_tt() adjusts a mate score from "plies to mate from the root" to
 // "plies to mate from the current position". Non-mate scores are unchanged.
@@ -436,10 +471,3 @@ Value value_from_tt(Value v, int ply) {
 		: v >= VALUE_MATE_IN_MAX_PLY ? v - ply
 		: v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
 }
-
-/*void Search::PrintPV(ostream &os, Move *move) {
-	for (int i = 0; move[i] != MOVE_NULL; i++) {
-		os << move[i] << " ";
-	}
-	os << "\n";
-}*/

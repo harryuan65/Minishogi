@@ -17,6 +17,6 @@ namespace Search {
 	void UpdateQuietHeuristic(const Minishogi &minishogi, Stack* ss, Move move, Move *quietMove, int quietCnt, int bouns);
 	void UpdateContinousHeuristic(Stack* ss, Chess pc, Square to, int bonus);
 
-	//void PrintPV(std::ostream &os, Move *move);
+	string GetSettingStr();
 }
 #endif

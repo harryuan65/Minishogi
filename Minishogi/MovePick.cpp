@@ -193,7 +193,7 @@ top:
 
 	case REFUTATION:
 #ifndef REFUTATION_DISABLE
-		if (select<Next>([&]() { return    move != MOVE_NULL
+		if (select<Next>([&]() { return move != MOVE_NULL
 			&& !pos.GetChessOn(to_sq(move))
 			&& pos.PseudoLegal(move); }))
 			return move;

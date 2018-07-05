@@ -13,7 +13,6 @@
 #else
 #define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
 #endif
-#define BOARD_PATH  "board//"
 using std::cout;
 
 // AttackGene moveList order by attacker
@@ -43,6 +42,8 @@ static const int MoverOrder[] = {
 	PAWN,
 	KING
 };
+
+static const char *RANK_NAME[] = { " A", " B", " C", " D", " E", " F", "  ", " G", "  " };
 
 void Minishogi::Initialize() {
     Initialize(
@@ -180,7 +181,7 @@ void Minishogi::DoMove(Move m) {
 	Square to = to_sq(m);
 	bool pro = is_pro(m);
 	Chess pc = GetChessOn(from);
-	Chess captured = captureHist[ply] = GetChessOn(to);
+	Chess captured = captureHist[ply - 1] = GetChessOn(to);
 	Bitboard dstboard = 1 << to;
 	evalHist[ply] = evalHist[ply - 1];
 	keyHist[ply] = keyHist[ply - 1];
@@ -235,7 +236,7 @@ void Minishogi::DoMove(Move m) {
 	turn = ~turn;
 	keyHist[ply] ^= Zobrist::table[to][pc];
 	key2Hist[ply] ^= Zobrist::table2[to][pc];
-	moveHist[ply] = m;
+	moveHist[ply - 1] = m;
 
 	checker_BB(); // 移動後 會不會造成對方處於被將狀態
 	pin_score();  // 計算雙方被 pin 的總和價值
@@ -243,12 +244,12 @@ void Minishogi::DoMove(Move m) {
 
 void Minishogi::UndoMove() {
 	assert(ply > 0);
-	Move m = moveHist[ply];
+	Move m = moveHist[ply - 1];
 	Square from = from_sq(m);
 	Square to = to_sq(m);
 	bool pro = is_pro(m);
 	Chess pc = GetChessOn(to);
-	Chess captured = captureHist[ply];
+	Chess captured = captureHist[ply - 1];
 	Bitboard dstboard = 1 << to;
 	turn = ~turn;
 	ply--;
@@ -659,10 +660,10 @@ inline void Minishogi::pin_score() {
 }
 
 void Minishogi::PrintChessBoard() const {
-	static const char *RANK_NAME[] = { " A", " B", " C", " D", " E", " F", "  ", " G", "  " };
 	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	int chess, rank_count = 0, board_count = 0;
 
+	cout << "---------- ply  " << ply << " ----------\n";
 	SetConsoleTextAttribute(hConsole, 7);
 	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
 	for (int i = 0; i < 9; i++) {
@@ -702,11 +703,12 @@ void Minishogi::PrintChessBoard() const {
 	}
 	cout << "Zobrist : " << std::setw(16) << std::hex << GetKey() << std::dec << "\n";
 	cout << "Evaluate : " << std::setw(15) << GetEvaluate() << "\n";
-	cout << (turn ? "[▼ Turn]\n" : "[△ Turn]\n");
+	cout << "----------" << (turn ? "▼ Turn" : "△ Turn") << "----------\n";
+	cout << endl;
 }
 
 void Minishogi::PrintNoncolorBoard(std::ostream &os) const {
-	os << (GetTurn() ? "-" : "+") << "\n";
+	os << (GetTurn() ? "-" : "+") << "ply " << ply << " " << std::hex << GetKey() << std::dec << "\n";
 	for (int i = 0; i < BOARD_NB; i++) {
 		if (board[i] == EMPTY)
 			os << " ． ";
@@ -733,27 +735,27 @@ void Minishogi::PrintNoncolorBoard(std::ostream &os) const {
 /// 第二~六行 5*5的棋盤 旗子符號請見Chess.h的SAVE_CHESS_WORD
 /// 第七~八行 ▼0步0銀0金0角0飛 △0步0銀0金0角0飛
 bool Minishogi::SaveBoard(std::string filename) const {
-	std::fstream file(BOARD_PATH + filename, std::ios::app);
+	std::fstream file("board//" + filename, std::ios::app);
 	if (file) {
 		file << (GetTurn() ? "-" : "+") << "Step : " << std::to_string(GetStep()) << "\n";
 		PrintNoncolorBoard(file);
 		file.close();
-		cout << "Succeed to Save Board.\n";
+		sync_cout << "Succeed to Save Board." << sync_endl;
 		return true;
 	} 
-	cerr << "Error : Fail to Save Board.\n";
+	sync_cout << "Error : Fail to Save Board." << sync_endl;
 	return false;
 }
 
 bool Minishogi::LoadBoard(std::string filename, std::streamoff &offset) {
-	std::fstream file(BOARD_PATH + filename, std::ios::in);
+	std::fstream file("board//" + filename, std::ios::in);
 	if (file) {
 		char str[128];
 		std::string boardStr[8];
 		file.seekg(offset, std::ios::beg);
 		for (int i = 0; i < 8; i++) {
 			if (file.eof()) {
-				cerr << "Error : Fail to Load Board. It's eof.\n";
+				sync_cout << "Error : Fail to Load Board. It's eof." << sync_endl;
 				file.close();
 				return false;
 			}
@@ -767,12 +769,12 @@ bool Minishogi::LoadBoard(std::string filename, std::streamoff &offset) {
 		}
 		return true;
 	}
-	cerr << "Error : Fail to Load Board. Cannot find file.\n";
+	sync_cout << "Error : Fail to Load Board. Cannot find file." << sync_endl;
 	return false;
 }
 
 void Minishogi::PrintKifu(std::ostream &os) const {
-	os << "Kifu hash : " << std::setw(8) << std::hex << GetKifuHash() << "\n";
+	os << "Kifu hash : " << std::setw(10) << std::hex << GetKifuHash() << "\n";
 	os << "Initboard : " << std::setw(18) << std::hex << GetKey(0) << std::dec << "\n";
 	for (int i = 0; i < ply; i++) {
 		os << std::setw(2) << i << " : " << (i % 2 ? "▼" : "△");

@@ -45,11 +45,17 @@ namespace Transposition {
 #else
     const uint64_t TPSize = 1;
 #endif
-
-	extern TTnode* transpositTable;
 	const uint64_t TPMask = TPSize - 1;
+	extern TTnode* transpositTable;
 
 	inline uint64_t ZobristToIndex(Key zobrist) { return zobrist & TPMask; }
+	inline bool IsEnable() {
+#ifndef TRANSPOSITION_DISABLE
+		return true;
+#else
+		return false;
+#endif
+	}
 
 	void Initialize();
 	void Clean();

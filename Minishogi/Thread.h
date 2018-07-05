@@ -1,3 +1,15 @@
+/*
+* 正確流程 : 
+* GameLoop : Waiting move from Thread 0
+* Thread 0 : Domove
+* Thread 0 : Presearching
+* GameLoop : Thread 0 Finished
+* ......等別人動.......
+* GameLoop : Set enemy move to Thread 0
+* Thread 0 : Stop Presearch
+* 回到第一步
+*/
+
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
@@ -27,8 +39,8 @@ struct RootMove {
 
 	string PV() {
 		stringstream ss;
-		ss << "Depth " << setw(2) << depth << ",";
-		ss << "Value " << setw(6) << value << ",PV ";
+		ss << "Depth " << setw(2) << depth << ", ";
+		ss << "Value " << setw(6) << value << ",\nPV : ";
 		for (int i = 0; pv[i] != MOVE_NULL; i++)
 			ss << pv[i] << " ";
 		return ss.str();

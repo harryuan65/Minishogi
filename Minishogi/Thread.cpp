@@ -40,20 +40,20 @@ void Thread::SetEnemyMove(Move m) {
 		if (m == MOVE_UNDO) {
 			isReject = true;
 		}
-		sync_cout << "Game Loop : Set enemy move to Thread " << us << sync_endl;
+		sync_cout << "GameLoop : Set enemy move to Thread " << us << sync_endl;
 	}
 }
 
 RootMove Thread::GetBestMove() {
 	std::unique_lock<Mutex> lk(mutex);
 	if (!bestMove.depth) {
-		sync_cout << "Game Loop : Waiting move from Thread " << us << sync_endl;
+		sync_cout << "GameLoop : Waiting move from Thread " << us << sync_endl;
 		beginTime = clock();
 		cv.wait(lk, [&] { return bestMove.depth; });
 		beginTime = 0;
 		lk.unlock();
 	}
-	sync_cout << "Game Loop : Thread " << us << " Finished" << sync_endl;
+	sync_cout << "GameLoop : Thread " << us << " Finished" << sync_endl;
 	return bestMove;
 }
 
@@ -113,7 +113,7 @@ void Thread::IdleLoop() {
 		}
 		else {
 			PreIDAS();
-			sync_cout << "Thread " << us << " : End presearching" << sync_endl;
+			sync_cout << "Thread " << us << " : Stop Presearch" << sync_endl;
 			if (isReject) {
 				rootMoves.clear();
 				isReject = false;

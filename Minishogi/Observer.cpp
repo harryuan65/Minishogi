@@ -25,5 +25,4 @@ namespace Observer {
 	int depth = 10;
 	int limitTime = 2500;
 	bool isSaveRecord = true;
-	string playDetailStr = "";
 }

@@ -55,16 +55,7 @@ namespace Observer {
 			data[i] = 0;
 		beginTime = clock();
 	}
-	/*
-	inline void PauseSearching() {
-		data[DataType::searchTime] += clock() - beginTime;
-		beginTime = 0;
-	}
 
-	inline void ResumeSearching() {
-		beginTime = clock();
-	}
-	*/
 	inline void EndSearching() {
 		data[DataType::searchNum]++;
 		data[DataType::searchTime] += clock() - beginTime;
@@ -192,6 +183,7 @@ namespace Observer {
 			}
 			os << "\n";
 		}
+		os << "       (+:Player 1 win,-:Player 2 Win)\n";
 		os << endl;
 	}
 }
