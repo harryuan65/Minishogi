@@ -88,16 +88,21 @@ inline void UpdateTP(Key zobrist, int turn, int depth, int alpha, int beta, int 
 #else
 
 namespace Transposition {
+	uint64_t TPSize = 1 << 26;
+	uint64_t TPMask = TPSize - 1;
 	TTnode* transpositTable = nullptr;
 
 	void Initialize() {
 #ifndef TRANSPOSITION_DISABLE
 		transpositTable = new TTnode[TPSize];
+		TPMask = TPSize - 1;
 		Clean();
 		cout << "Transposition Table Created. ";
 		cout << "Used Size : " << ((TPSize * sizeof(TTnode)) >> 20) << "MiB\n";
 #else
-        transpositTable = new TTnode[TPSize];
+		TPSize = 1;
+		TPMask = TPSize - 1;
+		transpositTable = new TTnode[TPSize];
 		cout << "Transposition Table disable.\n";
 #endif
 	}

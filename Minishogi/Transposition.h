@@ -36,16 +36,8 @@ namespace Transposition {
 		}
 	};
 
-#ifndef TRANSPOSITION_DISABLE
-#ifdef DOUBLETP
-	const uint64_t TPSize = 1 << 29;
-#else
-	const uint64_t TPSize = 1 << 26;
-#endif
-#else
-    const uint64_t TPSize = 1;
-#endif
-	const uint64_t TPMask = TPSize - 1;
+	extern uint64_t TPSize;
+	extern uint64_t TPMask;
 	extern TTnode* transpositTable;
 
 	inline uint64_t ZobristToIndex(Key zobrist) { return zobrist & TPMask; }

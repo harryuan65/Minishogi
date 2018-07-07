@@ -174,12 +174,24 @@ int main(int argc, char **argv) {
 		sync_cout << "確定要開始 不開始則進入進階選項(y/n)?" << sync_endl;
 		cin >> buf;
 		if (buf != "y" && buf != "Y") {
+#ifndef TRANSPOSITION_DISABLE
+			int size;
+			sync_cout << "輸入同型表大小(MiB)" << sync_endl;
+			cin >> size;
+			Transposition::TPSize = ((uint64_t)size << 20) / sizeof(Transposition::TTnode);
+#endif
+
 			sync_cout << "輸入時間限制(ms 0為無限制)" << sync_endl;
 			cin >> Observer::limitTime;
 
 			sync_cout << "結束時匯出紀錄(y/n)?" << sync_endl;
 			cin >> buf;
 			Observer::isSaveRecord = (buf == "y" || buf == "Y");
+
+			if (Observer::isSaveRecord && (gameMode == 0 || gameMode == 1)) {
+				sync_cout << "輸入對手的名字" << sync_endl;
+				cin >> players.pName[gameMode];
+			}
 
 			sync_cout << Search::GetSettingStr() << "確定要開始?" << sync_endl;
 			system("pause");
