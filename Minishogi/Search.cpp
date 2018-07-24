@@ -79,11 +79,11 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			rm.pv[i] = ss->pv[i];
 		} while (ss->pv[i++] != MOVE_NULL);
 
-		// value => 必勝或必輸, beginTime => 有時間壓力, ss->moveCount => 只有一個合法步
+		// value => 必勝或必輸, ss->moveCount => 只有一個合法步
 		if (CheckStop(rm.enemyMove) || 
 			value >= VALUE_MATE_IN_MAX_PLY || 
 			value <= VALUE_MATED_IN_MAX_PLY ||
-			(beginTime && ss->moveCount == 1))
+			ss->moveCount == 1)
 			break;
 	}
 }
@@ -92,8 +92,10 @@ void Thread::PreIDAS() {
 	Move move;
 	int depth = Observer::depth;
 	bool ttHit, isTerminal = false;
-
+	finishDepth = false;
 	rootMoves.clear();
+
+#ifndef BACKGROUND_SEARCH_DISABLE
 	const TTnode *ttn = Probe(rootPos.GetKey(), ttHit); // Save TT?
 	const Move ttMove = ttHit ? ttn->move : MOVE_NULL;
 	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
@@ -109,6 +111,7 @@ void Thread::PreIDAS() {
 		if (CheckStop(move))
 			break;
 	}
+	finishDepth = true;
 	if (!rootMoves.size()) {
 		isExit = true;
 		return;
@@ -131,6 +134,9 @@ void Thread::PreIDAS() {
 		}
 		depth++;
 	}
+#else
+	isTerminal = true;
+#endif
 	while (isTerminal && !CheckStop(move))
 		Sleep(10);
 }
@@ -308,7 +314,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 		&& ttValue != VALUE_NONE
 		&& (ttValue >= beta ? (ttn->bound & TTnode::FAILHIGH)
 							: (ttn->bound & TTnode::UNKNOWN))) {
-		Observer::data[Observer::DataType::ios_read] += pos.IsIsomorphic();
+		//Observer::data[Observer::DataType::ios_read] += pos.IsIsomorphic();
 		return ttValue;
 	}
 
@@ -417,40 +423,45 @@ string Search::GetSettingStr() {
 	ss << "Time Limit          : " << (Observer::limitTime ? to_string(Observer::limitTime) + " ms" : "Disable") << "\n";
 	ss << "Transposition Table : " << (Transposition::IsEnable() ? "Enable" : "Disable") << "\n";
 	if (Transposition::IsEnable()) {
-#ifndef DOUBLETP
-		ss << "Transposition Type  : Single TT\n";
+#ifdef ENEMY_ISO_TT
+		ss << "Transposition Type  : Enemy Isomorphism TT\n";
 #else
-		ss << "Transposition Type  : Double TT\n";
+		ss << "Transposition Type  : Single TT\n";
 #endif
 		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTnode)) >> 20) << " MiB\n";
+	}
 
 #ifndef ITERATIVE_DEEPENING_DISABLE
-		ss << "Iterative Deepening : Enable\n";
+	ss << "Iterative Deepening : Enable\n";
 #else
-		ss << "Iterative Deepening : Disable\n";
+	ss << "Iterative Deepening : Disable\n";
 #endif
 #ifndef ASPIRE_WINDOW_DISABLE
-		ss << "Aspire Window       : Enable\n";
+	ss << "Aspire Window       : Enable\n";
 #else
-		ss << "Aspire Window       : Disable\n";
+	ss << "Aspire Window       : Disable\n";
 #endif
 #ifndef PVS_DISABLE
-		ss << "PVS                 : Enable\n";
+	ss << "PVS                 : Enable\n";
 #else
-		ss << "PVS                 : Disable\n";
+	ss << "PVS                 : Disable\n";
 #endif
 #ifndef QUIES_DISABLE
-		ss << "Quiet Search        : Enable\n";
+	ss << "Quiet Search        : Enable\n";
 #else
-		ss << "Quiet Search        : Disable\n";
+	ss << "Quiet Search        : Disable\n";
 #endif
 #ifndef MOVEPICK_DISABLE
-		ss << "MovePicker          : Enable\n";
+	ss << "MovePicker          : Enable\n";
 #else
-		ss << "MovePicker          : Disable\n";
+	ss << "MovePicker          : Disable\n";
 #endif
-		return ss.str();
-	}
+#ifndef BACKGROUND_SEARCH_DISABLE
+	ss << "Back Ground Search  : Enable\n";
+#else
+	ss << "Back Ground Search  : Disable\n";
+#endif
+	return ss.str();
 }
 
 

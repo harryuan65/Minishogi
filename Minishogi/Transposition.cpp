@@ -1,94 +1,8 @@
 #include "Transposition.h"
 using std::cout;
 
-#ifdef DOUBLETP
-static TTnode** transpositTable = nullptr;
-void InitializeTP() {
-#ifndef TRANSPOSITION_DISABLE
-	transpositTable = new TTnode*[2];
-	transpositTable[0] = new TTnode[TPSize];
-	transpositTable[1] = new TTnode[TPSize];
-	CleanTP();
-	cout << "TTnode Table Created. ";
-	cout << "Used Size : 2 * " << ((TPSize * sizeof(TTnode)) >> 20) << "MiB\n";
-#else
-	cout << "TTnode Table disable.\n";
-#endif
-}
-
-void CleanTP() {
-#ifndef TRANSPOSITION_DISABLE
-	if (transpositTable == nullptr)
-		return;
-	for (int i = 0; i < TPSize; i++) {
-		transpositTable[0][i].zobrist = 0;
-		transpositTable[1][i].zobrist = 0;
-	}
-#else
-	cout << "TTnode Table disable.\n";
-#endif
-}
-
-inline bool ReadTP(Key zobrist, int turn, int depth, int& alpha, int& beta, int& value) {
-#ifndef TRANSPOSITION_DISABLE
-	uint64_t index = ZobristToIndex(zobrist);
-	TTnode *tp = &transpositTable[turn][index];
-	if (tp->zobrist != zobrist >> 32) {
-		Observer::data[Observer::DataType::indexCollisionNums]++;
-		return false;
-	}
-	if (tp->depth < depth) {
-		Observer::data[Observer::DataType::indexCollisionNums]++;
-		return false;
-	}
-	Observer::data[Observer::DataType::totalTPDepth] += depth;
-
-	switch (tp->state) {
-	case TTnode::Exact:
-		value = tp->value;
-		return true;
-	case TTnode::Unknown:
-		beta = min(tp->value, beta);
-		break;
-	case TTnode::FailHigh:
-		alpha = max(tp->value, alpha);
-		break;
-	}
-	if (alpha >= beta) {
-		value = tp->value;
-		return true;
-	}
-	return false;
-#else
-	return false;
-#endif
-}
-
-inline void UpdateTP(Key zobrist, int turn, int depth, int alpha, int beta, int value) {
-#ifndef TRANSPOSITION_DISABLE
-	uint64_t index = ZobristToIndex(zobrist);
-	TTnode *tp = &transpositTable[turn][index];
-	//if (transpositTable[index].zobrist == (zobrist >> 32) && transpositTable[index].depth > depth)
-	//	return;
-	tp->zobrist = zobrist >> 32;
-	tp->value = value;
-	tp->depth = depth;
-	//tp->depth = (value >= CHECKMATE ? SCHAR_MAX : depth);
-	if (value < alpha) {
-		tp->state = TTnode::Unknown;
-	}
-	else if (value >= beta) {
-		tp->state = TTnode::FailHigh;
-	}
-	else {
-		tp->state = TTnode::Exact;
-	}
-#endif
-}
-#else
-
 namespace Transposition {
-	uint64_t TPSize = 1 << 26;
+	uint64_t TPSize = 1 << 27;
 	uint64_t TPMask = TPSize - 1;
 	TTnode* transpositTable = nullptr;
 
@@ -109,6 +23,7 @@ namespace Transposition {
 
 	void Clean() {
 #ifndef TRANSPOSITION_DISABLE
+		cout << "Transposition Table Cleaned.\n";
 		if (transpositTable == nullptr)
 			return;
 		memset(transpositTable, 0, TPSize * sizeof(TTnode));
@@ -137,4 +52,3 @@ namespace Transposition {
 #endif
 	}
 }
-#endif

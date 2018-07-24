@@ -26,7 +26,7 @@ Thread::~Thread() {
 bool Thread::CheckStop(Move em) {
 	if (isStop || isReject || isExit ||
 		(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
-		(bestMove.enemyMove != MOVE_ILLEGAL && em != bestMove.enemyMove)) {
+		(bestMove.enemyMove != MOVE_ILLEGAL && (em != bestMove.enemyMove || finishDepth))) {
 		isStop = true;
 	}
 	return isStop;
@@ -90,6 +90,7 @@ void Thread::IdleLoop() {
 				RootMove rm;
 				rm.enemyMove = bestMove.enemyMove;
 				mutex.unlock();
+				finishDepth = false;
 				sync_cout << "Thread " << us << " : IDAS" << sync_endl;
 
 				Observer::StartSearching();

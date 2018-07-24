@@ -2,8 +2,9 @@
 #define _ZOBRIST_
 
 #include <random>
-
 #include "Types.h"
+
+//#define ENEMY_ISO_TT
 
 namespace Zobrist {
 	static const uint64_t SEED = std::mt19937_64::default_seed;

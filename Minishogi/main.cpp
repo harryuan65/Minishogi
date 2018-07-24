@@ -9,7 +9,7 @@
 #include "Observer.h"
 #include "Transposition.h"
 
-#define AI_VERSION		  "#95"
+#define AI_VERSION		  "#96 from_sq fix + SEE"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
 #define BUFFER_SIZE		  200 * sizeof(int)
@@ -75,11 +75,24 @@ struct Players {
 	void InitThread(const Minishogi &pos) {
 		if (pType[0] == AI) {
 			if (pthread[0])	delete pthread[0];
-			pthread[0] = new Thread(pos, Color::WHITE);
 		}
 		if (pType[1] == AI) {
 			if (pthread[1])	delete pthread[1];
+		}
+		Transposition::Clean();
+		if (pType[0] == AI) {
+			pthread[0] = new Thread(pos, Color::WHITE);
+		}
+		if (pType[1] == AI) {
 			pthread[1] = new Thread(pos, Color::BLACK);
+		}
+	}
+	void DeleteThread() {
+		if (pType[0] == AI && pthread[0]) {
+			delete pthread[0];
+		}
+		if (pType[1] == AI && pthread[1]) {
+			delete pthread[1];
 		}
 	}
 	inline void PrintNames(ostream &os) {
@@ -232,7 +245,6 @@ int main(int argc, char **argv) {
 	do {
 		// Game Init    
 		minishogi.Initialize();
-		Transposition::Clean();
 
 		// Board Init
 		if (isConnectUI) {

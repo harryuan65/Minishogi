@@ -2,11 +2,13 @@
 #define _AI_
 #include "Thread.h"
 #include "Minishogi.h"
+#include "Zobrist.h"
 
 //#define ITERATIVE_DEEPENING_DISABLE
 //#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
 //#define QUIES_DISABLE
+//#define BACKGROUND_SEARCH_DISABLE
 
 namespace Search {
 	Value NegaScout(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isResearch);

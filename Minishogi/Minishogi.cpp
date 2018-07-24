@@ -91,6 +91,9 @@ void Minishogi::Initialize(const char *s) {
 				}
 			}
 	}
+#ifndef ENEMY_ISO_TT
+	if (turn == BLACK)	keyHist[0] ^= 1;
+#endif
 	checker_BB();
 }
 
@@ -155,6 +158,9 @@ bool Minishogi::Initialize(const std::string* str) {
 			}
 		}
 	}
+#ifndef ENEMY_ISO_TT
+	if (turn == BLACK)	keyHist[0] ^= 1;
+#endif
 	checker_BB();
 	pin_score();
 	return true;
@@ -167,7 +173,9 @@ void Minishogi::Set(const Minishogi &m, Thread *th) {
 	evalHist[0]   = m.evalHist[m.ply];
 	pinHist[0]    = m.pinHist[m.ply];
 	keyHist[0]    = m.keyHist[m.ply];
+#ifdef ENEMY_ISO_TT
 	key2Hist[0]   = m.key2Hist[m.ply];
+#endif
 	checker_bb[0] = m.checker_bb[m.ply];
 	for (int i = 0; i < COLOR_NB; i++) occupied[i] = m.occupied[i];
 	for (int i = 0; i < CHESS_NB; i++) bitboard[i] = m.bitboard[i];
@@ -185,7 +193,9 @@ void Minishogi::DoMove(Move m) {
 	Bitboard dstboard = 1 << to;
 	evalHist[ply] = evalHist[ply - 1];
 	keyHist[ply] = keyHist[ply - 1];
+#ifdef ENEMY_ISO_TT
 	key2Hist[ply] = key2Hist[ply - 1];
+#endif
 
 	assert(from < SQUARE_NB);
 	assert(to < BOARD_NB);
@@ -203,15 +213,19 @@ void Minishogi::DoMove(Move m) {
 			evalHist[ply] += HAND_SCORE[toHand] - CHESS_SCORE[captured];
 			keyHist[ply] ^= Zobrist::table[to][captured]
 						 ^ Zobrist::table[toHand][board[toHand]];
+#ifdef ENEMY_ISO_TT
 			key2Hist[ply] ^= Zobrist::table2[to][captured]
 					      ^ Zobrist::table2[toHand][board[toHand]];
+#endif
 		}
 
 		occupied[turn] ^= (1 << from) | dstboard; // 更新該方場上狀況
 		bitboard[pc] ^= 1 << from;                // 移除該方手牌原有位置
 
 		keyHist[ply] ^= Zobrist::table[from][pc];
+#ifdef ENEMY_ISO_TT
 		key2Hist[ply] ^= Zobrist::table2[from][pc];
+#endif
 		if (pro) { // 升變
 			evalHist[ply] += CHESS_SCORE[promote(pc)] - CHESS_SCORE[pc];
 			pc = promote(pc);
@@ -222,7 +236,9 @@ void Minishogi::DoMove(Move m) {
 	else { // 打入
 		evalHist[ply] += CHESS_SCORE[pc] - HAND_SCORE[from];
 		keyHist[ply] ^= Zobrist::table[from][board[from]];
+#ifdef ENEMY_ISO_TT
 		key2Hist[ply] ^= Zobrist::table2[from][board[from]];
+#endif
 
 		occupied[turn] ^= dstboard;    // 打入場上的位置
 		bitboard[pc] ^= dstboard;      // 打入該手牌的位置
@@ -235,7 +251,11 @@ void Minishogi::DoMove(Move m) {
 
 	turn = ~turn;
 	keyHist[ply] ^= Zobrist::table[to][pc];
+#ifdef ENEMY_ISO_TT
 	key2Hist[ply] ^= Zobrist::table2[to][pc];
+#else
+	keyHist[ply] ^= 1;
+#endif
 	moveHist[ply - 1] = m;
 
 	checker_BB(); // 移動後 會不會造成對方處於被將狀態

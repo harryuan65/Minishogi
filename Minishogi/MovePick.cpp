@@ -101,7 +101,7 @@ stage += (ttMove == MOVE_NULL);
 void MovePicker::score(GenType type) {
 
 	for (auto& m : *this) {
-		const Square from = to_sq(m), to = to_sq(m);
+		const Square from = from_sq(m), to = to_sq(m);
 		const Chess from_pc = pos.GetChessOn(from), to_pc = pos.GetChessOn(to);
 
 		if (type == CAPTURES) {
@@ -170,7 +170,7 @@ top:
 
 	case GOOD_CAPTURE:
 		if (select<Best>([&]() {
-			return pos.SEE(move, Value(-55 * (cur - 1)->value / 1024)) ?
+			return pos.SEE(move) ?
 				true : (*endBadCaptures++ = move, false); })) {
 			return move;
 		}

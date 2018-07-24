@@ -163,6 +163,9 @@
     <ClInclude Include="Types.h" />
     <ClInclude Include="Zobrist.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="board\custom_board.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -7,7 +7,6 @@
 #include "Move.h"
 #include <assert.h>
 
-//#define DOUBLETP
 //#define TRANSPOSITION_DISABLE
 
 namespace Transposition {
@@ -21,6 +20,7 @@ namespace Transposition {
 			FAILHIGH = 2,
 			EXACT = 3
 		} bound;
+		//int turn; //4Bytes debug¥Î
 
 		void save(Key k, int d, Value v, Move m, Bound b) {
 #ifndef TRANSPOSITION_DISABLE

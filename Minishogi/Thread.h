@@ -78,11 +78,11 @@ private:
 
 	Color us;
 	Minishogi rootPos;
-	//Move enemyMove = MOVE_ILLEGAL;
 	RootMove bestMove;
 	vector<RootMove> rootMoves;
 	bool isExit = false;
 	int beginTime = 0;
+	bool finishDepth = false;
 
 public:
 	ButterflyHistory mainHistory;

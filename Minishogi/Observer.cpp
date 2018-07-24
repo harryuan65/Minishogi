@@ -23,6 +23,6 @@ namespace Observer {
 
 	// ³]©w
 	int depth = 10;
-	int limitTime = 2500;
+	int limitTime = 0;
 	bool isSaveRecord = true;
 }
