@@ -8,12 +8,11 @@
 #include "Search.h"
 #include "Observer.h"
 #include "Transposition.h"
+using namespace std;
 
-#define AI_VERSION		  "#96 from_sq fix + SEE"
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
 #define BUFFER_SIZE		  200 * sizeof(int)
-using namespace std;
 
 struct Players {
 	enum PlayerType : int {
@@ -75,16 +74,19 @@ struct Players {
 	void InitThread(const Minishogi &pos) {
 		if (pType[0] == AI) {
 			if (pthread[0])	delete pthread[0];
-		}
-		if (pType[1] == AI) {
-			if (pthread[1])	delete pthread[1];
-		}
-		Transposition::Clean();
-		if (pType[0] == AI) {
 			pthread[0] = new Thread(pos, Color::WHITE);
 		}
 		if (pType[1] == AI) {
+			if (pthread[1])	delete pthread[1];
 			pthread[1] = new Thread(pos, Color::BLACK);
+		}
+	}
+	void StartThread() {
+		if (pType[0] == AI && pthread[0]) {
+			pthread[0]->Start();
+		}
+		if (pType[1] == AI && pthread[1]) {
+			pthread[1]->Start();
 		}
 	}
 	void DeleteThread() {
@@ -112,7 +114,7 @@ const char selectModeStr[] =
 "(0)玩家vs電腦\n"
 "(1)電腦vs玩家\n"
 "(2)玩家對打\n"
-"(3)電腦對打\n"
+"(3)電腦對打(Debug用 測試數據與決策結果不準)\n"
 "(4)電腦對打 本機vs其他程式\n"
 "(6)介面Mode\n"
 "(7)介面Debug";
@@ -138,13 +140,13 @@ int main(int argc, char **argv) {
 	string gameDirStr;
 	string currTimeStr;
 	string playDetailStr = "";
-	string kifuStr = "";
+	string buf;
+	//string kifuStr = "";
 
 	// Game Setting
 	SetConsoleTitle(L"Minishogi - " AI_VERSION);
 	sync_cout << "AI Version : " << AI_VERSION << "\n" << Search::GetSettingStr() << sync_endl;
-	if (argc != 6) {
-		string buf;
+	if (argc != 4) {
 		currTimeStr = GetCurrentTimeString();
 		fm_game.Open(currTimeStr);
 		for (;;) {
@@ -173,65 +175,67 @@ int main(int argc, char **argv) {
 				continue;
 			}
 			players.Set(gameMode, AI_VERSION, "");
-			break;
-		}
-
-		if (players.IsAnyAI() || isConnectUI) {
-			sync_cout << "輸入搜尋的深度" << sync_endl;
-			cin >> Observer::depth;
-		}
-		sync_cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打(y/n)?" << sync_endl;
-		cin >> buf;
-		isCustomBoard = (buf == "y" || buf == "Y");
-
-		sync_cout << "確定要開始 不開始則進入進階選項(y/n)?" << sync_endl;
-		cin >> buf;
-		if (buf != "y" && buf != "Y") {
-#ifndef TRANSPOSITION_DISABLE
-			int size;
-			sync_cout << "輸入同型表大小(MiB)" << sync_endl;
-			cin >> size;
-			Transposition::TPSize = ((uint64_t)size << 20) / sizeof(Transposition::TTnode);
-#endif
-
-			sync_cout << "輸入時間限制(ms 0為無限制)" << sync_endl;
-			cin >> Observer::limitTime;
-
-			sync_cout << "結束時匯出紀錄(y/n)?" << sync_endl;
+			sync_cout << "從board//" << CUSTOM_BOARD_FILE << "讀取多個盤面 並連續對打(y/n)?" << sync_endl;
 			cin >> buf;
-			Observer::isSaveRecord = (buf == "y" || buf == "Y");
-
-			if (Observer::isSaveRecord && (gameMode == 0 || gameMode == 1)) {
-				sync_cout << "輸入對手的名字" << sync_endl;
-				cin >> players.pName[gameMode];
-			}
-
-			sync_cout << Search::GetSettingStr() << "確定要開始?" << sync_endl;
-			system("pause");
-		}
-		if (gameMode == 4) {
-			fm_game.SendMsg(nullptr, 0, false);
-			// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
-			system(("start \"\" \"" + gameDirStr + "\" " +
-				currTimeStr + " " +
-				"\"" + AI_VERSION + "\" " +
-				to_string(Observer::depth) + " " +
-				to_string(isCustomBoard) + " " +
-				to_string(Observer::isSaveRecord)).c_str());
-		}
-		else if (isConnectUI) {
-			system(("start Shogi.exe " + currTimeStr).c_str());
+			isCustomBoard = (buf == "y" || buf == "Y");
+			break;
 		}
 	}
 	else {
-		// argv[6] = 遊戲路徑 輸出檔名 玩家名 深度 是否自訂棋盤 是否輸出
+		// argv[4] = 遊戲路徑 輸出檔名 玩家名 是否自訂棋盤
 		gameMode = 5;
 		currTimeStr = argv[1];
 		fm_game.Open(currTimeStr);
 		players.Set(gameMode, argv[2], AI_VERSION);
-		Observer::depth = atoi(argv[3]);
-		isCustomBoard = argv[4][0] != '0';
-		Observer::isSaveRecord = argv[5][0] != '0';
+		isCustomBoard = argv[3][0] != '0';
+	}
+
+	if (players.IsAnyAI() || isConnectUI) {
+		sync_cout << "輸入搜尋的深度" << sync_endl;
+		cin >> Observer::depth;
+	}
+
+	sync_cout << "確定要開始 不開始則進入進階選項(y/n)?" << sync_endl;
+	cin >> buf;
+	if (buf != "y" && buf != "Y") {
+#ifndef TRANSPOSITION_DISABLE
+		int size;
+		sync_cout << "輸入同型表entry數量(2^n)" << sync_endl;
+		cin >> size;
+		Transposition::TPSize = 1 << size;
+#endif
+
+		sync_cout << "輸入時間限制(ms 0為無限制)" << sync_endl;
+		cin >> Observer::limitTime;
+
+		if (Observer::isSaveRecord && (gameMode == 0 || gameMode == 1)) {
+			sync_cout << "輸入對手的名字" << sync_endl;
+			cin >> players.pName[gameMode];
+		}
+
+		sync_cout << Search::GetSettingStr() << "確定要開始?" << sync_endl;
+		system("pause");
+	}
+	if (gameMode == 4) {
+		fm_game.SendMsg(nullptr, 0, false);
+		// argv[4] = 遊戲路徑 輸出檔名 玩家名 是否自訂棋盤
+		system(("start \"\" \"" + gameDirStr + "\" " +
+			currTimeStr + " " +
+			"\"" + AI_VERSION + "\" " +
+			to_string(isCustomBoard)).c_str());
+		char msg[20];
+		sync_cout << "等待對方回應..." << sync_endl;
+		fm_game.RecvMsg(msg, 20, true);
+		if (strcmp("Start Game", msg)) {
+			sync_cout << "Error : 連線失敗" << sync_endl;
+			system("pause");
+		}
+	}
+	else if (gameMode == 5) {
+		fm_game.SendMsg("Start Game", 11, true);
+	}
+	else if (isConnectUI) {
+		system(("start Shogi.exe " + currTimeStr).c_str());
 	}
 	CreateDirectory(CA2W(REPORT_PATH), NULL);
 
@@ -274,6 +278,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 		}
+		Transposition::Clean();
 		players.InitThread(minishogi);
 
 		// Write Title
@@ -281,7 +286,7 @@ int main(int argc, char **argv) {
 		sync_cout << "---------- Game " << Observer::gameNum << " ----------" << sync_endl;
 		if (Observer::isSaveRecord) {
 			playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
-			kifuStr = REPORT_PATH + currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
+			//kifuStr = REPORT_PATH + currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
 			if (gameMode != 4) {
 				file.open(playDetailStr, ios::app);
 				if (file) players.PrintNames(file);
@@ -294,6 +299,7 @@ int main(int argc, char **argv) {
 
 		// Game Loop
 		Observer::GameStart();
+		players.StartThread();
 		while (true) {
 			int turn = minishogi.GetTurn();
 			Move move;
@@ -422,13 +428,16 @@ int main(int argc, char **argv) {
 			file.open(playDetailStr, ios::app);
 			if (file) {
 				file << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
-				file << "#" << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << AI_VERSION << "\n";
+				file << "#" << (gameMode == 5 ^ players.isSwap ? "▼" : "△") << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << AI_VERSION << "\n";
 				file << Search::GetSettingStr() << "\n";
 				Observer::PrintGameReport(file);
+				if (gameMode != 4) {
+					minishogi.PrintKifu(file);
+				}
 				file.close();
 			}
 			// Save Kifu
-			if (gameMode != 4) {
+			/*if (gameMode != 4) {
 				file.open(kifuStr, ios::app);
 				if (file) {
 					players.PrintNames(file);
@@ -436,7 +445,7 @@ int main(int argc, char **argv) {
 					file.close();
 				}
 				else sync_cout << "Error : Fail to Save Kifu." << sync_endl;
-			}
+			}*/
 			// Save AIReport
 			if (gameMode != 5) {
 				file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::out);
@@ -461,7 +470,7 @@ int main(int argc, char **argv) {
 				else sync_cout << "Error : Fail to Save AI Report." << sync_endl;
 			}
 			if (gameMode == 4) {
-				fm_game.SendMsg("Save Report", 13, true);
+				fm_game.SendMsg("Save Report", 12, true);
 			}
 
 			if (isConnectUI) {

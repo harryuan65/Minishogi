@@ -6,6 +6,7 @@
 #include "Thread.h"
 #include "MovePick.h"
 #include "Transposition.h"
+#include "Observer.h"
 
 using namespace Search;
 using namespace Transposition;
@@ -17,7 +18,7 @@ inline int stat_bonus(int d) {
 	return d > 17 ? 0 : 32 * d * d + 64 * d - 64;
 }
 
-void Thread::IDAS(RootMove &rm, int depth) {
+void Thread::IDAS(RootMove &rm, int depth, bool isCompleteSearch) {
 	Value value, alpha, beta, delta;
 	fstream file;
 	bool isresearch;
@@ -83,7 +84,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 		if (CheckStop(rm.enemyMove) || 
 			value >= VALUE_MATE_IN_MAX_PLY || 
 			value <= VALUE_MATED_IN_MAX_PLY ||
-			ss->moveCount == 1)
+			((!isCompleteSearch || beginTime) && ss->moveCount == 1))
 			break;
 	}
 }
@@ -96,7 +97,7 @@ void Thread::PreIDAS() {
 	rootMoves.clear();
 
 #ifndef BACKGROUND_SEARCH_DISABLE
-	const TTnode *ttn = Probe(rootPos.GetKey(), ttHit); // Save TT?
+	const TTentry *ttn = Probe(rootPos.GetKey(), rootPos.GetTurn(), ttHit); // Save TT?
 	const Move ttMove = ttHit ? ttn->move : MOVE_NULL;
 	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
 	const Move counterMove = counterMoves[rootPos.GetChessOn(to_sq((ss - 1)->currentMove))][to_sq((ss - 1)->currentMove)];
@@ -106,7 +107,7 @@ void Thread::PreIDAS() {
 		rootMoves.emplace_back();
 		rootMoves.back().enemyMove = move;
 		rootPos.DoMove(move);
-		IDAS(rootMoves.back(), depth);
+		IDAS(rootMoves.back(), depth, true);
 		rootPos.UndoMove();
 		if (CheckStop(move))
 			break;
@@ -127,7 +128,7 @@ void Thread::PreIDAS() {
 				continue;
 			isTerminal = false;
 			rootPos.DoMove(rootMoves[i].enemyMove);
-			IDAS(rootMoves[i], depth);
+			IDAS(rootMoves[i], depth, true);
 			rootPos.UndoMove();
 			if (CheckStop(move))
 				break;
@@ -148,7 +149,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	Thread *thisThread = pos.GetThread();
 	Value value, bestValue, ttValue;
 	Move move, ttMove, bestMove;
-	TTnode *ttn;
+	TTentry *ttn;
 	Square prevSq;
 	bool ttHit;
 	const bool rootNode = ss->ply == 0;
@@ -166,10 +167,10 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
 	prevSq = to_sq((ss - 1)->currentMove);
 
-	ttn = Probe(pos.GetKey(), ttHit);
+	ttn = Probe(pos.GetKey(), pos.GetTurn(), ttHit);
 	ttValue = ttHit ? value_from_tt((Value)ttn->value, ss->ply) : VALUE_NONE;
 	ttMove = ttHit ? ttn->move : MOVE_NULL;
-	if (!pvNode && ttHit && ttn->depth >= depth && ttValue != VALUE_NONE && (ttValue >= beta ? (ttn->bound & TTnode::FAILHIGH) : (ttn->bound & TTnode::UNKNOWN))) {
+	if (!pvNode && ttHit && ttn->depth >= depth && ttValue != VALUE_NONE && (ttValue >= beta ? (ttn->bound & TTentry::FAILHIGH) : (ttn->bound & TTentry::UNKNOWN))) {
 		if (ttMove) {
 			if (ttValue >= beta) {
 				if (!pos.GetChessOn(to_sq(ttMove)))
@@ -223,7 +224,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 		}
 #else
-		value = -NegaScout(pvNode, pos, ss + 1, -beta, -alpha, depth - 1, isResearch);
+		value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 #endif
 		pos.UndoMove();
 
@@ -275,7 +276,8 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 		UpdateContinousHeuristic(ss - 1, pos.GetChessOn(prevSq), prevSq, stat_bonus(depth));
 	}
 	ttn->save(pos.GetKey(), depth, value_to_tt(bestValue, ss->ply), bestMove,
-		bestValue >= beta ? TTnode::FAILHIGH : (pvNode && bestMove) ? TTnode::EXACT : TTnode::UNKNOWN);
+		bestValue >= beta ? TTentry::FAILHIGH : (pvNode && bestMove) ? TTentry::EXACT : TTentry::UNKNOWN
+		, pos.GetTurn());
 	assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 	return bestValue;
 }
@@ -288,7 +290,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 	const Key key = pos.GetKey();
 	Value bestValue, ttValue, oldAlpha = alpha;
 	Move ttMove, move, bestMove = MOVE_NULL;
-	TTnode *ttn;
+	TTentry *ttn;
 	bool ttHit;
 	int ttDepth = isChecked || depth >= 0 ? 0 : -1;
 
@@ -300,7 +302,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 	ss->pv[0] = MOVE_NULL;
 	(ss + 1)->ply = ss->ply + 1;
 
-	ttn = Probe(key, ttHit);
+	ttn = Probe(key, pos.GetTurn(), ttHit);
 	ttValue = ttHit ? value_from_tt((Value)ttn->value, ss->ply) : VALUE_NONE;
 	ttMove = ttHit ? ttn->move : MOVE_NULL;
 	if (ttHit && ttValue != VALUE_NONE && ttMove && !pos.PseudoLegal(ttMove)) {
@@ -312,9 +314,8 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 		&& ttHit
 		&& ttn->depth >= ttDepth
 		&& ttValue != VALUE_NONE
-		&& (ttValue >= beta ? (ttn->bound & TTnode::FAILHIGH)
-							: (ttn->bound & TTnode::UNKNOWN))) {
-		//Observer::data[Observer::DataType::ios_read] += pos.IsIsomorphic();
+		&& (ttValue >= beta ? (ttn->bound & TTentry::FAILHIGH)
+							: (ttn->bound & TTentry::UNKNOWN))) {
 		return ttValue;
 	}
 
@@ -322,13 +323,13 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 		bestValue = pos.GetEvaluate();
 
 		if (ttHit && ttValue != VALUE_NONE
-			&& (ttn->bound & (ttValue > bestValue ? TTnode::FAILHIGH : TTnode::UNKNOWN))) {
+			&& (ttn->bound & (ttValue > bestValue ? TTentry::FAILHIGH : TTentry::UNKNOWN))) {
 			bestValue = ttValue;
 		}
 
 		if (bestValue >= beta) {
 			if (!ttHit)
-				ttn->save(key, 0, value_to_tt(bestValue, ss->ply), MOVE_NULL, TTnode::FAILHIGH);
+				ttn->save(key, 0, value_to_tt(bestValue, ss->ply), MOVE_NULL, TTentry::FAILHIGH, pos.GetTurn());
 			return bestValue;
 		}
 
@@ -354,7 +355,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 					bestMove = move;
 				}
 				else {
-					ttn->save(key, ttDepth, value_to_tt(bestValue, ss->ply), move, TTnode::FAILHIGH);
+					ttn->save(key, ttDepth, value_to_tt(bestValue, ss->ply), move, TTentry::FAILHIGH, pos.GetTurn());
 					return bestValue;
 				}
 			}
@@ -363,7 +364,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 	if (isChecked && bestValue == -VALUE_INFINITE)
 		return mated_in(ss->ply);
 
-	ttn->save(key, ttDepth, value_to_tt(bestValue, ss->ply), bestMove, bestValue > oldAlpha ? TTnode::EXACT : TTnode::UNKNOWN);
+	ttn->save(key, ttDepth, value_to_tt(bestValue, ss->ply), bestMove, bestValue > oldAlpha ? TTentry::EXACT : TTentry::UNKNOWN, pos.GetTurn());
 	assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 	return bestValue;
 }
@@ -428,7 +429,8 @@ string Search::GetSettingStr() {
 #else
 		ss << "Transposition Type  : Single TT\n";
 #endif
-		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTnode)) >> 20) << " MiB\n";
+		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTentry)) >> 20) << " MiB\n";
+		ss << "Transposition Entry : 2^" << log2(Transposition::TPSize) << "\n";
 	}
 
 #ifndef ITERATIVE_DEEPENING_DISABLE

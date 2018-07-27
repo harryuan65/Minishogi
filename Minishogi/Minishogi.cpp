@@ -880,14 +880,14 @@ bool Minishogi::IsCheckingAfter(const Move m) {
 	/* search the possible position */
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
-		if (board[attsrc] & 7 == ROOK) return true;
+		if ((board[attsrc] & 7) == ROOK) return true;
 		attackboard ^= 1 << attsrc;
 	}
 
 	attackboard = BishopMovable(kingpos, tmp_occupied) & my_occupied;
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
-		if (board[attsrc] & 7 == BISHOP) return true;
+		if ((board[attsrc] & 7) == BISHOP) return true;
 		attackboard ^= 1 << attsrc;
 	}
 

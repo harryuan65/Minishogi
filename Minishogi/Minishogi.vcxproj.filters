@@ -72,9 +72,4 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="board\custom_board.txt">
-      <Filter>資源檔</Filter>
-    </Text>
-  </ItemGroup>
 </Project>

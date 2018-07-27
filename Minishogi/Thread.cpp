@@ -3,7 +3,7 @@
 #include <windows.h>
 #include "Thread.h"
 
-Thread::Thread(const Minishogi &m, Color c) : stdThread(&Thread::IdleLoop, this), us(c) {
+Thread::Thread(const Minishogi &m, Color c) : us(c) {
 	rootPos.Set(m, this);
 	counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);
@@ -20,7 +20,13 @@ Thread::Thread(const Minishogi &m, Color c) : stdThread(&Thread::IdleLoop, this)
 
 Thread::~Thread() {
 	isExit = true;
-	stdThread.join();
+	if (stdThread)
+		stdThread->join();
+}
+
+void Thread::Start() {
+	if (!stdThread)
+		stdThread = new thread(&Thread::IdleLoop, this);
 }
 
 bool Thread::CheckStop(Move em) {
@@ -58,7 +64,6 @@ RootMove Thread::GetBestMove() {
 }
 
 void Thread::IdleLoop() {
-	Sleep(10);
 	while (!isExit) {
 		mutex.lock();
 		if (bestMove.enemyMove == MOVE_UNDO) {
@@ -76,6 +81,10 @@ void Thread::IdleLoop() {
 		}
 		mutex.unlock();
 
+		if (rootPos.IsGameOver()) {
+			isExit = true;
+			break;
+		}
 		if (rootPos.GetTurn() == us) {
 			mutex.lock();
 			bestMove.depth = 0;
@@ -94,7 +103,7 @@ void Thread::IdleLoop() {
 				sync_cout << "Thread " << us << " : IDAS" << sync_endl;
 
 				Observer::StartSearching();
-				IDAS(rm, Observer::depth);
+				IDAS(rm, Observer::depth, false);
 				Observer::EndSearching();
 
 				mutex.lock();

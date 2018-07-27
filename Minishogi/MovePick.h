@@ -3,9 +3,7 @@
 
 #include <array>
 #include "Minishogi.h"
-
-//#define MOVEPICK_DISABLE
-#define REFUTATION_DISABLE
+#include "Observer.h"
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value

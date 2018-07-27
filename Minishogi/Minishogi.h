@@ -3,6 +3,7 @@
 
 #include "Bitboard.h"
 #include "Types.h"
+#include "Observer.h"
 #include "Zobrist.h"
 using std::string;
 

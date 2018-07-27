@@ -73,7 +73,7 @@ class Thread {
 private:
 	Mutex mutex;
 	ConditionVariable cv;
-	std::thread stdThread; 
+	thread *stdThread; 
 	Stack stack[MAX_PLY + 7], *ss;
 
 	Color us;
@@ -94,8 +94,9 @@ public:
 
 	Thread(const Minishogi &m, Color c);
 	~Thread();
+	void Start();
 
-	void IDAS(RootMove &rm, int depth);
+	void IDAS(RootMove &rm, int depth, bool isCompleteSearch);
 	void PreIDAS();
 
 	inline bool IsStop() { return isStop || isReject || isExit; }

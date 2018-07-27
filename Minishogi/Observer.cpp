@@ -8,7 +8,6 @@ namespace Observer {
 	unsigned long long game_data[DataType::COUNT];
 
 	unsigned long long startZobristHash;
-	unsigned int kifuHash;
 	Winner winner;
 	double gamePlayTime;
 
@@ -19,7 +18,9 @@ namespace Observer {
 	unsigned int player2WinNum = 0;
 	vector<Winner> winnerTable1;
 	vector<Winner> winnerTable2;
-	vector<unsigned __int64> initHash;
+	vector<uint64_t> initHash;
+	vector<uint32_t> kifuHash1;
+	vector<uint32_t> kifuHash2;
 
 	// ³]©w
 	int depth = 10;

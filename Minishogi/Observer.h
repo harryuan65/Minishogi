@@ -2,7 +2,20 @@
 #define _OBSERVER_
 #include <iomanip>
 #include <vector>
+#include <iostream>
 using namespace std;
+
+//#define ITERATIVE_DEEPENING_DISABLE
+//#define ASPIRE_WINDOW_DISABLE
+//#define PVS_DISABLE
+//#define QUIES_DISABLE
+//#define TRANSPOSITION_DISABLE
+#define ENEMY_ISO_TT
+//#define MOVEPICK_DISABLE
+#define REFUTATION_DISABLE
+#define BACKGROUND_SEARCH_DISABLE
+
+#define AI_VERSION "#98"
 
 namespace Observer {
 	enum DataType {
@@ -12,11 +25,9 @@ namespace Observer {
 		quiesNode,
 		scoutGeneNums,
 		scoutSearchBranch,
-		totalTPDepth,
-		ios_read,
-		ios_write,
+		ttIsoNum,
 		ttProbe,
-        ttHit,
+		ttCollision,
 		searchTime,
 		COUNT
 	};
@@ -27,22 +38,23 @@ namespace Observer {
 	};
 
 	// 單一盤面搜尋結果
-	extern unsigned long long data[DataType::COUNT];
+	extern unsigned long long data[COUNT];
 	static clock_t beginTime = 0;
 
 	// 整局結果
-	extern unsigned long long game_data[DataType::COUNT];
-	extern unsigned int kifuHash;
+	extern unsigned long long game_data[COUNT];
 	extern Winner winner;
 
 	// 全部結果
-	extern unsigned long long total_data[DataType::COUNT];
+	extern unsigned long long total_data[COUNT];
 	extern unsigned int gameNum;
 	extern unsigned int player1WinNum;
 	extern unsigned int player2WinNum;
 	extern vector<Winner> winnerTable1;
 	extern vector<Winner> winnerTable2;
 	extern vector<uint64_t> initHash;
+	extern vector<uint32_t> kifuHash1;
+	extern vector<uint32_t> kifuHash2;
 
 	// 設定
 	extern int depth;
@@ -51,28 +63,27 @@ namespace Observer {
 	extern string playDetailStr;
 
 	inline void StartSearching() {
-		for (int i = 0; i < DataType::COUNT; i++)
+		for (int i = 0; i < COUNT; i++)
 			data[i] = 0;
 		beginTime = clock();
 	}
 
 	inline void EndSearching() {
-		data[DataType::searchNum]++;
-		data[DataType::searchTime] += clock() - beginTime;
-		for (int i = 0; i < DataType::COUNT; i++)
+		data[searchNum]++;
+		data[searchTime] += clock() - beginTime;
+		for (int i = 0; i < COUNT; i++)
 			game_data[i] += data[i];
 		beginTime = 0;
 	}
 
 	inline void GameStart() {
-		for (int i = 0; i < DataType::COUNT; i++)
+		for (int i = 0; i < COUNT; i++)
 			game_data[i] = 0;
 	}
 
 	inline void GameOver(bool _winner, bool isSwap, unsigned __int64 _initHash, unsigned int _kifuHash) {
 		gameNum++;
 		winner = (Winner)(_winner != isSwap);
-		kifuHash = _kifuHash;
 		if (winner == PLAYER1)
 			player1WinNum++;
 		else if (winner == PLAYER2)
@@ -80,34 +91,40 @@ namespace Observer {
 		if (!isSwap) {
 			winnerTable1.push_back(winner);
 			initHash.push_back(_initHash);
+			kifuHash1.push_back(_kifuHash);
 		}
 		else {
 			winnerTable2.push_back(winner);
+			kifuHash2.push_back(_kifuHash);
 		}
-		for (int i = 0; i < DataType::COUNT; i++)
+		for (int i = 0; i < COUNT; i++)
 			total_data[i] += game_data[i];
+	}
+
+	inline static void PrintData(ostream &os, unsigned long long *pdata) {
+		bool isZero = pdata[searchNum] == 0;
+		if (isZero)  pdata[searchNum] = 1;
+		os << setiosflags(ios::fixed) << setprecision(2);
+		os << "Average Report (per search) :\n";
+		os << " Total search nodes      : " << setw(10) << pdata[totalNode] / pdata[searchNum] << "\n";
+		os << " Research nodes          : " << setw(10) << pdata[researchNode] / pdata[searchNum] << "\n";
+		os << " Quies search nodes      : " << setw(10) << pdata[quiesNode] / pdata[searchNum] << "\n";
+		os << " Avg scout search branch : " << setw(13) << (float)pdata[scoutSearchBranch] / pdata[scoutGeneNums] << "\n";
+		os << " scoutSearchBranch       : " << setw(10) << pdata[scoutSearchBranch] / pdata[searchNum] << "\n";
+		os << " scoutGeneNums           : " << setw(10) << pdata[scoutGeneNums] / pdata[searchNum] << "\n";
+		os << " ttProbe isomorphic nums : " << setw(10) << pdata[ttIsoNum] / pdata[searchNum] << "\n";
+		os << " ttProbe isomorphic rate : " << setw(13) << (100.0f * pdata[ttIsoNum] / pdata[ttProbe]) << " %\n";
+		os << " ttProbe collision nums  : " << setw(10) << pdata[ttCollision] / pdata[searchNum] << "\n";
+		os << " ttPribe collision rate  : " << setw(13) << (100.0f * pdata[ttCollision] / pdata[ttProbe]) << " %\n";
+		os << " Search time             : " << setw(13) << (float)pdata[searchTime] / pdata[searchNum] / 1000 << "\n";
+		if (isZero)  pdata[searchNum] = 0;
 	}
 
 	inline void PrintSearchReport(ostream &os) {
 		if (!os) return;
-		if (data[DataType::searchNum] == 0) return;
-		if (data[DataType::scoutGeneNums] == 0) data[DataType::scoutGeneNums] = 1;
-		os << setiosflags(ios::fixed) << setprecision(2);
-		os << "Search Report :\n";
-		os << " Search Deapth           : " << setw(10) << depth << "\n";
-		os << " Total search nodes      : " << setw(10) << data[DataType::totalNode] << "\n";
-		os << " Research nodes          : " << setw(10) << data[DataType::researchNode] << "\n";
-		os << " Quies search nodes      : " << setw(10) << data[DataType::quiesNode] << "\n";
-		os << " Avg scout search branch : " << setw(13) << (float)data[DataType::scoutSearchBranch] / data[DataType::scoutGeneNums] << "\n";
-		os << " scoutSearchBranch       : " << setw(10) << data[DataType::scoutSearchBranch] << "\n";
-		os << " scoutGeneNums           : " << setw(10) << data[DataType::scoutGeneNums] << "\n";
-		os << " Total TP Depth          : " << setw(10) << data[DataType::totalTPDepth] << "\n";
-		os << " Isomorphic  (read)      : " << setw(10) << data[DataType::ios_read] << "\n";
-		os << " Isomorphic  (write)     : " << setw(10) << data[DataType::ios_write] << "\n";
-		os << " Index Hit nums          : " << setw(10) << data[DataType::ttHit] << "\n";
-        os << " Hit rate                : " << setw(13) <<
-            (100.0f * data[DataType::ttHit] / data[DataType::ttProbe]) << " %\n";
-		os << " Search time             : " << setw(13) << (float)data[DataType::searchTime] / 1000 << "\n";
+		if (data[scoutGeneNums] == 0) data[scoutGeneNums] = 1;
+		os << "Search Deapth            : " << setw(10) << depth << "\n";
+		PrintData(os, data);
 		os << endl;
 	}
 
@@ -116,27 +133,10 @@ namespace Observer {
 		os << "Game" << setw(3) << gameNum - 1 << "\n";
 		os << "Game Result :\n";
 		os << " Winner                  : " << setw(10) << (winner ? "Player2" : "Player1") << "\n";
-		os << " Kifu hashcode           : " << setw(10) << hex << kifuHash << dec << "\n";
+		//os << " Kifu hashcode           : " << setw(10) << hex << kifuHash.back() << dec << "\n";
 		os << " Search depths           : " << setw(10) << depth << "\n";
-		os << " Search nums             : " << setw(10) << game_data[DataType::searchNum] << "\n";
-
-		if (game_data[DataType::searchNum] != 0) {
-			os << setiosflags(ios::fixed) << setprecision(2);
-			os << "Average Report (per search) :\n";
-			os << " Total search nodes      : " << setw(10) << game_data[DataType::totalNode] / game_data[DataType::searchNum] << "\n";
-			os << " Research nodes          : " << setw(10) << game_data[DataType::researchNode] / game_data[DataType::searchNum] << "\n";
-			os << " Quies search nodes      : " << setw(10) << game_data[DataType::quiesNode] / game_data[DataType::searchNum] << "\n";
-			os << " Avg scout search branch : " << setw(13) << (float)game_data[DataType::scoutSearchBranch] / game_data[DataType::scoutGeneNums] << "\n";
-			os << " scoutSearchBranch       : " << setw(10) << game_data[DataType::scoutSearchBranch] / game_data[DataType::searchNum] << "\n";
-			os << " scoutGeneNums           : " << setw(10) << game_data[DataType::scoutGeneNums] / game_data[DataType::searchNum] << "\n";
-			os << " Total TP Depth          : " << setw(10) << game_data[DataType::totalTPDepth] / game_data[DataType::searchNum] << "\n";
-			os << " Isomorphic  (read)      : " << setw(10) << game_data[DataType::ios_read] / game_data[DataType::searchNum] << "\n";
-			os << " Isomorphic  (write)     : " << setw(10) << game_data[DataType::ios_write] / game_data[DataType::searchNum] << "\n";
-			os << " Index Hit nums          : " << setw(10) << game_data[DataType::ttHit] / game_data[DataType::searchNum] << "\n";
-			os << " Hit rate                : " << setw(13) <<
-                (100.0f * game_data[DataType::ttHit] / game_data[DataType::ttProbe]) << " %\n";
-			os << " Search time             : " << setw(13) << (float)game_data[DataType::searchTime] / game_data[DataType::searchNum] / 1000 << "\n";
-		}
+		os << " Search nums             : " << setw(10) << game_data[searchNum] << "\n";
+		PrintData(os, game_data);
 		os << endl;
 	}
 
@@ -145,24 +145,8 @@ namespace Observer {
 		if (gameNum == 0) return;
 		os << "Game Result :\n";
 		os << " Search depths           : " << setw(10) << depth << "\n";
-		os << " Search nums             : " << setw(10) << total_data[DataType::searchNum] << "\n";
-		if (total_data[DataType::searchNum] != 0) {
-			os << setiosflags(ios::fixed) << setprecision(2);
-			os << "Average Report (per search) :\n";
-			os << " Total search nodes      : " << setw(10) << total_data[DataType::totalNode] / total_data[DataType::searchNum] << "\n";
-			os << " Research nodes          : " << setw(10) << total_data[DataType::researchNode] / total_data[DataType::searchNum] << "\n";
-			os << " Quies search nodes      : " << setw(10) << total_data[DataType::quiesNode] / total_data[DataType::searchNum] << "\n";
-			os << " Avg scout search branch : " << setw(13) << (float)total_data[DataType::scoutSearchBranch] / total_data[DataType::scoutGeneNums] << "\n";
-			os << " scoutSearchBranch       : " << setw(10) << total_data[DataType::scoutSearchBranch] / total_data[DataType::searchNum] << "\n";
-			os << " scoutGeneNums           : " << setw(10) << total_data[DataType::scoutGeneNums] / total_data[DataType::searchNum] << "\n";
-			os << " Total TP Depth          : " << setw(10) << total_data[DataType::totalTPDepth] / total_data[DataType::searchNum] << "\n";
-			os << " Isomorphic  (read)      : " << setw(10) << total_data[DataType::ios_read] / total_data[DataType::searchNum] << "\n";
-			os << " Isomorphic  (write)     : " << setw(10) << total_data[DataType::ios_write] / total_data[DataType::searchNum] << "\n";
-			os << " Index Hit nums          : " << setw(10) << total_data[DataType::ttHit] / total_data[DataType::searchNum] << "\n";
-			os << " Hit rate                : " << setw(13) <<
-                (100.0f * total_data[DataType::ttHit] / total_data[DataType::ttProbe]) << " %\n";
-			os << " Search time             : " << setw(13) << (float)total_data[DataType::searchTime] / total_data[DataType::searchNum] / 1000 << "\n";
-		}
+		os << " Search nums             : " << setw(10) << total_data[searchNum] << "\n";
+		PrintData(os, total_data);
 		os << endl;
 	}
 
@@ -173,17 +157,21 @@ namespace Observer {
 		os << " Game play nums          : " << setw(10) << gameNum << "\n";
 		os << " Player 1 win nums       : " << setw(10) << player1WinNum << "\n";
 		os << " Player 2 win nums       : " << setw(10) << player2WinNum << "\n";
-		os << "Game |    Init Borad    | A | B | Game\n";
+		os << "Game |    Init Borad    | A | B |  A kifu  |  B kifu  | Game\n";
 		for (int i = 0; i < winnerTable1.size(); i++) {
 			os << setw(4) << i << " | " << hex << setw(16) << initHash[i] << dec << " | ";
 			os << (winnerTable1[i] ? "-" : "+") << " | ";
 			if (i < winnerTable2.size()) {
 				os << (winnerTable2[i] ? "-" : "+") << " | ";
+			}
+			os << hex << setw(8) << kifuHash1[i] << dec << " | " ;
+			if (i < winnerTable2.size()) {
+				os << hex << setw(8) << kifuHash2[i] << dec << " | ";
 				os << setw(4) << i + winnerTable1.size();
 			}
 			os << "\n";
 		}
-		os << "       (+:Player 1 win,-:Player 2 Win)\n";
+		os << "(+:Player 1 win,-:Player 2 Win)\n";
 		os << endl;
 	}
 }
