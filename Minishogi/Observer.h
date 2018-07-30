@@ -15,7 +15,7 @@ using namespace std;
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_VERSION "#98"
+#define AI_VERSION "#99"
 
 namespace Observer {
 	enum DataType {
@@ -110,8 +110,6 @@ namespace Observer {
 		os << " Research nodes          : " << setw(10) << pdata[researchNode] / pdata[searchNum] << "\n";
 		os << " Quies search nodes      : " << setw(10) << pdata[quiesNode] / pdata[searchNum] << "\n";
 		os << " Avg scout search branch : " << setw(13) << (float)pdata[scoutSearchBranch] / pdata[scoutGeneNums] << "\n";
-		os << " scoutSearchBranch       : " << setw(10) << pdata[scoutSearchBranch] / pdata[searchNum] << "\n";
-		os << " scoutGeneNums           : " << setw(10) << pdata[scoutGeneNums] / pdata[searchNum] << "\n";
 		os << " ttProbe isomorphic nums : " << setw(10) << pdata[ttIsoNum] / pdata[searchNum] << "\n";
 		os << " ttProbe isomorphic rate : " << setw(13) << (100.0f * pdata[ttIsoNum] / pdata[ttProbe]) << " %\n";
 		os << " ttProbe collision nums  : " << setw(10) << pdata[ttCollision] / pdata[searchNum] << "\n";

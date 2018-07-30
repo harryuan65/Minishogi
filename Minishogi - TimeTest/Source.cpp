@@ -18,6 +18,7 @@ string GetCurrentTimeString();
 int main() {
 	Minishogi pos;
 	Thread *thread;
+	vector<RootMove> rms;
 	streamoff readBoardOffset = 0;
 	fstream file;
 	string playDetailStr = TIMETEST_PATH + GetCurrentTimeString() + "_TimeTest.txt";
@@ -50,21 +51,23 @@ int main() {
 	Transposition::Initialize();
 	Observer::GameStart();
 	while (pos.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
-		RootMove rm;
+		rms.emplace_back();
 		Transposition::Clean();
 		thread = new Thread(pos, pos.GetTurn());
+		sync_cout << "---------- Board " << Observer::game_data[Observer::searchNum] << " ----------" << sync_endl;
 		pos.PrintChessBoard();
 
 		Observer::StartSearching();
-		thread->IDAS(rm, Observer::depth, false);
+		thread->IDAS(rms.back(), Observer::depth, false);
 		Observer::EndSearching();
 		delete thread;
 
-		sync_cout << rm.PV() << sync_endl;
+		sync_cout << rms.back().PV() << sync_endl;
 		Observer::PrintSearchReport(cout);
 		file.open(playDetailStr, ios::app);
+		file << "---------- Board " << Observer::game_data[Observer::searchNum] - 1 << " ----------" << endl;
 		pos.PrintNoncolorBoard(file);
-		file << rm.PV() << endl;
+		file << rms.back().PV() << endl;
 		if (file) Observer::PrintSearchReport(file);
 		file.close();
 	}
@@ -72,8 +75,13 @@ int main() {
 	Observer::PrintGameReport(cout);
 	file.open(playDetailStr, ios::app);
 	if (file) Observer::PrintGameReport(file);
+	file << "num|  eval | move\n";
+	for (int i = 0; i < rms.size(); i++) {
+		file << setw(3) << i << "|" << setw(6) << rms[i].value << " | " << rms[i].pv[0] << "\n";
+	}
 	file.close();
 
+	cout << "\a";
 	system("pause");
 	return 0;
 }

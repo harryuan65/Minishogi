@@ -214,9 +214,9 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 		ss->moveCount++;
 #ifndef PVS_DISABLE
 		if (depth > 3 && ss->moveCount > 1) {
-			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -(alpha + 1), -alpha, depth - 1, isResearch);
+			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -(alpha + 1), -alpha, depth - 1, isResearch); //TODO : debug
 			if (alpha < value && value < beta) {
-				ss->moveCount++;
+				//ss->moveCount++;
 				value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -(value - 1), depth - 1, true);
 			}
 		}
@@ -425,9 +425,9 @@ string Search::GetSettingStr() {
 	ss << "Transposition Table : " << (Transposition::IsEnable() ? "Enable" : "Disable") << "\n";
 	if (Transposition::IsEnable()) {
 #ifdef ENEMY_ISO_TT
-		ss << "Transposition Type  : Enemy Isomorphism TT\n";
+		ss << "Transposition Type  : Enemy Isomorphism\n";
 #else
-		ss << "Transposition Type  : Single TT\n";
+		ss << "Transposition Type  : Single Hashcode\n";
 #endif
 		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTentry)) >> 20) << " MiB\n";
 		ss << "Transposition Entry : 2^" << log2(Transposition::TPSize) << "\n";
@@ -459,9 +459,9 @@ string Search::GetSettingStr() {
 	ss << "MovePicker          : Disable\n";
 #endif
 #ifndef BACKGROUND_SEARCH_DISABLE
-	ss << "Back Ground Search  : Enable\n";
+	ss << "Background  Search  : Enable\n";
 #else
-	ss << "Back Ground Search  : Disable\n";
+	ss << "Background  Search  : Disable\n";
 #endif
 	return ss.str();
 }
