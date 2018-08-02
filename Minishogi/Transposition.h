@@ -18,7 +18,7 @@ namespace Transposition {
 			FAILHIGH = 2,
 			EXACT = 3
 		} bound;
-		int turn; //4Bytes debug¥Î
+		//int turn; //4Bytes debug¥Î
 
 		void save(Key k, int d, Value v, Move m, Bound b) {
 #ifndef TRANSPOSITION_DISABLE
@@ -33,7 +33,7 @@ namespace Transposition {
 #endif
 		}
 
-		void save(Key k, int d, Value v, Move m, Bound b, int t) {
+		/*void save(Key k, int d, Value v, Move m, Bound b, int t) {
 #ifndef TRANSPOSITION_DISABLE
 			if (k >> 32 != key32 || d >= depth) {
 				key32 = k >> 32;
@@ -45,7 +45,7 @@ namespace Transposition {
 				assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 			}
 #endif
-		}
+		}*/
 	};
 
 	extern uint64_t TPSize;

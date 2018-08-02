@@ -15,29 +15,29 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Minishogi\Minishogi.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\MovePick.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\Observer.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\Search.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\Thread.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\Transposition.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Minishogi\Zobrist.cpp">
-      <Filter>來源檔案</Filter>
-    </ClCompile>
     <ClCompile Include="Source.cpp">
       <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Minishogi.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\MovePick.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Observer.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Search.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Thread.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Transposition.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Minishogi\Zobrist.cpp">
+      <Filter>標頭檔</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

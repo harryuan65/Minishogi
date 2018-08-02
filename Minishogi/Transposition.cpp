@@ -62,7 +62,7 @@ namespace Transposition {
 			return &transpositTable[index];
 		}
 		ttHit = true;
-		Observer::data[Observer::DataType::ttIsoNum] += (transpositTable[index].turn != turn);
+		//Observer::data[Observer::DataType::ttIsoNum] += (transpositTable[index].turn != turn);
 		return &transpositTable[index];
 #else
 		ttHit = false;

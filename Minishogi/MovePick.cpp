@@ -184,8 +184,6 @@ top:
 		if (refutations[0].move == refutations[2].move
 			|| refutations[1].move == refutations[2].move)
 			--endMoves;
-#else
-		refutations[0].move = refutations[1].move = refutations[2].move = MOVE_NULL;
 #endif
 
 		++stage;
@@ -194,8 +192,8 @@ top:
 	case REFUTATION:
 #ifndef REFUTATION_DISABLE
 		if (select<Next>([&]() { return move != MOVE_NULL
-			&& !pos.GetChessOn(to_sq(move))
-			&& pos.PseudoLegal(move); }))
+			                        && !pos.GetChessOn(to_sq(move))
+			                        &&  pos.PseudoLegal(move); }))
 			return move;
 #endif
 		++stage;
@@ -213,9 +211,13 @@ top:
 
 	case QUIET:
 		if (!skipQuiets
-			&& select<Next>([&]() {return move != refutations[0]
-				&& move != refutations[1]
-				&& move != refutations[2]; }))
+			&& select<Next>([&]() {return
+#ifdef REFUTATION_DISABLE
+				true;
+#else
+				move != refutations[0] && move != refutations[1] && move != refutations[2];
+#endif
+		}))
 			return move;
 
 		// Prepare the pointers to loop over the bad captures
