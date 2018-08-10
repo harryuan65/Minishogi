@@ -8,14 +8,16 @@ using namespace std;
 //#define ITERATIVE_DEEPENING_DISABLE
 //#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
+//#define NULLMOVE_DISABLE
 //#define QUIES_DISABLE
 //#define TRANSPOSITION_DISABLE
 #define ENEMY_ISO_TT
 //#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
+#define BACKGROUND_SEARCH_LIMITDEPTH
 
-#define AI_VERSION "#100"
+#define AI_VERSION "#101 (v-1~b) nullMove"
 
 namespace Observer {
 	enum DataType {
@@ -28,6 +30,8 @@ namespace Observer {
 		//ttIsoNum,
 		ttProbe,
 		ttCollision,
+		nullMoveNum,
+		zugzwangsNum,
 		searchTime,
 		COUNT
 	};
@@ -114,6 +118,8 @@ namespace Observer {
 		//os << " ttProbe isomorphic rate : " << setw(13) << (100.0f * pdata[ttIsoNum] / pdata[ttProbe]) << " %\n";
 		os << " ttProbe collision nums  : " << setw(10) << pdata[ttCollision] / pdata[searchNum] << "\n";
 		os << " ttPribe collision rate  : " << setw(13) << (100.0f * pdata[ttCollision] / pdata[ttProbe]) << " %\n";
+		//os << " zugzwangs num           : " << setw(13) <<  (float)pdata[zugzwangsNum] / pdata[searchNum] << "\n";
+		os << " Null Move num           : " << setw(10) << pdata[nullMoveNum] / pdata[searchNum] << "\n";
 		os << " Search time             : " << setw(13) << (float)pdata[searchTime] / pdata[searchNum] / 1000 << "\n";
 		if (isZero)  pdata[searchNum] = 0;
 	}

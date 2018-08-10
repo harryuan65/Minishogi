@@ -58,7 +58,7 @@ void Minishogi::Initialize() {
 void Minishogi::Initialize(const char *s) {
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, CHESS_NB * sizeof(Bitboard));
-	memset(board, EMPTY, SQUARE_NB * sizeof(int));
+	memset(board, NO_PIECE, SQUARE_NB * sizeof(int));
 	turn = WHITE;
 	ply = 0;
 	evalHist[0] = VALUE_ZERO;
@@ -101,7 +101,7 @@ bool Minishogi::Initialize(const std::string* str) {
 	int index = 0;
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, CHESS_NB * sizeof(Bitboard));
-	memset(board, EMPTY, SQUARE_NB * sizeof(int));
+	memset(board, NO_PIECE, SQUARE_NB * sizeof(int));
 	if (str[index][0] == '+') {
 		turn = WHITE;
 	}
@@ -231,7 +231,7 @@ void Minishogi::DoMove(Move m) {
 			pc = promote(pc);
 		}
 		bitboard[pc] ^= dstboard; // 更新該方手牌至目的位置
-		board[from] = EMPTY;      // 原本清空
+		board[from] = NO_PIECE;      // 原本清空
 	}
 	else { // 打入
 		evalHist[ply] += CHESS_SCORE[pc] - HAND_SCORE[from];
@@ -301,6 +301,27 @@ void Minishogi::UndoMove() {
 	board[to] = captured;           // 還原目的棋子
 }
 
+void Minishogi::DoNullMove() {
+	ply++;
+	turn = ~turn;
+	moveHist[ply - 1] = MOVE_NULL;
+	captureHist[ply - 1] = NO_PIECE;
+	evalHist[ply] = evalHist[ply - 1];
+	pinHist[ply] = pinHist[ply - 1];
+	keyHist[ply] = keyHist[ply - 1];
+#ifdef ENEMY_ISO_TT
+	key2Hist[ply] = key2Hist[ply - 1];
+#else
+	keyHist[ply] ^= 1;
+#endif
+	checker_bb[ply] = checker_bb[ply - 1];
+}
+
+void Minishogi::UndoNullMove() {
+	ply--;
+	turn = ~turn;
+}
+
 bool Minishogi::PseudoLegal(const Move m) const {
 	Square from = from_sq(m), to = to_sq(m);
 	// 不超出移動範圍
@@ -309,11 +330,11 @@ bool Minishogi::PseudoLegal(const Move m) const {
 
 	Chess pc = GetChessOn(from), capture = GetChessOn(to);
 	// 只能出己方的手排
-	if (pc == EMPTY || color_of(pc) != turn)
+	if (pc == NO_PIECE || color_of(pc) != turn)
 		return false;
 
 	// 如果是吃子，不能是打入，且只能吃對方
-	if (capture != EMPTY && (from >= BOARD_NB || color_of(capture) == turn))
+	if (capture != NO_PIECE && (from >= BOARD_NB || color_of(capture) == turn))
 		return false;
 
 	// 理論上吃不到王，也不能讓自己被將
@@ -730,7 +751,7 @@ void Minishogi::PrintChessBoard() const {
 void Minishogi::PrintNoncolorBoard(std::ostream &os) const {
 	os << (GetTurn() ? "-" : "+") << "ply " << ply << " " << std::hex << GetKey() << std::dec << "\n";
 	for (int i = 0; i < BOARD_NB; i++) {
-		if (board[i] == EMPTY)
+		if (board[i] == NO_PIECE)
 			os << " ． ";
 		else {
 			os << SAVE_CHESS_WORD[board[i]];

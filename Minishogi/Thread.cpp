@@ -11,11 +11,11 @@ Thread::Thread(const Minishogi &m, Color c) : us(c) {
 	for (int i = 0; i < CHESS_NB; i++)
 		for (int j = 0; j < SQUARE_NB; j++)
 			contHistory[i][j].fill(0);
-	contHistory[EMPTY][0].fill(CounterMovePruneThreshold - 1);
+	contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
 	ss = stack + 4; // To reference from (ss-4) to (ss+2)
 	std::memset(ss - 4, 0, 7 * sizeof(Stack));
 	for (int i = 4; i > 0; i--)
-		(ss - i)->contHistory = &contHistory[EMPTY][0]; // Use as sentinel
+		(ss - i)->contHistory = &contHistory[NO_PIECE][0]; // Use as sentinel
 }
 
 Thread::~Thread() {

@@ -80,11 +80,12 @@ private:
 	Minishogi rootPos;
 	RootMove bestMove;
 	vector<RootMove> rootMoves;
-	bool isExit = false;
 	int beginTime = 0;
+	bool isExit = false;
 	bool finishDepth = false;
 
 public:
+	int nmp_ply, nmp_odd;
 	ButterflyHistory mainHistory;
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[CHESS_NB][SQUARE_NB];

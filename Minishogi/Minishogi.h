@@ -37,6 +37,8 @@ public:
 
 	void DoMove(Move m);
 	void UndoMove();
+	void DoNullMove();
+	void UndoNullMove();
 	bool PseudoLegal(Move m) const;
 	ExtMove* AttackGenerator(ExtMove *moveList) const;
 	ExtMove* MoveGenerator(ExtMove *moveList) const;
@@ -73,7 +75,7 @@ public:
 	inline Key     GetKey() const { return keyHist[ply]; }
 #endif
 	inline Key     GetKey(int p) const { return (turn ^ (p % 2 == 0)) ? key2Hist[p] : keyHist[p]; }
-	inline Chess   GetChessOn(int sq) const { return (Chess)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : EMPTY)); }
+	inline Chess   GetChessOn(int sq) const { return (Chess)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : NO_PIECE)); }
 	inline Chess   GetCapture() const { return captureHist[ply - 1]; }
 	unsigned int   GetKifuHash() const ;
 };
