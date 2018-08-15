@@ -37,20 +37,16 @@ struct RootMove {
 	Move pv[MAX_PLY + 1];
 	Value value = VALUE_NONE;
 	int depth = 0;
+	unsigned int nodes = (1 << 31);
+	float effectBranch = 0;
 
 	string PV() {
 		stringstream ss;
+		ss << setiosflags(ios::fixed) << setprecision(2);
 		ss << "Depth " << setw(2) << depth << ", ";
-		ss << "Value " << setw(6) << value << ",\nPV : ";
-		for (int i = 0; pv[i] != MOVE_NULL; i++)
-			ss << pv[i] << " ";
-		return ss.str();
-	}
-
-	static string PV(int depth, Value value, Move *pv) {
-		stringstream ss;
-		ss << "Depth " << setw(2) << depth << ",";
-		ss << "Value " << setw(6) << value << ",PV ";
+		ss << "Value " << setw(6) << value << ", ";
+		ss << "Nodes " << setw(8) << nodes << ", ";
+		ss << "Effect Branch " << setw(4) << effectBranch << ",\nPV : ";
 		for (int i = 0; pv[i] != MOVE_NULL; i++)
 			ss << pv[i] << " ";
 		return ss.str();
@@ -67,6 +63,8 @@ struct Stack {
 	//Value staticEval;
 	//int statScore;
 	int moveCount;
+	bool nmp_flag;
+	bool lmr_flag;
 };
 
 class Thread {
@@ -84,8 +82,9 @@ private:
 	bool isExit = false;
 	bool finishDepth = false;
 
+	string log = "";
+
 public:
-	int nmp_ply, nmp_odd;
 	ButterflyHistory mainHistory;
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[CHESS_NB][SQUARE_NB];
@@ -105,6 +104,7 @@ public:
 	bool CheckStop(Move em);
 	void SetEnemyMove(Move m);
 	RootMove GetBestMove();
+	void Dump(ostream &os);
 
 	void IdleLoop();
 };

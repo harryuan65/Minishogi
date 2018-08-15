@@ -63,6 +63,11 @@ RootMove Thread::GetBestMove() {
 	return bestMove;
 }
 
+void Thread::Dump(ostream &os) {
+	os << log << endl;
+	log.clear();
+}
+
 void Thread::IdleLoop() {
 	while (!isExit) {
 		mutex.lock();
@@ -87,6 +92,7 @@ void Thread::IdleLoop() {
 		}
 		if (rootPos.GetTurn() == us) {
 			mutex.lock();
+			Observer::StartSearching();
 			bestMove.depth = 0;
 			for (int i = 0; i < rootMoves.size(); i++) {
 				if (rootMoves[i].enemyMove == bestMove.enemyMove) {
@@ -102,9 +108,7 @@ void Thread::IdleLoop() {
 				finishDepth = false;
 				sync_cout << "Thread " << us << " : IDAS" << sync_endl;
 
-				Observer::StartSearching();
 				IDAS(rm, Observer::depth, false);
-				Observer::EndSearching();
 
 				mutex.lock();
 				bestMove = rm;
@@ -120,6 +124,7 @@ void Thread::IdleLoop() {
 			cv.notify_all();
 			isStop = false;
 			mutex.unlock();
+			Observer::EndSearching();
 		}
 		else {
 			PreIDAS();

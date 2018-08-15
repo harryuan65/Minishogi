@@ -50,7 +50,7 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 	assert(d > 0);
 
 #ifndef MOVEPICK_DISABLE
-	stage = pos.IsChecked() ? EVASION_TT : MAIN_TT;
+	stage = pos.IsInChecked() ? EVASION_TT : MAIN_TT;
 	ttMove = ttm && pos.PseudoLegal(ttm) ? ttm : MOVE_NULL;
 	stage += (ttMove == MOVE_NULL);
 #else
@@ -67,7 +67,7 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 	assert(d <= 0);
 
 //#ifndef MOVEPICK_DISABLE
-	stage = pos.IsChecked() ? EVASION_TT : QSEARCH_TT;
+	stage = pos.IsInChecked() ? EVASION_TT : QSEARCH_TT;
 	ttMove = ttm
 		&& pos.PseudoLegal(ttm)
 		&& (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare) ? ttm : MOVE_NULL;
@@ -114,12 +114,15 @@ void MovePicker::score(GenType type) {
 				+ (*contHistory[1])[from_pc][to]
 				+ (*contHistory[3])[from_pc][to];
 		}
-		else { // Type == EVASIONS
+		else { // Type == EVASIONS 
 			if (to_pc) {
 				m.value = CHESS_SCORE[type_of(to_pc)] - Value(type_of(from_pc));
 			}
 			else {
 				m.value = (*mainHistory)[pos.GetTurn()][from][to] - (1 << 28);
+			}
+			if (type_of(pos.GetChessOn(from_sq(move))) == KING) {
+				m.value -= (1 << 10);
 			}
 		}
 	}
@@ -135,7 +138,7 @@ Move MovePicker::select(Pred filter) {
 
 		move = *cur++;
 
-		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsCheckedAfter(move))
+		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move))
 			&& type_of(pos.GetChessOn(to_sq(move))) != KING)
 			return move;
 	}
@@ -170,10 +173,9 @@ top:
 
 	case GOOD_CAPTURE:
 		if (select<Best>([&]() {
-			return pos.SEE(move) ?
-				true : (*endBadCaptures++ = move, false); })) {
+			return pos.SEE(move) ? true : (*endBadCaptures++ = move, false); 
+		}))
 			return move;
-		}
 
 #ifndef REFUTATION_DISABLE
 		// Prepare the pointers to loop over the refutations array
@@ -191,9 +193,9 @@ top:
 
 	case REFUTATION:
 #ifndef REFUTATION_DISABLE
-		if (select<Next>([&]() { return move != MOVE_NULL
-			                        && !pos.GetChessOn(to_sq(move))
-			                        &&  pos.PseudoLegal(move); }))
+		if (select<Next>([&]() { 
+			return move != MOVE_NULL && !pos.GetChessOn(to_sq(move)) && pos.PseudoLegal(move); 
+		}))
 			return move;
 #endif
 		++stage;
@@ -210,8 +212,7 @@ top:
 		/* fallthrough */
 
 	case QUIET:
-		if (!skipQuiets
-			&& select<Next>([&]() {return
+		if (!skipQuiets && select<Next>([&]() {return
 #ifdef REFUTATION_DISABLE
 				true;
 #else
@@ -237,6 +238,7 @@ top:
 		endMoves = pos.HandGenerator(endMoves);
 
 		score(EVASIONS);
+
 		++stage;
 		/* fallthrough */
 
@@ -247,8 +249,9 @@ top:
 		return select<Best>([&]() { return pos.SEE(move, threshold); });
 
 	case QCAPTURE:
-		if (select<Best>([&]() { return depth > DEPTH_QS_RECAPTURES
-			|| to_sq(move) == recaptureSquare; }))
+		if (select<Best>([&](){ 
+			return depth > DEPTH_QS_RECAPTURES || to_sq(move) == recaptureSquare;
+		}))
 			return move;
 
 		// If we did not find any move and we do not try checks, we have finished
@@ -264,7 +267,7 @@ top:
 		++stage;
 
 	case QCHECK:
-		return select<Next>([&]() { return pos.IsCheckingAfter(move) && pos.SEE(move); });
+		return select<Next>([&]() { return pos.IsCheckAfter(move) && pos.SEE(move); });
 
 	case NONSORT_INIT:
 		cur = moves;

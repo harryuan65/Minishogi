@@ -23,13 +23,13 @@ void Thread::IDAS(RootMove &rm, int depth, bool isCompleteSearch) {
 	fstream file;
 	bool isresearch;
 	int rootDepth;
+	unsigned int accumulateNodes = 0;
 
 #ifndef ITERATIVE_DEEPENING_DISABLE
 	rootDepth = 1;
 #else
 	rootDepth = depth;
 #endif
-	nmp_ply = nmp_odd = 0;
 	value = alpha = delta = -VALUE_INFINITE;
 	beta = VALUE_INFINITE;
 	if (rm.depth) {
@@ -53,15 +53,14 @@ void Thread::IDAS(RootMove &rm, int depth, bool isCompleteSearch) {
 		isresearch = false;
 		while (true) {
 			ss->pv[0] = MOVE_NULL;
+			ss->ply = 0;
+			(ss - 1)->nmp_flag = (ss - 1)->lmr_flag = false;
+
 			value = NegaScout(true, rootPos, ss, rm.enemyMove, alpha, beta, rootDepth, isresearch);
 			
 			if (IsStop())
 				break;
-			if (value <= alpha)	{
-				alpha = max(value - delta, -VALUE_INFINITE);
-				beta = min(value + delta, VALUE_INFINITE);
-			}
-			else if (value >= beta) {
+			if (value <= alpha || value >= beta)	{
 				alpha = max(value - delta, -VALUE_INFINITE);
 				beta = min(value + delta, VALUE_INFINITE);
 			}
@@ -80,6 +79,15 @@ void Thread::IDAS(RootMove &rm, int depth, bool isCompleteSearch) {
 		do {
 			rm.pv[i] = ss->pv[i];
 		} while (ss->pv[i++] != MOVE_NULL);
+
+		if (!isCompleteSearch) {
+			unsigned int nodes = Observer::data[Observer::mainNode] + Observer::data[Observer::quiesNode] - accumulateNodes;
+			rm.effectBranch = !rm.nodes ? 1 : (float)nodes / rm.nodes;
+			rm.nodes = nodes;
+			accumulateNodes = Observer::data[Observer::mainNode] + Observer::data[Observer::quiesNode];
+			sync_cout << rm.PV() << sync_endl;
+			log.append(rm.PV() + "\n");
+		}
 
 		// value => 必勝或必輸, ss->moveCount => 只有一個合法步
 		if (CheckStop(rm.enemyMove) || 
@@ -149,7 +157,7 @@ void Thread::PreIDAS() {
 }
 
 Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isResearch) {
-	Observer::data[Observer::DataType::totalNode]++;
+	Observer::data[Observer::DataType::mainNode]++;
 	Observer::data[Observer::DataType::researchNode] += isResearch;
 
 	Thread *thisThread = pos.GetThread();
@@ -158,15 +166,16 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	TTentry *tte;
 	Square prevSq;
 	bool ttHit;
-	const bool rootNode = ss->ply == 0;
+	//const bool rootNode = ss->ply == 0;
 
 	if (thisThread->CheckStop(rootMove))
 		return VALUE_ZERO;
 
 	bestValue = -VALUE_INFINITE;
 	ss->moveCount = 0;
-
 	(ss + 1)->ply = ss->ply + 1;
+	ss->nmp_flag = (ss - 1)->nmp_flag;
+	ss->lmr_flag = (ss - 1)->lmr_flag;
 	ss->currentMove = bestMove = MOVE_NULL;
 	ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
 	(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
@@ -213,7 +222,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	/*Ex-Null Move
 	if (!pvNode &&
 		!thisThread->nmp_ply &&
-		!pos.IsChecked()) {
+		!pos.IsInChecked()) {
 		int R = depth <= 6 ? 4 : 5;
 		ss->currentMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
@@ -233,15 +242,15 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	//Value nullValue = VALUE_NONE;
 	if (!pvNode &&
 		 depth > 3 &&
-		!thisThread->nmp_ply &&
-		!pos.IsChecked()) {
-		int R = (depth <= 6 || (depth <= 8 && abs(pos.GetEvaluate()) < 6000)) ? 2 : 3;
+		!(ss - 1)->nmp_flag &&
+		!pos.IsInChecked()) {
+		int R = (depth <= 6 || (depth <= 8 && abs(pos.GetEvaluate()) < 6000)) ? 1 : 2;
 
-		thisThread->nmp_ply = ss->ply;
+		ss->nmp_flag = true;
 		pos.DoNullMove();
-		Value nullValue = -NegaScout(false, pos, ss + 1, rootMove, -beta, -beta + 1, depth - R, isResearch);
+		Value nullValue = -NegaScout(false, pos, ss + 1, rootMove, -beta, -beta + 1, depth - R - 1, isResearch);
 		pos.UndoNullMove();
-		thisThread->nmp_ply = 0;
+		ss->nmp_flag = false;
 
 		if (nullValue >= beta) {
 			Observer::data[Observer::nullMoveNum]++;
@@ -264,25 +273,56 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
 	Move capturesSearched[32], quietsSearched[64], countermove = MOVE_NULL;//thisThread->counterMoves[pos.GetChessOn(prevSq)][prevSq];
 	MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
-	bool isChecked = pos.IsChecked(); // 若此盤面處於被將 解將不考慮千日手
+	bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 	int captureCount = 0, quietCount = 0;
 
 	while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
+		bool isCapture = pos.GetChessOn(to_sq(move)) != NO_PIECE;
+		int R = 0;
+
 		ss->currentMove = move;
 		ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 
 		pos.DoMove(move);
-		if ((pos.GetTurn() == BLACK || pos.IsChecked()) && pos.IsSennichite()) {
+		if ((pos.GetTurn() == BLACK || pos.IsInChecked()) && pos.IsSennichite()) {
 			pos.UndoMove();
 			continue;
 		}
 		ss->moveCount++;
-		if (pvNode) {
+		if (pvNode)
 			(ss + 1)->pv[0] = MOVE_NULL;
+
+		// Late Move Reduction
+#ifndef LMR_DISABLE
+		/*if (!pvNode &&
+			 depth >= 3 &&
+			 bestValue > VALUE_MATED_IN_MAX_PLY &&
+			 ss->moveCount >= 25 &&
+			!(ss - 1)->lmr_flag &&
+			!isCapture &&
+			!pos.IsInChecked() &&
+			!pos.IsCheckAfter(move)) {
+			ss->lmr_flag = true;
+			R = 1;
+		}*/
+		if (!pvNode &&
+			 depth >= 3 &&
+			 bestValue > VALUE_MATED_IN_MAX_PLY &&
+			 ss->moveCount >= 5 &&
+			!(ss - 1)->lmr_flag &&
+			!isCapture &&
+			 from_sq(move) < BOARD_NB &&
+			!isInChecked &&
+			!pos.IsInChecked()) {
+			ss->lmr_flag = true;
+			R = 1;
 		}
+#endif
+
 #ifndef PVS_DISABLE
+		// Principal Variation Search
 		if (depth > 3 && ss->moveCount > 1) {
-			value = -NegaScout(false, pos, ss + 1, rootMove, -(alpha + 1), -alpha, depth - 1, isResearch);
+			value = -NegaScout(false, pos, ss + 1, rootMove, -(alpha + 1), -alpha, depth - R - 1, isResearch);
 			if (alpha < value && value < beta) {
 				value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -value + 1, depth - 1, true);
 				// Debug : research Value < null window Value
@@ -304,6 +344,7 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 #else
 		value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 #endif
+
 		pos.UndoMove();
 
 		if (value > bestValue) {
@@ -344,8 +385,18 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 	}
 
 	// Debug : null move zugzwangs
-	//if (value < beta && nullValue != VALUE_NONE && nullValue > value)
-	//	Observer::data[Observer::zugzwangsNum]++;
+	/*if (value < beta && nullValue != VALUE_NONE && nullValue > value)
+		Observer::data[Observer::zugzwangsNum]++;*/
+
+	// Debug : LMR test
+	/*if (!pvNode &&
+		depth >= 3 &&
+		bestValue > VALUE_MATED_IN_MAX_PLY &&
+		ss->moveCount > 5 &&
+		!(ss - 1)->nmp_flag &&
+		!isChecked) {
+		Observer::data[Observer::lmrTestNum]++;
+	}*/
 
 	Observer::data[Observer::DataType::scoutSearchBranch] += ss->moveCount;
 	if (ss->moveCount) {
@@ -380,21 +431,20 @@ Value Search::NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, V
 Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth) {
 	Observer::data[Observer::DataType::quiesNode]++;
 
-	const bool isChecked = pos.IsChecked();
+	const bool isInChecked = pos.IsInChecked();
 	const Key key = pos.GetKey();
 	Thread *thisThread = pos.GetThread();
 	Value bestValue, ttValue, oldAlpha;
 	Move ttMove, move, bestMove = MOVE_NULL;
 	TTentry *tte;
 	bool ttHit;
-	int ttDepth = isChecked || depth >= 0 ? 0 : -1;
+	int ttDepth = isInChecked || depth >= 0 ? 0 : -1;
 
 	if (thisThread->CheckStop(rootMove))
 		return VALUE_ZERO;
 
-	if (pvNode) {
+	if (pvNode) 
 		oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-	}
 
 	ss->pv[0] = MOVE_NULL;
 	(ss + 1)->ply = ss->ply + 1;
@@ -418,7 +468,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 		return ttValue;
 	}
 
-	if (!isChecked) {
+	if (!isInChecked) {
 		bestValue = pos.GetEvaluate();
 
 		if (ttHit && ttValue != VALUE_NONE
@@ -475,7 +525,7 @@ Value Search::QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove,
 			}
 		}
 	}
-	if (isChecked && bestValue == -VALUE_INFINITE)
+	if (isInChecked && bestValue == -VALUE_INFINITE)
 		return mated_in(ss->ply);
 
 	tte->save(key, ttDepth, value_to_tt(bestValue, ss->ply), bestMove, pvNode && bestValue > oldAlpha ? TTentry::EXACT : TTentry::UNKNOWN);
@@ -567,6 +617,11 @@ string Search::GetSettingStr() {
 	ss << "Null Move Pruning   : Enable\n";
 #else
 	ss << "Null Move Pruning   : Disable\n";
+#endif
+#ifndef LMR_DISABLE
+	ss << "Late Move Reduction : Enable\n";
+#else
+	ss << "Late Move Reduction : Disable\n";
 #endif
 #ifndef QUIES_DISABLE
 	ss << "Quiet Search        : Enable\n";

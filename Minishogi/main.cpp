@@ -365,10 +365,13 @@ int main(int argc, char **argv) {
 					fm_mg.SendMsg(rm.pv, sizeof(rm.pv), true);
 				}
 				move = rm.pv[0];
-				sync_cout << rm.PV() << "\n" << (turn ? "▼" : "△") << "DoMove : " << move << sync_endl;
+				sync_cout << (turn ? "▼" : "△") << "DoMove : " << move << sync_endl;
 
 				file.open(playDetailStr, ios::app);
-				if (file) file << rm.PV() << "\n" << (turn ? "▼" : "△") << "DoMove : " << move << endl;
+				if (file) {
+					players.pthread[turn]->Dump(file);
+					file << (turn ? "▼" : "△") << "DoMove : " << move << endl;
+				}
 				file.close();
 				break;
 			}

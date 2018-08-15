@@ -9,6 +9,7 @@ using namespace std;
 //#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
 //#define NULLMOVE_DISABLE
+//#define LMR_DISABLE
 //#define QUIES_DISABLE
 //#define TRANSPOSITION_DISABLE
 #define ENEMY_ISO_TT
@@ -17,12 +18,12 @@ using namespace std;
 #define BACKGROUND_SEARCH_DISABLE
 #define BACKGROUND_SEARCH_LIMITDEPTH
 
-#define AI_VERSION "#101 (v-1~b) nullMove"
+#define AI_VERSION "#102 NullMove v4 LMR v4"
 
 namespace Observer {
 	enum DataType {
 		searchNum,
-		totalNode,
+		mainNode,
 		researchNode,
 		quiesNode,
 		scoutGeneNums,
@@ -32,6 +33,7 @@ namespace Observer {
 		ttCollision,
 		nullMoveNum,
 		zugzwangsNum,
+		//lmrTestNum,
 		searchTime,
 		COUNT
 	};
@@ -110,16 +112,18 @@ namespace Observer {
 		if (isZero)  pdata[searchNum] = 1;
 		os << setiosflags(ios::fixed) << setprecision(2);
 		os << "Average Report (per search) :\n";
-		os << " Total search nodes      : " << setw(10) << pdata[totalNode] / pdata[searchNum] << "\n";
+		os << " Total node              : " << setw(10) << (pdata[mainNode] + pdata[quiesNode]) / pdata[searchNum] << "\n";
+		os << " Main search nodes       : " << setw(10) << pdata[mainNode] / pdata[searchNum] << "\n";
 		os << " Research nodes          : " << setw(10) << pdata[researchNode] / pdata[searchNum] << "\n";
 		os << " Quies search nodes      : " << setw(10) << pdata[quiesNode] / pdata[searchNum] << "\n";
 		os << " Avg scout search branch : " << setw(13) << (float)pdata[scoutSearchBranch] / pdata[scoutGeneNums] << "\n";
 		//os << " ttProbe isomorphic nums : " << setw(10) << pdata[ttIsoNum] / pdata[searchNum] << "\n";
 		//os << " ttProbe isomorphic rate : " << setw(13) << (100.0f * pdata[ttIsoNum] / pdata[ttProbe]) << " %\n";
 		os << " ttProbe collision nums  : " << setw(10) << pdata[ttCollision] / pdata[searchNum] << "\n";
-		os << " ttPribe collision rate  : " << setw(13) << (100.0f * pdata[ttCollision] / pdata[ttProbe]) << " %\n";
+		os << " ttProbe collision rate  : " << setw(13) << (100.0f * pdata[ttCollision] / pdata[ttProbe]) << " %\n";
 		//os << " zugzwangs num           : " << setw(13) <<  (float)pdata[zugzwangsNum] / pdata[searchNum] << "\n";
 		os << " Null Move num           : " << setw(10) << pdata[nullMoveNum] / pdata[searchNum] << "\n";
+		//os << " LMR Failed node         : " << setw(10) << pdata[lmrTestNum] << "\n";
 		os << " Search time             : " << setw(13) << (float)pdata[searchTime] / pdata[searchNum] / 1000 << "\n";
 		if (isZero)  pdata[searchNum] = 0;
 	}

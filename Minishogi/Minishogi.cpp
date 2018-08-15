@@ -338,7 +338,7 @@ bool Minishogi::PseudoLegal(const Move m) const {
 		return false;
 
 	// 理論上吃不到王，也不能讓自己被將
-	if (type_of(capture) == KING || IsCheckedAfter(m))
+	if (type_of(capture) == KING || IsInCheckedAfter(m))
 		return false;
 
 	// 如果是移動(吃子)，驗證這顆棋子真的走的到
@@ -464,7 +464,7 @@ ExtMove* Minishogi::HandGenerator(ExtMove *moveList) {
 			while (dstboard) {
 				dst = BitScan(dstboard);
 				// 如果王移動後脫離被王手
-				if (!IsCheckedAfter(kingpos, dst)) {
+				if (!IsInCheckedAfter(kingpos, dst)) {
 					uchifuzume = 0; // 代表沒有打步詰
 					break;
 				}
@@ -477,7 +477,7 @@ ExtMove* Minishogi::HandGenerator(ExtMove *moveList) {
 				while (attackboard) {
 					Square attsrc = BitScan(attackboard);
 					// 如果真的吃得到步 且 吃了之後不會被王手
-					if ((Movable(attsrc) & pawnboard) && !IsCheckedAfter(attsrc, pawnpos)) {
+					if ((Movable(attsrc) & pawnboard) && !IsInCheckedAfter(attsrc, pawnpos)) {
 						uchifuzume = 0; // 代表沒有打步詰
 						break;
 					}
@@ -829,7 +829,7 @@ Move* Minishogi::GetLegalMoves(Move* legalMoves) {
 	end = MoveGenerator(end);
 	end = HandGenerator(end);
 	for (ExtMove* i = moveList; i < end; i++) {
-		if (!IsCheckedAfter(*i)) {
+		if (!IsInCheckedAfter(*i)) {
 			*legalMoves++ = i->move;
 		}
 	}
@@ -846,11 +846,13 @@ bool Minishogi::IsLegelAction(Move m) {
 	return end != std::find(moveList, end, m);
 }
 
-inline bool Minishogi::IsCheckedAfter(const Move m) const {
-	return IsCheckedAfter(from_sq(m), to_sq(m));
+/// 移動完有沒有被將軍
+inline bool Minishogi::IsInCheckedAfter(const Move m) const {
+	return IsInCheckedAfter(from_sq(m), to_sq(m));
 }
 
-bool Minishogi::IsCheckedAfter(const Square srcIndex, const Square dstIndex) const {
+/// 移動完有沒有被將軍
+bool Minishogi::IsInCheckedAfter(const Square srcIndex, const Square dstIndex) const {
 	const Bitboard dstboard = 1 << dstIndex;
     Bitboard op_occupied = occupied[~turn];
     if (board[dstIndex]) // eat
@@ -879,7 +881,8 @@ bool Minishogi::IsCheckedAfter(const Square srcIndex, const Square dstIndex) con
 	return false;
 }
 
-bool Minishogi::IsCheckingAfter(const Move m) {
+/// 移動完有沒有將軍對方
+bool Minishogi::IsCheckAfter(const Move m) {
 	const Square srcIndex = from_sq(m), dstIndex = to_sq(m);
 	const int dstChess = board[dstIndex];
 	board[dstIndex] = GetChessOn(srcIndex);

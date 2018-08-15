@@ -60,16 +60,18 @@ int main() {
 		Observer::StartSearching();
 		thread->IDAS(rms.back(), Observer::depth, false);
 		Observer::EndSearching();
-		delete thread;
 
-		sync_cout << rms.back().PV() << sync_endl;
+		//sync_cout << rms.back().PV() << sync_endl;
 		Observer::PrintSearchReport(cout);
 		file.open(playDetailStr, ios::app);
 		file << "---------- Board " << Observer::game_data[Observer::searchNum] - 1 << " ----------" << endl;
 		pos.PrintNoncolorBoard(file);
-		file << rms.back().PV() << endl;
+		//file << rms.back().PV() << endl;
+		thread->Dump(file);
 		if (file) Observer::PrintSearchReport(file);
 		file.close();
+
+		delete thread;
 	}
 	Observer::GameOver(0, 0, 0, 0);
 	Observer::PrintGameReport(cout);

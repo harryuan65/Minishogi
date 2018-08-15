@@ -58,10 +58,10 @@ public:
 
 	bool IsGameOver();
 	bool IsLegelAction(Move m);
-	inline bool IsChecked() const { return checker_bb[ply]; }
-	inline bool IsCheckedAfter(const Move m) const;
-	bool IsCheckedAfter(const Square srcIndex, const Square dstIndex) const;
-	bool IsCheckingAfter(const Move m);
+	inline bool IsInChecked() const { return checker_bb[ply]; }
+	inline bool IsInCheckedAfter(const Move m) const;
+	bool IsInCheckedAfter(const Square srcIndex, const Square dstIndex) const;
+	bool IsCheckAfter(const Move m);
 	bool IsSennichite() const;
 	//inline bool IsIsomorphic() const { return keyHist[ply] == key2Hist[ply]; }
 
