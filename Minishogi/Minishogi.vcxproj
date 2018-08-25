@@ -101,6 +101,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>
+      </LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +135,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>
+      </LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,6 +146,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Evaluate.cpp" />
+    <ClCompile Include="EvaluateLearn.cpp" />
     <ClCompile Include="Minishogi.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MovePick.cpp" />
@@ -153,6 +159,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bitboard.h" />
+    <ClInclude Include="Evaluate.h" />
+    <ClInclude Include="EvaluateLearn.h" />
     <ClInclude Include="FileMapping.h" />
     <ClInclude Include="Minishogi.h" />
     <ClInclude Include="MovePick.h" />

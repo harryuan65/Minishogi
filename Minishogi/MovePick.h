@@ -1,5 +1,5 @@
-#ifndef _MOVEPICK_
-#define _MOVEPICK_
+#ifndef _MOVEPICK_H_
+#define _MOVEPICK_H_
 
 #include <array>
 #include "Minishogi.h"
@@ -61,15 +61,15 @@ typedef Stats<int16_t, 10368, COLOR_NB, SQUARE_NB, BOARD_NB> ButterflyHistory;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
 /// [Chese][dstIndex][dstChess type]
-typedef Stats<int16_t, 10368, CHESS_NB, BOARD_NB, CHESS_TYPE_NB> CapturePieceToHistory;
+typedef Stats<int16_t, 10368, PIECE_NB, BOARD_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-typedef Stats<int16_t, 29952, CHESS_NB, BOARD_NB> PieceToHistory;
+typedef Stats<int16_t, 29952, PIECE_NB, BOARD_NB> PieceToHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
 /// [現在在"前一步的dstIndex"位置上的Chess][前一步的dstIndex]
-typedef Stats<Move, 0, CHESS_NB, SQUARE_NB> CounterMoveHistory;
+typedef Stats<Move, 0, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 enum GenType {
 	CAPTURES,

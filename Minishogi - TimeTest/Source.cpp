@@ -47,6 +47,7 @@ int main() {
 	if (file) file << "AI Version : " << AI_VERSION << "\n" << Search::GetSettingStr() << endl;
 	file.close();
 
+	Evaluate::Initialize();
 	Zobrist::Initialize();
 	Transposition::Initialize();
 	Observer::GameStart();
@@ -56,6 +57,7 @@ int main() {
 		thread = new Thread(pos, pos.GetTurn());
 		sync_cout << "---------- Board " << Observer::game_data[Observer::searchNum] << " ----------" << sync_endl;
 		pos.PrintChessBoard();
+		sync_cout << "Evaluate : " << setw(15) << pos.GetEvaluate() << sync_endl;
 
 		Observer::StartSearching();
 		thread->IDAS(rms.back(), Observer::depth, false);
@@ -66,7 +68,7 @@ int main() {
 		file.open(playDetailStr, ios::app);
 		file << "---------- Board " << Observer::game_data[Observer::searchNum] - 1 << " ----------" << endl;
 		pos.PrintNoncolorBoard(file);
-		//file << rms.back().PV() << endl;
+		file << "Evaluate : " << setw(15) << pos.GetEvaluate() << "\n";
 		thread->Dump(file);
 		if (file) Observer::PrintSearchReport(file);
 		file.close();

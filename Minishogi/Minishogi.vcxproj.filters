@@ -39,6 +39,12 @@
     <ClCompile Include="Zobrist.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
+    <ClCompile Include="Evaluate.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
+    <ClCompile Include="EvaluateLearn.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Observer.h">
@@ -69,6 +75,12 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="Thread.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Evaluate.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="EvaluateLearn.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

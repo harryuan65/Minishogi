@@ -39,6 +39,9 @@
     <ClCompile Include="..\Minishogi\Zobrist.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
+    <ClCompile Include="..\Minishogi\Evaluate.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Minishogi\Bitboard.h">
@@ -72,6 +75,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="..\Minishogi\Zobrist.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Minishogi\Evaluate.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

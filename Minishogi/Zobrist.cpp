@@ -2,8 +2,8 @@
 #include "Zobrist.h"
 
 namespace Zobrist {
-	Key table[SQUARE_NB][CHESS_NB];
-	Key table2[SQUARE_NB][CHESS_NB];
+	Key table[SQUARE_NB][PIECE_NB];
+	Key table2[SQUARE_NB][PIECE_NB];
 
 	void Initialize() {
 		std::mt19937_64 gen(SEED);
@@ -11,12 +11,12 @@ namespace Zobrist {
 
 		int i = 0, j;
 		for (; i < BOARD_NB; ++i) {
-			for (j = 0; j < CHESS_NB; ++j) {
+			for (j = 0; j < PIECE_NB; ++j) {
 				table[i][j] = dist(gen);
 #ifndef ENEMY_ISO_TT
 				table[i][j] <<= 1;
 #endif
-				if ((j^BLACKCHESS) < CHESS_NB) {
+				if ((j^BLACKCHESS) < PIECE_NB) {
 					table2[BOARD_NB - 1 - i][j^BLACKCHESS] = table[i][j];
 				}
 			}

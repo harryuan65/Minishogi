@@ -1,5 +1,5 @@
-#ifndef _TRANSPOSITION_
-#define _TRANSPOSITION_
+#ifndef _TRANSPOSITION_H_
+#define _TRANSPOSITION_H_
 
 #include "Types.h"
 #include "Zobrist.h"
@@ -18,7 +18,6 @@ namespace Transposition {
 			FAILHIGH = 2,
 			EXACT = 3
 		} bound;
-		//int turn; //4Bytes debug¥Î
 
 		void save(Key k, int d, Value v, Move m, Bound b) {
 #ifndef TRANSPOSITION_DISABLE
@@ -33,7 +32,9 @@ namespace Transposition {
 #endif
 		}
 
-		/*void save(Key k, int d, Value v, Move m, Bound b, int t) {
+		// Debug : Enemy Isomorphic
+		/*int turn; //4Bytes debug¥Î
+		void save(Key k, int d, Value v, Move m, Bound b, int t) {
 #ifndef TRANSPOSITION_DISABLE
 			if (k >> 32 != key32 || d >= depth) {
 				key32 = k >> 32;
@@ -52,19 +53,25 @@ namespace Transposition {
 	extern uint64_t TPMask;
 	extern TTentry* transpositTable;
 
-	inline uint64_t ZobristToIndex(Key zobrist) { return zobrist & TPMask; }
-	inline bool IsEnable() {
-#ifndef TRANSPOSITION_DISABLE
-		return true;
-#else
-		return false;
-#endif
-	}
-
 	void Initialize();
 	void Clean();
 	TTentry* Probe(Key key, bool &ttHit);
 	TTentry* Probe(Key key, int turn, bool &ttHit);
+	uint64_t ZobristToIndex(Key zobrist);
+	bool IsEnable();
 }
+
+inline uint64_t Transposition::ZobristToIndex(Key zobrist) { 
+	return zobrist & TPMask;
+}
+
+inline bool Transposition::IsEnable() {
+#ifndef TRANSPOSITION_DISABLE
+	return true;
+#else
+	return false;
+#endif
+}
+
 #endif
 

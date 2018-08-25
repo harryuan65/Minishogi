@@ -1,14 +1,12 @@
-#ifndef _TYPES_
-#define _TYPES_
+#ifndef _TYPES_H_
+#define _TYPES_H_
 #include <sstream>
 #include <mutex>
-
-using namespace std;
 
 typedef uint64_t Key;
 
 enum SyncCout { IO_LOCK, IO_UNLOCK };
-inline ostream& operator<<(ostream& os, SyncCout sc) {
+inline std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 	static std::mutex m;
 
 	if (sc == IO_LOCK) m.lock();
@@ -53,6 +51,7 @@ enum Square : int {
 	SQ_E5, SQ_E4, SQ_E3, SQ_E2, SQ_E1,
 	SQ_F5, SQ_F4, SQ_F3, SQ_F2, SQ_F1,
 	SQ_G5, SQ_G4, SQ_G3, SQ_G2, SQ_G1,
+	SQUARE_ZERO = 0,
 	BOARD_NB = 25,
 	SQUARE_NB = 35
 };
@@ -66,31 +65,64 @@ enum Move : int {
 };
 
 enum Chess : int {
-	NO_PIECE = 0,
-	W_PAWN = 1, //步
-	W_SILVER = 2, //銀
-	W_GOLD = 3, //金
-	W_BISHOP = 4, //角
-	W_ROOK = 5, //飛
-	W_KING = 6, //王
-	B_PAWN = 17, //步
-	B_SILVER = 18, //銀
-	B_GOLD = 19, //金
-	B_BISHOP = 20, //角
-	B_ROOK = 21, //飛
-	B_KING = 22, //王
-	CHESS_NB = 30,
+	NO_PIECE     = 0,
+	W_PAWN       = 1,  //步
+	W_SILVER     = 2,  //銀
+	W_GOLD       = 3,  //金
+	W_BISHOP     = 4,  //角
+	W_ROOK       = 5,  //飛
+	W_KING       = 6,  //王
+	W_PRO_PAWN   = 9,  //ㄈ
+	W_PRO_SILVER = 10, //全
+	W_PRO_BISHOP = 12, //馬
+	W_PRO_ROOK   = 13, //龍
+	B_PAWN       = 17, //步
+	B_SILVER     = 18, //銀
+	B_GOLD       = 19, //金
+	B_BISHOP     = 20, //角
+	B_ROOK       = 21, //飛
+	B_KING       = 22, //王
+	B_PRO_PAWN   = 25, //ㄈ
+	B_PRO_SILVER = 26, //全
+	B_PRO_BISHOP = 28, //馬
+	B_PRO_ROOK   = 29, //龍
+	PIECE_NB     = 30,
 
-	PAWN = 1, //步
-	SILVER = 2, //銀
-	GOLD = 3, //金
-	BISHOP = 4, //角
-	ROOK = 5, //飛
-	KING = 6, //王
-	CHESS_TYPE_NB = 14,
+	PAWN         = 1,  //步
+	SILVER       = 2,  //銀
+	GOLD         = 3,  //金
+	BISHOP       = 4,  //角
+	ROOK         = 5,  //飛
+	KING         = 6,  //王
+	PRO_PAWN     = 9,  //ㄈ
+	PRO_SILVER   = 10, //全
+	PRO_BISHOP   = 12, //馬
+	PRO_ROOK     = 13, //龍
+	PIECE_TYPE_NB = 14,
 
 	PROMOTE = 0x08,
 	BLACKCHESS = 0x10
+};
+
+// 棋子種類 + 國籍 + 位置
+enum BonaPiece : int {
+	BONA_PIECE_ZERO = 0,
+	F_PIECE = 1,
+	F_HAND = F_PIECE + PIECE_NB * BOARD_NB,
+	E_HAND = F_HAND + 10,
+	BONA_PIECE_NB = E_HAND + 10
+};
+
+// BonaPieceList Index
+enum BonaPieceIndex : int {
+	NONE_INDEX   = -1,
+	PAWN_INDEX   = 0,
+	SILVER_INDEX = 2,
+	GOLD_INDEX   = 4,
+	BISHOP_INDEX = 6,
+	ROOK_INDEX   = 8,
+	KING_INDEX   = 10,
+	BONA_PIECE_INDEX_NB = 12
 };
 
 struct ExtMove {
@@ -133,7 +165,10 @@ inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 ENABLE_FULL_OPERATORS_ON(Value)
 
 ENABLE_INCR_OPERATORS_ON(Color)
+ENABLE_BASE_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(Square)
+ENABLE_INCR_OPERATORS_ON(BonaPiece)
+ENABLE_INCR_OPERATORS_ON(BonaPieceIndex)
 
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_INCR_OPERATORS_ON
@@ -169,6 +204,14 @@ constexpr Square from_sq(Move m) {
 /// Get dstIndex from move
 constexpr Square to_sq(Move m) {
 	return Square(m & 0x3F);
+}
+
+constexpr Square rotate_board_sq(Square sq) {
+	return SQ_E1 - sq;
+}
+
+constexpr Square mirror_board_sq(Square sq) {
+	return (Square)((sq % 5) * 5 + sq / 5);
 }
 
 /// Get isPro from move
@@ -209,9 +252,9 @@ static inline Square Input2Index(char row, char col) {
 	return (Square)-1;
 }
 
-static inline string Index2Input(Square index) {
+static inline std::string Index2Input(Square index) {
 	if (0 <= index && index < SQUARE_NB) {
-		string str;
+		std::string str;
 		str.push_back('A' + index / 5);
 		str.push_back('5' - index % 5);
 		return str;
@@ -219,8 +262,8 @@ static inline string Index2Input(Square index) {
 	return "";
 }
 
-static istream& operator>>(istream &is, Move& m) {
-	string str;
+static std::istream& operator>>(std::istream &is, Move& m) {
+	std::string str;
 	is >> str;
 	if (str == "SURRENDER" || str == "surrender") {
 		m = MOVE_NULL;
@@ -242,7 +285,7 @@ static istream& operator>>(istream &is, Move& m) {
 	return is;
 }
 
-static ostream& operator<< (ostream& os, const Move& m) {
+static std::ostream& operator<< (std::ostream& os, const Move& m) {
 	switch (m) {
 	case MOVE_NULL:
 		os << "SURRENDER";
@@ -331,6 +374,26 @@ constexpr Chess type_of(Chess c) {
 
 constexpr Chess type_of(int c) {
     return Chess(c & 0xF);
+}
+
+constexpr BonaPiece to_bonapiece(Square sq, int c) {
+	if (sq < BOARD_NB)
+		return BonaPiece(F_PIECE + c*BOARD_NB + sq);
+	else
+		return BonaPiece(F_HAND + (sq - BOARD_NB) * 2 + c - 1);
+}
+
+constexpr BonaPiece to_inv_bonapiece(Square sq, int c) {
+	if (sq < BOARD_NB)
+		return BonaPiece(F_PIECE + (c ^ BLACKCHESS)*BOARD_NB + (BOARD_NB - sq));
+	else if (sq < SQ_G5)
+		return BonaPiece(E_HAND + (sq - SQ_F5) * 2 + c - 1);
+	else
+		return BonaPiece(F_HAND + (sq - SQ_G5) * 2 + c - 1);
+}
+
+constexpr BonaPiece mirror_bonapiece(BonaPiece bp) {
+	return bp < F_HAND ? (BonaPiece)(mirror_board_sq((Square)(bp % BOARD_NB)) + bp - bp % BOARD_NB) : bp;
 }
 
 constexpr bool is_sniper(Chess c) {

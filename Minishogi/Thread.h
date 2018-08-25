@@ -25,6 +25,7 @@
 #include "Movepick.h"
 #include "Minishogi.h"
 #include "Observer.h"
+using namespace Evaluate;
 
 typedef std::mutex Mutex;
 typedef std::condition_variable ConditionVariable;
@@ -68,26 +69,11 @@ struct Stack {
 };
 
 class Thread {
-private:
-	Mutex mutex;
-	ConditionVariable cv;
-	thread *stdThread; 
-	Stack stack[MAX_PLY + 7], *ss;
-
-	Color us;
-	Minishogi rootPos;
-	RootMove bestMove;
-	vector<RootMove> rootMoves;
-	int beginTime = 0;
-	bool isExit = false;
-	bool finishDepth = false;
-
-	string log = "";
-
 public:
+	//Evaluater *evaluater;
 	ButterflyHistory mainHistory;
 	CapturePieceToHistory captureHistory;
-	PieceToHistory contHistory[CHESS_NB][SQUARE_NB];
+	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
 	CounterMoveHistory counterMoves;
 
 	std::atomic_bool isStop = false, isReject = false; //private
@@ -99,15 +85,38 @@ public:
 	void IDAS(RootMove &rm, int depth, bool isCompleteSearch);
 	void PreIDAS();
 
-	inline bool IsStop() { return isStop || isReject || isExit; }
-	inline unsigned __int64 GetSearchDuration() { return beginTime ? clock() - beginTime : 0; }
+	bool IsStop();
+	uint64_t GetSearchDuration();
 	bool CheckStop(Move em);
 	void SetEnemyMove(Move m);
 	RootMove GetBestMove();
 	void Dump(ostream &os);
 
 	void IdleLoop();
+
+private:
+	Mutex mutex;
+	ConditionVariable cv;
+	thread *stdThread;
+	Stack stack[MAX_PLY + 7], *ss;
+
+	Color us;
+	Minishogi rootPos;
+	RootMove bestMove;
+	vector<RootMove> rootMoves;
+	int beginTime = 0;
+	bool isExit = false;
+	bool finishDepth = false;
+
+	string log = "";
 };
 
+inline bool Thread::IsStop() { 
+	return isStop || isReject || isExit; 
+}
+
+inline uint64_t Thread::GetSearchDuration() { 
+	return beginTime ? clock() - beginTime : 0; 
+}
 
 #endif

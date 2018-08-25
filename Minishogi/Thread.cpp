@@ -8,7 +8,7 @@ Thread::Thread(const Minishogi &m, Color c) : us(c) {
 	counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);
 	captureHistory.fill(0);
-	for (int i = 0; i < CHESS_NB; i++)
+	for (int i = 0; i < PIECE_NB; i++)
 		for (int j = 0; j < SQUARE_NB; j++)
 			contHistory[i][j].fill(0);
 	contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);

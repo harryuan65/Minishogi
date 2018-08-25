@@ -1,5 +1,5 @@
-#ifndef _BITBOARD_
-#define _BITBOARD_
+#ifndef _BITBOARD_H_
+#define _BITBOARD_H_
 #include "Types.h"
 
 typedef unsigned __int32 Bitboard;

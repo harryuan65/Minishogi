@@ -1,5 +1,5 @@
-﻿#ifndef _AI_
-#define _AI_
+﻿#ifndef _SEARCH_H_
+#define _SEARCH_H_
 #include "Thread.h"
 #include "Minishogi.h"
 #include "Zobrist.h"

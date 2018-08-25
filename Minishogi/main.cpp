@@ -4,6 +4,7 @@
 
 #include "FileMapping.h"
 #include "Thread.h"
+#include "Evaluate.h"
 #include "Minishogi.h"
 #include "Search.h"
 #include "Observer.h"
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
 	streamoff readBoardOffset = 0;
 	string gameDirStr;
 	string currTimeStr;
-	string playDetailStr = "";
+	string playDetailPath = "";
 	string buf;
 	//string kifuStr = "";
 
@@ -219,10 +220,8 @@ int main(int argc, char **argv) {
 	if (gameMode == 4) {
 		fm_game.SendMsg(nullptr, 0, false);
 		// argv[4] = 遊戲路徑 輸出檔名 玩家名 是否自訂棋盤
-		system(("start \"\" \"" + gameDirStr + "\" " +
-			currTimeStr + " " +
-			"\"" + AI_VERSION + "\" " +
-			to_string(isCustomBoard)).c_str());
+		system(("start \"\" \"" + gameDirStr + "\" " + currTimeStr + " " +
+			"\"" + AI_VERSION + "\" " +	to_string(isCustomBoard)).c_str());
 		char msg[20];
 		sync_cout << "等待對方回應..." << sync_endl;
 		fm_game.RecvMsg(msg, 20, true);
@@ -240,6 +239,7 @@ int main(int argc, char **argv) {
 	CreateDirectory(CA2W(REPORT_PATH), NULL);
 
 	// AI Init
+	Evaluate::Initialize();
 	Zobrist::Initialize();
 	if (players.IsAnyAI() || isConnectUI) {
 		Transposition::Initialize();
@@ -285,10 +285,10 @@ int main(int argc, char **argv) {
 		SetConsoleTitle(CA2W(("Minishogi - " AI_VERSION " Game " + to_string(Observer::gameNum)).c_str()));
 		sync_cout << "---------- Game " << Observer::gameNum << " ----------" << sync_endl;
 		if (Observer::isSaveRecord) {
-			playDetailStr = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
+			playDetailPath = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
 			//kifuStr = REPORT_PATH + currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
 			if (gameMode != 4) {
-				file.open(playDetailStr, ios::app);
+				file.open(playDetailPath, ios::app);
 				if (file) players.PrintNames(file);
 				file.close();
 			}
@@ -306,12 +306,14 @@ int main(int argc, char **argv) {
 			// Print & Write ChessBoard
 			cout << SyncCout::IO_LOCK;
 			minishogi.PrintChessBoard();
+			cout << "Evaluate : " << setw(15) << minishogi.GetEvaluate() << "\n";
 			cout << SyncCout::IO_UNLOCK;
 			if (Observer::isSaveRecord && players.pType[turn] != Players::OtherAI) {
-				file.open(playDetailStr, ios::app);
+				file.open(playDetailPath, ios::app);
 				if (file) {
 					file << "---------- Game " << Observer::gameNum << " Step " << minishogi.GetStep() << " ----------\n";
 					minishogi.PrintNoncolorBoard(file);
+					file << "Evaluate : " << setw(15) << minishogi.GetEvaluate() << "\n";
 					if (minishogi.IsGameOver()) 
 						file << (turn ? "▼" : "△") << " Cannot Move.\n";
 					file.close();
@@ -340,7 +342,7 @@ int main(int argc, char **argv) {
 					while (!Human_DoMove(minishogi, move));
 				}
 
-				file.open(playDetailStr, ios::app);
+				file.open(playDetailPath, ios::app);
 				if (file) file << (turn ? "▼" : "△") << "DoMove : " << move << "\n";
 				file.close();
 				break;
@@ -356,7 +358,7 @@ int main(int argc, char **argv) {
 				cout << endl << SyncCout::IO_LOCK;
 				Observer::PrintSearchReport(cout);
 				cout << SyncCout::IO_UNLOCK;
-				file.open(playDetailStr, ios::app);
+				file.open(playDetailPath, ios::app);
 				Observer::PrintSearchReport(file);
 				file.close();
 				if (isConnectUI) {
@@ -367,7 +369,7 @@ int main(int argc, char **argv) {
 				move = rm.pv[0];
 				sync_cout << (turn ? "▼" : "△") << "DoMove : " << move << sync_endl;
 
-				file.open(playDetailStr, ios::app);
+				file.open(playDetailPath, ios::app);
 				if (file) {
 					players.pthread[turn]->Dump(file);
 					file << (turn ? "▼" : "△") << "DoMove : " << move << endl;
@@ -428,7 +430,7 @@ int main(int argc, char **argv) {
 				}
 			}
 			// Save PlayDetail
-			file.open(playDetailStr, ios::app);
+			file.open(playDetailPath, ios::app);
 			if (file) {
 				file << "-------- Game Over! " << (!minishogi.GetTurn() ? "▼" : "△") << " Win! --------\n";
 				file << "#" << (gameMode == 5 ^ players.isSwap ? "▼" : "△") << "Player " << (gameMode == 5 ? "2 : " : "1 : ") << AI_VERSION << "\n";

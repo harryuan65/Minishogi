@@ -1,5 +1,5 @@
-#ifndef _OBSERVER_
-#define _OBSERVER_
+#ifndef _OBSERVER_H_
+#define _OBSERVER_H_
 #include <iomanip>
 #include <vector>
 #include <iostream>
@@ -18,7 +18,7 @@ using namespace std;
 #define BACKGROUND_SEARCH_DISABLE
 #define BACKGROUND_SEARCH_LIMITDEPTH
 
-#define AI_VERSION "#102 NullMove v4 LMR v4"
+#define AI_VERSION "#103"
 
 namespace Observer {
 	enum DataType {
