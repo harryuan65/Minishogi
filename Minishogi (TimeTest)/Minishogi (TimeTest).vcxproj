@@ -20,10 +20,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{DA884169-9E13-4A26-BE0C-723312DE383A}</ProjectGuid>
+    <ProjectGuid>{C59B71EE-ADD2-4AF9-901D-E6F384B7039F}</ProjectGuid>
     <RootNamespace>MinishogiTimeTest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
-    <ProjectName>Minishogi (TimeTest)</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -43,14 +42,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -84,7 +83,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -105,7 +103,6 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -131,14 +128,13 @@
     <ClCompile Include="..\Minishogi\Thread.cpp" />
     <ClCompile Include="..\Minishogi\Transposition.cpp" />
     <ClCompile Include="..\Minishogi\Zobrist.cpp" />
-    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="MainTime.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Minishogi\Bitboard.h" />
     <ClInclude Include="..\Minishogi\Evaluate.h" />
     <ClInclude Include="..\Minishogi\FileMapping.h" />
     <ClInclude Include="..\Minishogi\Minishogi.h" />
-    <ClInclude Include="..\Minishogi\Move.h" />
     <ClInclude Include="..\Minishogi\MovePick.h" />
     <ClInclude Include="..\Minishogi\Observer.h" />
     <ClInclude Include="..\Minishogi\Search.h" />

@@ -1,7 +1,8 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
-#include <sstream>
+#include <assert.h>
 #include <mutex>
+#include <sstream>
 
 typedef uint64_t Key;
 
@@ -26,6 +27,16 @@ constexpr int DEPTH_QS_RECAPTURES = -5;
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY = 128;
 constexpr int MAX_HISTORY_PLY = 256;
+const std::string PIECE_2_CHAR = ".PSGBRK..PS.BR...psgbrk..ps.br";
+const std::string HAND_2_CHAR = "psgbrPSGBR";
+constexpr char CHESS_WORD[][3] = {
+	"  ","步","銀","金","角","飛","王","  ",
+	"  ","ㄈ","全","  ","馬","龍","  ","  ",
+	"  ","步","銀","金","角","飛","玉","  ",
+	"  ","ㄈ","全","  ","馬","龍"
+};
+const std::string NONCOLOR_CHESS_WORD = " ． △步△銀△金△角△飛△王 ．  ． △ㄈ△全 ． △馬△龍 ．  ．  ． ▼步▼銀▼金▼角▼飛▼玉 ．  ． ▼ㄈ▼全 ． ▼馬▼龍";
+const std::string COLOR_WORD[] = { "△", "▼" };
 
 enum Color : int {
 	WHITE,
@@ -34,13 +45,13 @@ enum Color : int {
 };
 
 enum Value : int {
-	VALUE_ZERO = 0,
+	VALUE_ZERO      = 0,
 	VALUE_KNOWN_WIN = 10000,
-	VALUE_MATE = 30000,
-	VALUE_INFINITE = 31001,
-	VALUE_MATE_IN_MAX_PLY = (int)VALUE_MATE - 2 * MAX_PLY,
-	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_PLY,
-	VALUE_NONE = 32002
+	VALUE_MATE      = 30000,
+	VALUE_INFINITE  = 31001,
+	VALUE_NULL      = 32002,
+	VALUE_MATE_IN_MAX_PLY  = (int)VALUE_MATE - 2 * MAX_PLY,
+	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_PLY
 };
 
 enum Square : int {
@@ -51,20 +62,21 @@ enum Square : int {
 	SQ_E5, SQ_E4, SQ_E3, SQ_E2, SQ_E1,
 	SQ_F5, SQ_F4, SQ_F3, SQ_F2, SQ_F1,
 	SQ_G5, SQ_G4, SQ_G3, SQ_G2, SQ_G1,
+	SQ_NULL,
 	SQUARE_ZERO = 0,
-	BOARD_NB = 25,
-	SQUARE_NB = 35
+	BOARD_NB    = 25,
+	SQUARE_NB   = 35
 };
 
 /// | isPro 1bit | srcSq 6bits | dstSq 6bits |
 enum Move : int {
-	MOVE_NULL,
 	MOVE_UNDO = 1 << 13,
 	//MOVE_SAVEBOARD = 2 << 13,
-	MOVE_ILLEGAL = 3 << 13
+	MOVE_ILLEGAL = 3 << 13,
+	MOVE_NULL = 0
 };
 
-enum Chess : int {
+enum Piece : int {
 	NO_PIECE     = 0,
 	W_PAWN       = 1,  //步
 	W_SILVER     = 2,  //銀
@@ -107,7 +119,7 @@ enum Chess : int {
 // 棋子種類 + 國籍 + 位置
 enum BonaPiece : int {
 	BONA_PIECE_ZERO = 0,
-	F_PIECE = 1,
+	F_PIECE = 0,
 	F_HAND = F_PIECE + PIECE_NB * BOARD_NB,
 	E_HAND = F_HAND + 10,
 	BONA_PIECE_NB = E_HAND + 10
@@ -115,13 +127,13 @@ enum BonaPiece : int {
 
 // BonaPieceList Index
 enum BonaPieceIndex : int {
-	NONE_INDEX   = -1,
-	PAWN_INDEX   = 0,
-	SILVER_INDEX = 2,
-	GOLD_INDEX   = 4,
-	BISHOP_INDEX = 6,
-	ROOK_INDEX   = 8,
-	KING_INDEX   = 10,
+	BPI_NULL   = -1,
+	BPI_PAWN   = 0,
+	BPI_SILVER = 2,
+	BPI_GOLD   = 4,
+	BPI_BISHOP = 6,
+	BPI_ROOK   = 8,
+	BPI_KING   = 10,
 	BONA_PIECE_INDEX_NB = 12
 };
 
@@ -130,10 +142,8 @@ struct ExtMove {
 	int value;
 
 	operator Move() const { return move; }
-	void operator=(Move m) { move = m; }
+	void operator=(const Move m) { move = m; }
 
-	// Inhibit unwanted implicit conversions to Move
-	// with an ambiguity that yields to a compile error.
 	operator float() const = delete;
 };
 
@@ -167,6 +177,7 @@ ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_INCR_OPERATORS_ON(Color)
 ENABLE_BASE_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(Square)
+ENABLE_INCR_OPERATORS_ON(Piece)
 ENABLE_INCR_OPERATORS_ON(BonaPiece)
 ENABLE_INCR_OPERATORS_ON(BonaPieceIndex)
 
@@ -189,11 +200,15 @@ constexpr Value mated_in(int ply) {
 }
 
 constexpr Color operator~(Color c) {
-	return Color(c ^ BLACK); // Toggle color
+	return Color(c ^ BLACK);
 }
 
-constexpr Color color_of(Chess c) {
-	return Color(c & 0x10);
+constexpr Square rotate_board_sq(Square sq) {
+	return SQ_E1 - sq;
+}
+
+constexpr Square mirror_board_sq(Square sq) {
+	return (Square)(sq + 4 - (sq % 5) * 2);
 }
 
 /// Get srcIndex from move
@@ -206,20 +221,12 @@ constexpr Square to_sq(Move m) {
 	return Square(m & 0x3F);
 }
 
-constexpr Square rotate_board_sq(Square sq) {
-	return SQ_E1 - sq;
-}
-
-constexpr Square mirror_board_sq(Square sq) {
-	return (Square)((sq % 5) * 5 + sq / 5);
-}
-
 /// Get isPro from move
-constexpr bool is_pro(Move m) {
+constexpr bool is_promote(Move m) {
 	return (m >> 12) & 0x1;
 }
 
-constexpr inline Move make_move(Square from, Square to, bool isPro) {
+constexpr Move make_move(Square from, Square to, bool isPro) {
 	return Move(((isPro << 12) | from << 6) | to);
 }
 
@@ -230,39 +237,19 @@ constexpr bool IsDoMove(Move m) {
 
 /// uint32_t -> Move, for Communication
 const static Move setU32(uint32_t u) {
-	if (!u) {
+	if (!u)
 		return MOVE_NULL;
-	}
 	return make_move(Square(u & 0x000003f), Square((u & 0x0000fc0) >> 6), (u & 0x1000000) >> 24);
 }
 
 /// Move -> uint_t, for Communication
 const static int toU32(Move m) {
-	if (!IsDoMove(m)) {
+	if (!IsDoMove(m))
 		return 0;
-	}
-	return (is_pro(m) << 24) | (to_sq(m) << 6) | from_sq(m);
+	return (is_promote(m) << 24) | (to_sq(m) << 6) | from_sq(m);
 }
 
-static inline Square Input2Index(char row, char col) {
-	row = toupper(row);
-	if ('A' <= row && row <= 'G' && '1' <= col && col <= '5') {
-		return (Square)((row - 'A') * 5 + '5' - col);
-	}
-	return (Square)-1;
-}
-
-static inline std::string Index2Input(Square index) {
-	if (0 <= index && index < SQUARE_NB) {
-		std::string str;
-		str.push_back('A' + index / 5);
-		str.push_back('5' - index % 5);
-		return str;
-	}
-	return "";
-}
-
-static std::istream& operator>>(std::istream &is, Move& m) {
+static std::istream& operator >> (std::istream &is, Move &m) {
 	std::string str;
 	is >> str;
 	if (str == "SURRENDER" || str == "surrender") {
@@ -277,15 +264,20 @@ static std::istream& operator>>(std::istream &is, Move& m) {
 	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+')) {
 		m = MOVE_ILLEGAL;
 	}
+	else if (str[1] == '*') {
+		m = make_move(Square(HAND_2_CHAR.find(str[0]) + BOARD_NB),
+			          Square((str[2] - 'a') * 5 + '5' - str[3]),
+			          false);
+	}
 	else {
-		m = make_move(Input2Index(str[0], str[1]),
-					  Input2Index(str[2], str[3]),
+		m = make_move(Square((str[0] - 'a') * 5 + '5' - str[1]),
+			          Square((str[2] - 'a') * 5 + '5' - str[3]),
 			          str.length() == 5);
 	}
 	return is;
 }
 
-static std::ostream& operator<< (std::ostream& os, const Move& m) {
+static std::ostream& operator << (std::ostream& os, Move m) {
 	switch (m) {
 	case MOVE_NULL:
 		os << "SURRENDER";
@@ -297,40 +289,30 @@ static std::ostream& operator<< (std::ostream& os, const Move& m) {
 		os << "SAVEBOARD";
 		break;*/
 	default:
-		os << Index2Input(from_sq(m)) << Index2Input(to_sq(m)) << (is_pro(m) ? "+" : " ");
+		if (from_sq(m) >= BOARD_NB)
+			os << HAND_2_CHAR[from_sq(m) - BOARD_NB] << "*";
+		else
+			os << char('a' + from_sq(m) / 5) << char('5' - from_sq(m) % 5);
+		os << char('a' + to_sq(m) / 5) << char('5' - to_sq(m) % 5) << (is_promote(m) ? "+" : " ");
 	}
 	return os;
 }
 
-constexpr char CHESS_WORD[][3] = {
-	"  ","步","銀","金","角","飛","王","  ",
-	"  ","ㄈ","全","  ","馬","龍","  ","  ",
-	"  ","步","銀","金","角","飛","玉","  ",
-	"  ","ㄈ","全","  ","馬","龍"
+constexpr Square EatToHand[] = {
+	SQ_NULL, SQ_F5, SQ_F4,    SQ_F3, SQ_F2, SQ_F1, SQ_NULL, SQ_NULL,
+	SQ_NULL, SQ_F5, SQ_F4,  SQ_NULL, SQ_F2, SQ_F1, SQ_NULL, SQ_NULL,
+	SQ_NULL, SQ_G5, SQ_G4,    SQ_G3, SQ_G2, SQ_G1, SQ_NULL, SQ_NULL,
+	SQ_NULL, SQ_G5, SQ_G4,  SQ_NULL, SQ_G2, SQ_G1
 };
 
-constexpr char SAVE_CHESS_WORD[][5] = {
-	" ． ","△步","△銀","△金","△角","△飛","△王","    ",
-	"    ","△ㄈ","△全","    ","△馬","△龍","    ","    ",
-	"    ","▼步","▼銀","▼金","▼角","▼飛","▼玉","    ",
-	"    ","▼ㄈ","▼全","    ","▼馬","▼龍"
-};
-
-constexpr int EatToHand[] = {
-	0, 25, 26, 27, 28, 29, 0, 0,
-	0, 25, 26,  0, 28, 29, 0, 0,
-	0, 30, 31, 32, 33, 34, 0, 0,
-	0, 30, 31,  0, 33, 34
-};
-
-constexpr Chess HandToChess[] = {
-	NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,
-	NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,
-	NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,
-	NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,
-	NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,NO_PIECE,
-	B_PAWN,B_SILVER,B_GOLD,B_BISHOP,B_ROOK,
-	W_PAWN,W_SILVER,W_GOLD,W_BISHOP,W_ROOK
+constexpr Piece HandToChess[] = {
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	  B_PAWN, B_SILVER,   B_GOLD, B_BISHOP,   B_ROOK,
+	  W_PAWN, W_SILVER,   W_GOLD, W_BISHOP,   W_ROOK
 };
 
 constexpr bool Promotable[] = {
@@ -340,19 +322,19 @@ constexpr bool Promotable[] = {
 	false, false, false, false, false, false
 };
 
-constexpr int CHESS_SCORE[] = {
-	0,  107,  810,  907,  1291,  1670, VALUE_MATE, 0,
-	0,  895,  933,    0,  1985,  2408, 0, 0,
+constexpr int PIECE_SCORE[] = {
+	0,  107,  810,  907,  1291,  1670,  VALUE_MATE, 0,
+	0,  895,  933,    0,  1985,  2408,           0, 0,
 	0, -107, -810, -907, -1291, -1670, -VALUE_MATE, 0,
 	0, -895, -933,    0, -1985, -2408
 };
 
 constexpr int HAND_SCORE[] = {
-	0,  0,  0,  0,  0,
-	0,  0,  0,  0,  0,
-	0,  0,  0,  0,  0,
-	0,  0,  0,  0,  0,
-	0,  0,  0,  0,  0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0,
 	-152, -1110, -1260, -1464, -1998,
 	 152,  1110,  1260,  1464,  1998
 };
@@ -361,31 +343,44 @@ constexpr int PIN_SCORE[] = {
 	0,    2, -204, -377,  -375,  -500,    0,    0,
 	0,    0,    0,    0,  -525,  -650,    0,    0,
 	0,   -2,  204,  377,   375,   500,    0,    0,
-	0,    0,    0,    0,   525,   650,    0,    0
+	0,    0,    0,    0,   525,   650
 };
 
-constexpr Chess promote(Chess c) {
-	return Chess(c ^ PROMOTE);
+constexpr Piece promote(Piece p) {
+	return Piece(p | PROMOTE);
 }
 
-constexpr Chess type_of(Chess c) {
-	return Chess(c & 0xF);
+constexpr Piece toggle_promote(Piece p) {
+	return Piece(p ^ PROMOTE);
 }
 
-constexpr Chess type_of(int c) {
-    return Chess(c & 0xF);
+constexpr Piece type_of(Piece p) {
+	return Piece(p & 0xF);
+}
+
+constexpr Piece type_of(int p) {
+    return Piece(p & 0xF);
+}
+
+constexpr Color color_of(Piece p) {
+	assert(p != NO_PIECE);
+	return Color(p >= BLACKCHESS);
+}
+
+constexpr bool is_promote(Piece c) {
+	return c & PROMOTE;
 }
 
 constexpr BonaPiece to_bonapiece(Square sq, int c) {
 	if (sq < BOARD_NB)
-		return BonaPiece(F_PIECE + c*BOARD_NB + sq);
+		return BonaPiece(c * BOARD_NB + sq);
 	else
-		return BonaPiece(F_HAND + (sq - BOARD_NB) * 2 + c - 1);
+		return BonaPiece(F_HAND + (sq - SQ_F5) * 2 + c - 1);
 }
 
 constexpr BonaPiece to_inv_bonapiece(Square sq, int c) {
 	if (sq < BOARD_NB)
-		return BonaPiece(F_PIECE + (c ^ BLACKCHESS)*BOARD_NB + (BOARD_NB - sq));
+		return BonaPiece((c ^ BLACKCHESS)*BOARD_NB + rotate_board_sq(sq));
 	else if (sq < SQ_G5)
 		return BonaPiece(E_HAND + (sq - SQ_F5) * 2 + c - 1);
 	else
@@ -393,10 +388,11 @@ constexpr BonaPiece to_inv_bonapiece(Square sq, int c) {
 }
 
 constexpr BonaPiece mirror_bonapiece(BonaPiece bp) {
-	return bp < F_HAND ? (BonaPiece)(mirror_board_sq((Square)(bp % BOARD_NB)) + bp - bp % BOARD_NB) : bp;
+	Square sq = (Square)(bp % BOARD_NB);
+	return bp < F_HAND ? (BonaPiece)(mirror_board_sq(sq) + bp - sq) : bp;
 }
 
-constexpr bool is_sniper(Chess c) {
+constexpr bool is_sniper(Piece c) {
 	return (c & 0x7) == BISHOP || (c & 0x7) == ROOK;
 }
 #endif

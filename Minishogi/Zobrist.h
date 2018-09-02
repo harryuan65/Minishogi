@@ -3,7 +3,6 @@
 
 #include <random>
 #include "Types.h"
-#include "Observer.h"
 
 namespace Zobrist {
 	static const uint64_t SEED = std::mt19937_64::default_seed;

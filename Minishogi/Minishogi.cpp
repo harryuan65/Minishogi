@@ -8,114 +8,40 @@
 #include "Minishogi.h"
 #include "Zobrist.h"
 #include "Thread.h"
-
-#ifdef WINDOWS_10
-#define LINE_STRING "—┼ —┼ —┼ —┼ —┼ —┼ —"
-#else
-#define LINE_STRING "—┼—┼—┼—┼—┼—┼—"
-#endif
-
-// AttackGene moveList order by attacker
-static const int AttackerOrder[] = {
-	PAWN,
-	SILVER,
-	GOLD,
-	PAWN | PROMOTE,
-	SILVER | PROMOTE,
-	BISHOP,
-	ROOK,
-	BISHOP | PROMOTE,
-	ROOK | PROMOTE,
-	KING
-};
-
-// MoveGene moveList order by mover 
-static const int MoverOrder[] = {
-	ROOK | PROMOTE,
-	BISHOP | PROMOTE,
-	ROOK,
-	BISHOP,
-	SILVER | PROMOTE,
-	PAWN | PROMOTE,
-	GOLD,
-	SILVER,
-	PAWN,
-	KING
-};
-
-static const char *RANK_NAME[] = { " A", " B", " C", " D", " E", " F", "  ", " G", "  " };
+#include "Observer.h"
+using namespace std;
+using namespace Evaluate;
 
 void Minishogi::Initialize() {
-	const string str[] = {
-		"+",
-		"▼飛▼角▼銀▼金▼玉",
-		" ．  ．  ．  ． ▼步",
-		" ．  ．  ．  ．  ． ",
-		"△步 ．  ．  ．  ． ",
-		"△王△金△銀△角△飛",
-		"▼0步0銀0金0角0飛",
-		"△0步0銀0金0角0飛" };
-	Initialize(str);
+	Initialize(
+		"+\n"
+		"▼飛▼角▼銀▼金▼玉\n"
+		" ．  ．  ．  ． ▼步\n"
+		" ．  ．  ．  ．  ． \n"
+		"△步 ．  ．  ．  ． \n"
+		"△王△金△銀△角△飛\n"
+		"▼0步0銀0金0角0飛\n"
+		"△0步0銀0金0角0飛\n");
+	//SetSFEN("rbsgk/4p/5/P4/KGSBR b - 1");
 }
 
-/// 輸入格式: 前25個輸入棋子ID [後10個輸入手排個數0~2(可選)] No used
-/*void Minishogi::Initialize(const char *s) {
-	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
-	memset(bitboard, 0, PIECE_NB * sizeof(Bitboard));
-	memset(board, NO_PIECE, SQUARE_NB * sizeof(int));
-	turn = WHITE;
-	ply = 0;
-	evalHist[0].Clean();
-	keyHist[0] = 0;
-	key2Hist[0] = 0;
-
-	stringstream input(s);
-	int i = 0, chess;
-	for (; i < BOARD_NB && input >> chess; ++i) {
-		if (0 < chess && chess < PIECE_NB && CHESS_WORD[chess] != "  ") {
-			board[i] = chess;
-			bitboard[chess] |= 1 << i;
-			occupied[chess > BLACKCHESS] |= 1 << i;
-			evalHist[ply].meterial += CHESS_SCORE[chess];
-			keyHist[ply] ^= Zobrist::table[i][chess];
-			key2Hist[ply] ^= Zobrist::table2[i][chess];
-		}
-	}
-	if (!input.eof()) {
-		for (; i < SQUARE_NB && input >> chess; ++i)
-			if (chess == 1 || chess == 2) {
-				board[i] = chess;
-				evalHist[ply].meterial += HAND_SCORE[i] * chess;
-				keyHist[ply] ^= Zobrist::table[i][chess];
-				key2Hist[ply] ^= Zobrist::table2[i][chess];
-				if (chess == 2) {
-					keyHist[ply] ^= Zobrist::table[chess][2];
-					key2Hist[ply] ^= Zobrist::table2[chess][2];
-				}
-			}
-	}
-#ifndef ENEMY_ISO_TT
-	if (turn == BLACK)	keyHist[0] ^= 1;
-#endif
-	checker_BB();
-}
-*/
-
-bool Minishogi::Initialize(const string* str) {
+bool Minishogi::Initialize(string str) {
+	istringstream ss(str);
+	string token;
 	Square sq = SQUARE_ZERO;
-	BonaPieceIndex bonaIndex;
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, PIECE_NB * sizeof(Bitboard));
 	memset(board, NO_PIECE, SQUARE_NB * sizeof(int));
-	for (int i = 0; i < BONA_PIECE_INDEX_NB; i++)
+	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
 		pieceList[WHITE][i] = BONA_PIECE_NB;
 
-	if (str[0][0] == '+') 
+	getline(ss, token);
+	if (token[0] == '+')
 		turn = WHITE;
-	else if (str[0][0] == '-')
+	else if (token[0] == '-')
 		turn = BLACK;
 	else {
-		cerr << "Error : Fail to Load Board. There is a unrecognized symbol in TURN section.\n";
+		cerr << "Error : Load Board Failed. There is a unrecognized symbol in TURN section.\n";
 		return false;
 	}
 	ply = 0;
@@ -124,53 +50,44 @@ bool Minishogi::Initialize(const string* str) {
 	key2Hist[0] = 0;
 
 	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 5; j++, ++sq) {
-			for (int chess = 0; chess < PIECE_NB; chess++) {
-				if (strcmp(SAVE_CHESS_WORD[chess], str[i+1].substr(j * 4, 4).c_str()) == 0) {
-					if (chess != 0) {
-						board[sq] = chess;
-						bitboard[chess] |= 1 << sq;
-						occupied[chess > BLACKCHESS] |= 1 << sq;
-
-						bonaIndex = BonaPieceIndex(((chess & 7) - 1) * 2);
-						if (pieceList[WHITE][bonaIndex] != BONA_PIECE_NB)
-							++bonaIndex;
-						SetBonaPiece(bonaIndex, sq, chess);
-
-						evalHist[0].meterial += CHESS_SCORE[chess];
-						keyHist[0] ^= Zobrist::table[sq][chess];
-						key2Hist[0] ^= Zobrist::table2[sq][chess];
-					}
-					break;
-				}
-				if (chess == PIECE_NB - 1) {
-					cerr << "Error : Fail to Load Board. There is a unrecognized symbol in BOARD section.\n";
-					return false;
-				}
+		getline(ss, token);
+		for (int j = 0, find; j < 5; j++, ++sq) {
+			if ((find = NONCOLOR_CHESS_WORD.find(token.substr(j * 4, 4))) != string::npos) {
+				if (find == 0)
+					continue;
+				Piece pc = Piece(find / 4);
+				board[sq] = pc;
+				SetBonaPiece(sq, pc);
+				bitboard[pc] |= 1 << sq;
+				occupied[color_of(pc)] |= 1 << sq;
+				evalHist[0].meterial += PIECE_SCORE[pc];
+				keyHist[0] ^= Zobrist::table[sq][pc];
+				key2Hist[0] ^= Zobrist::table2[sq][pc];
+			}
+			else {
+				cerr << "Error : Load Board Failed. There is a unrecognized symbol in BOARD section.\n";
+				return false;
 			}
 		}
 	}
 	for (int i = 0; i < 2; i++) {
+		getline(ss, token);
 		for (int j = 0; j < 5; j++, ++sq) {
-			int num = str[i + 6][2 + 3 * j] - '0';
-			if (num == 1 || num == 2) {
-				board[sq] = num;
-
-				bonaIndex = BonaPieceIndex((sq % 5) * 2);
-				if (pieceList[WHITE][bonaIndex] != BONA_PIECE_NB)
-					++bonaIndex;
-				SetBonaPiece(bonaIndex, sq, num);
-
-				evalHist[0].meterial += HAND_SCORE[sq] * num;
+			int handNum = token[2 + 3 * j] - '0';
+			if (handNum == 1 || handNum == 2) {
+				board[sq] = handNum;
+				SetBonaPiece(sq, Piece(1));
+				evalHist[0].meterial += HAND_SCORE[sq] * handNum;
 				keyHist[0] ^= Zobrist::table[sq][1];
 				key2Hist[0] ^= Zobrist::table2[sq][1];
-				if (num == 2) {
+				if (handNum == 2) {
+					SetBonaPiece(sq, Piece(2));
 					keyHist[0] ^= Zobrist::table[sq][2];
 					key2Hist[0] ^= Zobrist::table2[sq][2];
 				}
 			}
-			else if (num != 0) {
-				cerr << "Error : Fail to Load Board. There is a unrecognized symbol in HAND section.\n";
+			else if (handNum != 0) {
+				cerr << "Error : Load Board Failed. There is a unrecognized symbol in HAND section.\n";
 				return false;
 			}
 		}
@@ -179,10 +96,88 @@ bool Minishogi::Initialize(const string* str) {
 	if (turn == BLACK)	keyHist[0] ^= 1;
 #endif
 
-	checker_BB();
+	CalcAllChecker();
 	CalcAllPin();
 	CalcAllPos();
-	return true;
+	return CheckLegal();
+}
+
+bool Minishogi::SetSFEN(std::string sfen) {
+	istringstream ss(sfen);
+	string buf;
+	Square sq = SQUARE_ZERO;
+	Piece pc;
+	int handNum = 1;
+	bool isPromote = false;
+
+	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
+	memset(bitboard, 0, PIECE_NB * sizeof(Bitboard));
+	memset(board, NO_PIECE, SQUARE_NB * sizeof(int));
+	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
+		pieceList[WHITE][i] = BONA_PIECE_NB;
+	ply = 0;
+	evalHist[0].meterial = VALUE_ZERO;
+	keyHist[0] = 0;
+	key2Hist[0] = 0;
+
+	ss >> buf;
+	for (int i = 0; i < buf.size(); i++) {
+		if (buf[i] == '/')
+			continue;
+		else if (isdigit(buf[i]))
+			for (int j = 0; j < buf[i] - '0'; ++j, ++sq)
+				board[sq] = 0;
+		else if (buf[i] == '+')
+			isPromote = true;
+		else if ((pc = (Piece)PIECE_2_CHAR.find(buf[i])) != (Piece)string::npos) {
+			if (isPromote)
+				pc = promote(pc);
+			board[sq] = pc;
+			SetBonaPiece(sq, pc);
+			bitboard[pc] |= 1 << sq;
+			occupied[color_of(pc)] |= 1 << sq;
+			evalHist[0].meterial += PIECE_SCORE[pc];
+			keyHist[0] ^= Zobrist::table[sq][pc];
+			key2Hist[0] ^= Zobrist::table2[sq][pc];
+			isPromote = false;
+			++sq;
+		}
+		else
+			return false;
+	}
+
+	ss >> buf;
+	turn = buf[0] == 'b' ? WHITE : BLACK;
+
+	ss >> buf;
+	for (int i = 0; i < buf.size(); i++) {
+		if (buf[i] != '-')
+			break;
+		else if (isdigit(buf[i]))
+			handNum = buf[i] - '0';
+		else if ((sq = (Square)HAND_2_CHAR.find(buf[i])) != (Square)string::npos){
+			sq += BOARD_NB;
+			board[sq] = handNum;
+			SetBonaPiece(sq, (Piece)1);
+			evalHist[0].meterial += HAND_SCORE[sq] * handNum;
+			keyHist[0] ^= Zobrist::table[sq][1];
+			key2Hist[0] ^= Zobrist::table2[sq][1];
+			if (handNum == 2) {
+				SetBonaPiece(sq, (Piece)2);
+				keyHist[0] ^= Zobrist::table[sq][2];
+				key2Hist[0] ^= Zobrist::table2[sq][2];
+			}
+			handNum = 0;
+		}
+	}
+#ifndef ENEMY_ISO_TT
+	if (turn == BLACK)	keyHist[0] ^= 1;
+#endif
+
+	CalcAllChecker();
+	CalcAllPin();
+	CalcAllPos();
+	return CheckLegal();
 }
 
 void Minishogi::Set(const Minishogi &m, Thread *th) {
@@ -191,15 +186,114 @@ void Minishogi::Set(const Minishogi &m, Thread *th) {
 	turn          = m.turn;
 	evalHist[0]   = m.evalHist[m.ply];
 	keyHist[0]    = m.keyHist[m.ply];
-#ifdef ENEMY_ISO_TT
 	key2Hist[0]   = m.key2Hist[m.ply];
-#endif
 	checker_bb[0] = m.checker_bb[m.ply];
 	for (int i = 0; i < COLOR_NB; i++) occupied[i] = m.occupied[i];
 	for (int i = 0; i < PIECE_NB; i++) bitboard[i] = m.bitboard[i];
-	for (int i = 0; i < SQUARE_NB; i++)   board[i] = m.board[i];
-	for (BonaPieceIndex i = BONA_PIECE_INDEX_NB; i < BONA_PIECE_INDEX_NB; ++i)
+	for (int i = 0; i < SQUARE_NB; i++) board[i] = m.board[i];
+	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
 		SetBonaPiece(i, m.pieceList[WHITE][i], m.pieceList[BLACK][i]);
+	CheckLegal();
+}
+
+bool Minishogi::CheckLegal() const {
+	int pieceCount = 0;
+	// TODO :　occupied bitboard
+	/*for (Piece p = W_PAWN; p < PIECE_NB; ++p) {
+		Bitboard bb = bitboard[p];
+		BitScan(bb);
+	}*/
+
+	for (Square sq = SQUARE_ZERO; sq < BOARD_NB; ++sq) {
+		// 檢查盤面上的棋子在範圍內
+		if (board[sq] < 0 || PIECE_NB <= board[sq] || (board[sq] != 0 && PIECE_SCORE[board[sq]] == 0)) {
+			cerr << "Error :　Load Board Failed. board[" << sq << "] is " << board[sq] << ".\n";
+			return false;
+		}
+		else if (board[sq] > 0) {
+			pieceCount++;
+		}
+	}
+
+	for (Square sq = BOARD_NB; sq < SQUARE_NB; ++sq) {
+		// 檢查手牌上的數量在範圍內
+		if (board[sq] < 0 || 3 <= board[sq]) {
+			cerr << "Error :　Load Board Failed. board[" << sq << "] is " << board[sq] << ".\n";
+			return false;
+		}
+		else {
+			pieceCount += board[sq];
+		}
+	}
+
+	// 檢查盤面+手牌的數量
+	if (pieceCount != BONA_PIECE_INDEX_NB) {
+		cerr << "Error :　Load Board Failed. Piece Count is " << pieceCount << ".\n";
+		return false;
+	}
+
+#ifndef KPPT_DISABLE
+	for (BonaPieceIndex bpi = BPI_PAWN; bpi < BONA_PIECE_INDEX_NB; ++bpi) {
+		// 檢查pieceList[WHITE]範圍 檢查與bonaIndexList是否相對應
+		if (pieceList[WHITE][bpi] < BONA_PIECE_ZERO || BONA_PIECE_NB <= pieceList[WHITE][bpi] || bonaIndexList[pieceList[WHITE][bpi]] != bpi) {
+			cerr << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+				<< " bonaIndexList[" << pieceList[WHITE][bpi] << "] is " << bonaIndexList[pieceList[WHITE][bpi]] << ".\n";
+			return false;
+		}
+		// 檢查pieceList[BLACK]範圍
+		if (pieceList[BLACK][bpi] < BONA_PIECE_ZERO || BONA_PIECE_NB <= pieceList[BLACK][bpi]) {
+			cerr << "Error : Load Board Failed. pieceList[BLACK][" << bpi << "] is " << pieceList[BLACK][bpi] << ".\n";
+			return false;
+		}
+		// 檢查pieceList[WHITE]是否真的在盤面上的位置
+		if (pieceList[WHITE][bpi] < F_HAND && board[pieceList[WHITE][bpi] % BOARD_NB] != pieceList[WHITE][bpi] / BOARD_NB) {
+			cerr << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+				<< " board[" << pieceList[WHITE][bpi] % BOARD_NB << "] is " << board[pieceList[WHITE][bpi] % BOARD_NB] << ".\n";
+			return false;
+		}
+		// 檢查pieceList[WHITE]是否真的在手牌上的位置
+		if (pieceList[WHITE][bpi] >= F_HAND && board[(pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB] < pieceList[WHITE][bpi] % 2) {
+			cerr << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+				<< " board[" << (pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB << "] is " << board[(pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB] << ".\n";
+			return false;
+		}
+	}
+#endif
+
+	return true;
+}
+
+string Minishogi::GetSFEN() const {
+	ostringstream ss;
+	int emptyCnt;
+	bool hasHand = false;
+	for (int rank = 0; rank < 5; rank++) {
+		for (int file = 0; file < 5; file++) {
+			for (emptyCnt = 0; file < 5 && board[rank * 5 + file] == NO_PIECE; file++)
+				emptyCnt++;
+			if (emptyCnt)
+				ss << emptyCnt;
+			if (file < 5) {
+				if (is_promote((Piece)board[rank * 5 + file]))
+					ss << "+";
+				ss << PIECE_2_CHAR[board[rank * 5 + file]];
+			}
+		}
+		if (rank < 4)
+			ss << "/";
+	}
+	ss << (turn == WHITE ? " b " : " w ");
+	for (Square sq = BOARD_NB; sq < SQUARE_NB; ++sq) {
+		if (board[sq] > 1) {
+			ss << board[sq];
+		}
+		if (board[sq] > 0) {
+			ss << HAND_2_CHAR[sq - BOARD_NB];
+			hasHand = true;
+		}
+	}
+	ss << (hasHand ? " " : "- ") << ply + 1;
+	return ss.str();
 }
 
 void Minishogi::DoMove(Move m) {
@@ -208,9 +302,9 @@ void Minishogi::DoMove(Move m) {
 
 	Square from = from_sq(m);
 	Square to = to_sq(m);
-	bool pro = is_pro(m);
-	Chess pc = GetChessOn(from);
-	Chess captured = captureHist[ply - 1] = GetChessOn(to);
+	bool pro = is_promote(m);
+	Piece pc = GetChessOn(from);
+	Piece captured = captureHist[ply - 1] = GetChessOn(to);
 	BonaPieceDiff* bonaPieceDiff = bonaPieceDiffHist[ply - 1];
 	Bitboard dstboard = 1 << to;
 
@@ -224,18 +318,19 @@ void Minishogi::DoMove(Move m) {
 	assert(to < BOARD_NB);
 	assert(pc < PIECE_NB);
 	assert(captured < PIECE_NB);
-	assert(type_of(pc) != KING || !pro);
+	assert(!pro || Promotable[pc]);
 
-	DoBonaPiece(bonaPieceDiff[0], from, board[from], to, pc);
 	if (from < BOARD_NB) { // 移動
 		if (captured) { // 吃
-			Square toHand = (Square)EatToHand[captured];
+			Square toHand = EatToHand[captured];
 			occupied[~turn] ^= dstboard;      // 更新對方場上狀況
 			bitboard[captured] ^= dstboard;   // 更新對方手牌
 			board[toHand]++;                  // 轉為該方手牌
+#ifndef KPPT_DISABLE
 			DoBonaPiece(bonaPieceDiff[1], to, captured, toHand, board[toHand]);
+#endif
 
-			evalHist[ply].meterial += HAND_SCORE[toHand] - CHESS_SCORE[captured];
+			evalHist[ply].meterial += HAND_SCORE[toHand] - PIECE_SCORE[captured];
 			keyHist[ply] ^= Zobrist::table[to][captured]
 						 ^ Zobrist::table[toHand][board[toHand]];
 #ifdef ENEMY_ISO_TT
@@ -252,14 +347,17 @@ void Minishogi::DoMove(Move m) {
 		key2Hist[ply] ^= Zobrist::table2[from][pc];
 #endif
 		if (pro) { // 升變
-			evalHist[ply].meterial += CHESS_SCORE[promote(pc)] - CHESS_SCORE[pc];
+			evalHist[ply].meterial += PIECE_SCORE[promote(pc)] - PIECE_SCORE[pc];
 			pc = promote(pc);
 		}
 		bitboard[pc] ^= dstboard; // 更新該方手牌至目的位置
+#ifndef KPPT_DISABLE
+		DoBonaPiece(bonaPieceDiff[0], from, board[from], to, pc);
+#endif
 		board[from] = NO_PIECE;   // 原本清空
 	}
 	else { // 打入
-		evalHist[ply].meterial += CHESS_SCORE[pc] - HAND_SCORE[from];
+		evalHist[ply].meterial += PIECE_SCORE[pc] - HAND_SCORE[from];
 		keyHist[ply] ^= Zobrist::table[from][board[from]];
 #ifdef ENEMY_ISO_TT
 		key2Hist[ply] ^= Zobrist::table2[from][board[from]];
@@ -267,6 +365,9 @@ void Minishogi::DoMove(Move m) {
 
 		occupied[turn] ^= dstboard;    // 打入場上的位置
 		bitboard[pc] ^= dstboard;      // 打入該手牌的位置
+#ifndef KPPT_DISABLE
+		DoBonaPiece(bonaPieceDiff[0], from, board[from], to, pc);
+#endif
 		board[from]--;                 // 減少該手牌
 	}
 	board[to] = pc;  // 放置到目的
@@ -283,8 +384,8 @@ void Minishogi::DoMove(Move m) {
 #endif
 	moveHist[ply - 1] = m;
 
-	evalHist[ply].pin = VALUE_NONE;
-	checker_BB();
+	evalHist[ply].pin = VALUE_NULL;
+	CalcAllChecker();
 }
 
 void Minishogi::UndoMove() {
@@ -293,9 +394,8 @@ void Minishogi::UndoMove() {
 	Move m = moveHist[ply - 1];
 	Square from = from_sq(m);
 	Square to = to_sq(m);
-	bool pro = is_pro(m);
-	Chess pc = GetChessOn(to);
-	Chess captured = captureHist[ply - 1];
+	Piece pc = GetChessOn(to);
+	Piece captured = captureHist[ply - 1];
 	BonaPieceDiff* bonaPieceDiff = bonaPieceDiffHist[ply - 1];
 	Bitboard dstboard = 1 << to;
 
@@ -311,14 +411,16 @@ void Minishogi::UndoMove() {
 		if (captured) {
 			occupied[~turn] ^= dstboard;      // 還原對方場上狀況
 			bitboard[captured] ^= dstboard;   // 還原對方手牌
-			UndoBonaPiece(bonaPieceDiff[1]);
 			board[EatToHand[captured]]--;     // 從該方手牌移除
+#ifndef KPPT_DISABLE
+			UndoBonaPiece(bonaPieceDiff[1]);
+#endif
 		}
 		occupied[turn] ^= (1 << from) | dstboard; // 還原該方場上狀況
 		bitboard[pc] ^= dstboard;                 // 移除該方手牌的目的位置
 
-		if (pro)
-			pc = promote(pc);
+		if (is_promote(m))
+			pc = toggle_promote(pc);
 		bitboard[pc] ^= 1 << from; // 還原該方手牌原有位置
 		board[from] = pc;          // 還原棋子
 	}
@@ -328,18 +430,20 @@ void Minishogi::UndoMove() {
 		board[from]++;              // 手牌數量加一
 	}
 	board[to] = captured;           // 還原目的棋子
+#ifndef KPPT_DISABLE
 	UndoBonaPiece(bonaPieceDiff[0]);
+#endif
 }
 
 /// 移動後 會不會造成對方處於被將狀態
-void Minishogi::checker_BB() {
+void Minishogi::CalcAllChecker() {
 	checker_bb[ply] = 0;
 
-	/* get the position of my king */
+	// get the position of my king
 	const Bitboard kingboard = bitboard[KING | (turn << 4)];
 	const int kingpos = BitScan(kingboard);
 
-	/* get the possible position which might attack king */
+	// get the possible position which might attack king
 	const Bitboard Occupied = occupied[0] | occupied[1];
 	Bitboard upper, lower, attackboard, attack_path;
 
@@ -351,7 +455,7 @@ void Minishogi::checker_BB() {
 	const Bitboard rank = (upper - lower) & RowMask(kingpos);
 	attackboard = rank & occupied[~turn];
 
-	/* search the rook direction possible position */
+	// search the rook direction possible position
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
@@ -368,7 +472,7 @@ void Minishogi::checker_BB() {
 	const Bitboard file = (upper - lower) & ColMask(kingpos);
 	attackboard = file & occupied[~turn];
 
-	/* search the rook direction possible position */
+	// search the rook direction possible position
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
@@ -385,7 +489,7 @@ void Minishogi::checker_BB() {
 	const Bitboard slope1 = (upper - lower) & (Slope1Upper[kingpos] | Slope1Lower[kingpos]);
 	attackboard = slope1 & occupied[~turn];
 
-	/* search the rook direction possible position */
+	// search the rook direction possible position 
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
@@ -402,7 +506,7 @@ void Minishogi::checker_BB() {
 	const Bitboard slope2 = (upper - lower) & (Slope2Upper[kingpos] | Slope2Lower[kingpos]);
 	attackboard = slope2 & occupied[~turn];
 
-	/* search the rook direction possible position */
+	// search the rook direction possible position
 	while (attackboard) {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
@@ -445,6 +549,9 @@ void Minishogi::CalcAllPin() {
 }
 
 void Minishogi::CalcAllPos() {
+#ifdef KPPT_DISABLE
+	return;
+#endif
 	const auto kk = evaluater.kk;
 	const auto kkp = evaluater.kkp;
 	const auto kpp = evaluater.kpp;
@@ -458,12 +565,12 @@ void Minishogi::CalcAllPos() {
 	sum.pos[1][0] = 0;
 	sum.pos[1][1] = 0;
 	sum.pos[2] = kk[sq_wk][sq_bk];
-	for (int i = 0; i < KING_INDEX; i++) {
+	for (int i = 0; i < BPI_KING; i++) {
 		int w0 = pieceList[WHITE][i];
 		int b0 = pieceList[BLACK][i];
 		sum.pos[0] += kkp[sq_wk][sq_bk][w0];
 		for (int j = 0; j < i; j++) {
-			sum.pos[0] += kpp[sq_wk][w0][pieceList[WHITE][j]];
+			sum.pos[0] += kpp[sq_wk ][w0][pieceList[WHITE][j]];
 			sum.pos[1] += kpp[sq_bki][b0][pieceList[BLACK][j]];
 		}
 	}
@@ -471,7 +578,10 @@ void Minishogi::CalcAllPos() {
 }
 
 void Minishogi::CalcDiffPos() {
-	if (ply == 0 || evalHist[ply - 1].pin == VALUE_NONE) {
+#ifdef KPPT_DISABLE
+	return;
+#endif
+	if (ply == 0 || evalHist[ply - 1].pin == VALUE_NULL) {
 		CalcAllPos();
 		return;
 	}
@@ -480,8 +590,8 @@ void Minishogi::CalcDiffPos() {
 	const auto kkp = evaluater.kkp;
 	const auto kpp = evaluater.kkp;
 
-	Chess pc = (Chess)board[to_sq(moveHist[ply - 1])];
-	Chess capture = captureHist[ply - 1];
+	Piece pc = (Piece)board[to_sq(moveHist[ply - 1])];
+	Piece capture = captureHist[ply - 1];
 	BonaPieceDiff* bpd = bonaPieceDiffHist[ply - 1];
 	Square sq_wk = BitScan(bitboard[W_KING]);
 	Square sq_bk = BitScan(bitboard[B_KING]), sq_bki = SQ_E1 - sq_bk;
@@ -492,7 +602,7 @@ void Minishogi::CalcDiffPos() {
 		sum.pos[0][0] = 0;
 		sum.pos[0][1] = 0;
 		sum.pos[2] = kk[sq_wk][sq_bk];
-		for (i = 0; i < KING_INDEX; i++) {
+		for (i = 0; i < BPI_KING; i++) {
 			int w0 = pieceList[WHITE][i];
 			sum.pos[2] += kkp[sq_wk][sq_bk][w0];
 			for (j = 0; j < i; j++) {
@@ -505,7 +615,7 @@ void Minishogi::CalcDiffPos() {
 				sum.pos[1] -= kpp[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
 				sum.pos[1] += kpp[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
 			}
-			for (++i; i < KING_INDEX; ++i) {
+			for (++i; i < BPI_KING; ++i) {
 				sum.pos[1] -= kpp[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
 				sum.pos[1] += kpp[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
 			}
@@ -515,7 +625,7 @@ void Minishogi::CalcDiffPos() {
 		sum.pos[1][0] = 0;
 		sum.pos[1][1] = 0;
 		sum.pos[2] = kk[sq_wk][sq_bk];
-		for (int i = 0; i < KING_INDEX; i++) {
+		for (int i = 0; i < BPI_KING; i++) {
 			int w0 = pieceList[WHITE][i];
 			int w1 = pieceList[BLACK][i];
 			sum.pos[2] += kkp[sq_wk][sq_bk][w0];
@@ -529,7 +639,7 @@ void Minishogi::CalcDiffPos() {
 				sum.pos[0] -= kpp[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
 				sum.pos[0] += kpp[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
 			}
-			for (++i; i < KING_INDEX; ++i) {
+			for (++i; i < BPI_KING; ++i) {
 				sum.pos[0] -= kpp[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
 				sum.pos[0] += kpp[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
 			}
@@ -539,10 +649,10 @@ void Minishogi::CalcDiffPos() {
 #define ADD_BWKPP(BPD) { \
 		assert(pieceList[WHITE][i] < BONA_PIECE_NB); \
 		assert(pieceList[BLACK][i] < BONA_PIECE_NB); \
-          sum.pos[0] -= kpp[sq_wk ][BPD.preBonaW][pieceList[WHITE][i]]; \
-          sum.pos[1] -= kpp[sq_bki][BPD.nowBonaW][pieceList[BLACK][i]]; \
-          sum.pos[0] += kpp[sq_wk ][BPD.preBonaB][pieceList[WHITE][i]]; \
-          sum.pos[1] += kpp[sq_bki][BPD.nowBonaB][pieceList[BLACK][i]]; \
+        sum.pos[0] -= kpp[sq_wk ][BPD.preBonaW][pieceList[WHITE][i]]; \
+        sum.pos[1] -= kpp[sq_bki][BPD.nowBonaW][pieceList[BLACK][i]]; \
+        sum.pos[0] += kpp[sq_wk ][BPD.preBonaB][pieceList[WHITE][i]]; \
+        sum.pos[1] += kpp[sq_bki][BPD.nowBonaB][pieceList[BLACK][i]]; \
 }
 		if (!capture) {
 			BonaPieceIndex moverIndex = bonaIndexList[bpd[0].nowBonaW];
@@ -551,7 +661,7 @@ void Minishogi::CalcDiffPos() {
 
 			for (i = 0; i < moverIndex; ++i)
 				ADD_BWKPP(bpd[0]);
-			for (++i; i < KING_INDEX; ++i)
+			for (++i; i < BPI_KING; ++i)
 				ADD_BWKPP(bpd[0]);
 		}
 		else {
@@ -570,7 +680,7 @@ void Minishogi::CalcDiffPos() {
 				ADD_BWKPP(bpd[0]);
 				ADD_BWKPP(bpd[1]);
 			}
-			for (++i; i < KING_INDEX; ++i) {
+			for (++i; i < BPI_KING; ++i) {
 				ADD_BWKPP(bpd[0]);
 				ADD_BWKPP(bpd[1]);
 			}
@@ -582,10 +692,10 @@ void Minishogi::CalcDiffPos() {
 		}
 	}
 
-	Value v = sum.PosSum(turn);
+	// Debug : CalcDiffPos() == CalcAllPos()
+	/*Value v = GetEvaluate();
 	CalcAllPos();
-	//cout << (int)v << " " << (int)sum.PosSum(turn) << endl;
-	assert(v == sum.PosSum(turn));
+	assert(v == GetEvaluate());*/
 }
 
 void Minishogi::DoNullMove() {
@@ -608,13 +718,13 @@ void Minishogi::UndoNullMove() {
 	turn = ~turn;
 }
 
-bool Minishogi::PseudoLegal(const Move m) const {
+bool Minishogi::PseudoLegal(Move m) const {
 	Square from = from_sq(m), to = to_sq(m);
 	// 不超出移動範圍
 	if (from >= SQUARE_NB || to >= BOARD_NB)
 		return false;
 
-	Chess pc = GetChessOn(from), capture = GetChessOn(to);
+	Piece pc = GetChessOn(from), capture = GetChessOn(to);
 	// 只能出己方的手排
 	if (pc == NO_PIECE || color_of(pc) != turn)
 		return false;
@@ -632,13 +742,15 @@ bool Minishogi::PseudoLegal(const Move m) const {
 		return false;
 
 	// 只允許某些棋子升變
-	if (is_pro(m) && !(Promotable[pc] && ((1 << from | 1 << to) & EnemyCampMask[turn])))
+	if (is_promote(m) && !(Promotable[pc] && ((1 << from | 1 << to) & EnemyCampMask[turn])))
 		return false;
 
 	return true;
 }
 
 ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
+	// AttackGene moveList order by attacker
+	static const int AttackerOrder[] = { PAWN, SILVER, GOLD, PRO_PAWN, PRO_SILVER, BISHOP, ROOK, PRO_BISHOP, PRO_ROOK, KING };
 	Bitboard srcboard, dstboard, opboard = occupied[~turn], attackboard = checker_bb[ply];
 	Square src, dst;
 	int turnBit = turn << 4;
@@ -652,14 +764,15 @@ ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
 			src = BitScan(srcboard);
 			srcboard ^= 1 << src;
 			dstboard = Movable(src) & opboard;
-			if (attackboard && AttackerOrder[i] != KING) dstboard &= attackboard;
+			if (attackboard && AttackerOrder[i] != KING)
+				dstboard &= attackboard;
 			while (dstboard) {
 				dst = turn ? BitScanRev(dstboard) : BitScan(dstboard);
 				dstboard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
 					Promotable[AttackerOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
 
-				if (AttackerOrder[i] == SILVER && is_pro(*(moveList - 1))) {
+				if (AttackerOrder[i] == SILVER && is_promote(*(moveList - 1))) {
 					*moveList++ = make_move(src, dst, 0);
 				}
 			}
@@ -670,6 +783,8 @@ ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
 }
 
 ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
+	// MoveGene moveList order by mover 
+	static const int MoverOrder[] = { PRO_ROOK, PRO_BISHOP, ROOK, BISHOP, PRO_SILVER, PRO_PAWN, GOLD, SILVER, PAWN, KING };
 	Bitboard srcboard, dstboard, blankboard = BlankOccupied(occupied), attackboard = checker_bb[ply];
 	Square src, dst;
 	int turnBit = turn << 4;
@@ -680,14 +795,15 @@ ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
 			src = BitScan(srcboard);
 			srcboard ^= 1 << src;
 			dstboard = Movable(src) & blankboard;
-			if (attackboard && MoverOrder[i] != KING) dstboard &= attackboard;
+			if (attackboard && MoverOrder[i] != KING) 
+				dstboard &= attackboard;
 			while (dstboard) {
 				dst = turn ? BitScanRev(dstboard) : BitScan(dstboard);
 				dstboard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
 					Promotable[MoverOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
 				
-				if (MoverOrder[i] == SILVER && is_pro(*(moveList - 1))) {
+				if (MoverOrder[i] == SILVER && is_promote(*(moveList - 1))) {
 					*moveList++ = make_move(src, dst, 0);
 				}
 			}
@@ -804,7 +920,7 @@ Move* Minishogi::GetLegalMoves(Move* legalMoves) {
 	return legalMoves;
 }
 
-inline Bitboard Minishogi::Movable(const int srcIndex, const Bitboard Occupied) const {
+inline Bitboard Minishogi::Movable(int srcIndex, Bitboard Occupied) const {
 	const int srcChess = board[srcIndex];
 
 	if ((srcChess & 7) == BISHOP) {
@@ -823,7 +939,7 @@ inline Bitboard Minishogi::Movable(const int srcIndex, const Bitboard Occupied) 
 	return Movement[srcChess][srcIndex];
 }
 
-inline Bitboard Minishogi::RookMovable(const int srcIndex, Bitboard Occupied) const {
+inline Bitboard Minishogi::RookMovable(int srcIndex, Bitboard Occupied) const {
 	// upper (find LSB) ; lower (find MSB)
 	if (!Occupied) Occupied = occupied[0] | occupied[1];
 	Bitboard rank, file, upper, lower;
@@ -849,9 +965,10 @@ inline Bitboard Minishogi::RookMovable(const int srcIndex, Bitboard Occupied) co
 	return rank | file;
 }
 
-inline Bitboard Minishogi::BishopMovable(const int srcIndex, Bitboard Occupied) const {
+inline Bitboard Minishogi::BishopMovable(int srcIndex, Bitboard Occupied) const {
 	// upper (find LSB) ; lower (find MSB)
-	if (!Occupied) Occupied = occupied[0] | occupied[1];
+	if (!Occupied)
+		Occupied = occupied[0] | occupied[1];
 	Bitboard slope1, slope2, upper, lower;
 
 	// slope1 "/"
@@ -875,89 +992,85 @@ inline Bitboard Minishogi::BishopMovable(const int srcIndex, Bitboard Occupied) 
 	return slope1 | slope2;
 }
 
-inline Bitboard Minishogi::attackers_to(const int dstIndex, const Bitboard occupied) const {
+inline Bitboard Minishogi::attackers_to(int dstIndex, Bitboard occupied) const {
 	return RookMovable(dstIndex, occupied) | BishopMovable(dstIndex, occupied);
 }
 
 void Minishogi::PrintChessBoard() const {
 	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	int chess, rank_count = 0, board_count = 0;
 
 	cout << "---------- ply  " << ply << " ----------\n";
 	SetConsoleTextAttribute(hConsole, 7);
 	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
-	for (int i = 0; i < 9; i++) {
-		puts(LINE_STRING);
-		if (i == 5) cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n\n";
+	for (int rank = 0; rank < 5; rank++) {
+		cout << "—┼—┼—┼—┼—┼—┼—" << (rank == 0 ? "      後手持駒\n" : "\n");
 
-		printf("%s", RANK_NAME[rank_count]);
-		for (int j = 0; j < 5; j++, board_count++) {
-			printf("｜");
-			if (board_count < BOARD_NB)
-				chess = board[board_count];
-			else if ((i == 5 && board[board_count % 5 + 25]) ||
-				(i == 6 && board[board_count % 5 + 25] == 2))
-				chess = BLACKCHESS | board_count % 5 + 1;
-			else if (i == 7 && board[board_count % 5 + 30] ||
-				(i == 8 && board[board_count % 5 + 30] == 2))
-				chess = (board_count % 5 + 1);
-			else chess = 0;
-			// 10 = 白 ; 11 = 白升變 ; 12 = 黑 ; 13 = 黑升變
-			if (chess & BLACKCHESS) {
-				if (chess & PROMOTE)
-					SetConsoleTextAttribute(hConsole, 13);
-				else
-					SetConsoleTextAttribute(hConsole, 12);
-			}
-			else {
-				if (chess & PROMOTE)
-					SetConsoleTextAttribute(hConsole, 11);
-				else
-					SetConsoleTextAttribute(hConsole, 10);
-			}
-
-			printf("%s", CHESS_WORD[chess]);
+		cout << " " << char('a' + rank) << "｜";
+		for (int file = 0; file < 5; file++) {
+			Piece p = (Piece)board[rank * 5 + file];
+			SetConsoleTextAttribute(hConsole, 10 + color_of(p) * 2 + is_promote(p));
+			printf("%s", CHESS_WORD[p]);
 			SetConsoleTextAttribute(hConsole, 7);
+			cout << "｜";
 		}
-		printf("｜%s\n", RANK_NAME[rank_count++]);
+		cout << char('a' + rank) << "   ";
+
+		if (rank == 0) {
+			for (int i = 0; i < 5; i++) {
+				if (board[SQ_F5 + i])
+					cout << board[SQ_F5 + i] << CHESS_WORD[i + 1];
+				else
+					cout << "   ";
+			}
+		}
+		if (rank == 4) {
+			for (int i = 0; i < 5; i++) {
+				if (board[SQ_G5 + i])
+					cout << board[SQ_G5 + i] << CHESS_WORD[i + 1];
+				else
+					cout << "   ";
+			}
+		}
+		cout << "\n";
 	}
-	cout << "Zobrist : " << setw(16) << hex << GetKey() << dec << "\n";
+	cout << "—┼—┼—┼—┼—┼—┼—      先手持駒\n";
+	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
+	cout << "SFEN : " << GetSFEN() << "\n";
 	//for (int i = 0; i < BONA_PIECE_INDEX_NB; i++)
 	//	cout << bonaIndexList[pieceListW[i]] << " " << pieceListW[i] << " " << pieceListB[i] << "\n";
-	cout << "----------" << (turn ? "▼ Turn" : "△ Turn") << "----------\n";
+	cout << "----------" << COLOR_WORD[turn] << " Turn----------\n";
 	cout << endl;
 }
 
 void Minishogi::PrintNoncolorBoard(ostream &os) const {
-	os << (GetTurn() ? "-" : "+") << "ply " << ply << " " << hex << GetKey() << dec << "\n";
+	os << (GetTurn() ? "-" : "+") << GetSFEN() << "\n";
 	for (Square sq = SQUARE_ZERO; sq < BOARD_NB; ++sq) {
 		if (board[sq] == NO_PIECE)
 			os << " ． ";
 		else {
-			os << SAVE_CHESS_WORD[board[sq]];
+			os << NONCOLOR_CHESS_WORD.substr(board[sq] * 4, 4);
 		}
 		if (sq % 5 == 4)
 			os << "\n";
 	}
-	os << "▼";
+	os << COLOR_WORD[BLACK];
 	for (int i = 0; i < 5; i++)
 		os << board[i + 25] << CHESS_WORD[i + 1];
-	os << "\n△";
-	for (int i = 0; i < 5; i++) {
+	os << "\n" << COLOR_WORD[WHITE];
+	for (int i = 0; i < 5; i++)
 		os << board[i + 30] << CHESS_WORD[i + 1];
-	}
 	os << "\n";
 	os << "Zobrist : " << setw(16) << hex << GetKey() << dec << "\n";
-	os << (turn ? "[▼ Turn]\n" : "[△ Turn]\n") << "\n";
+	os << "[" << COLOR_WORD[turn] << " Turn]\n\n";
 }
 
 /// 第一行 +代表白方先 -代表黑方先
-/// 第二~六行 5*5的棋盤 旗子符號請見Chess.h的SAVE_CHESS_WORD
+/// 第二~六行 5*5的棋盤 旗子符號請見Piece.h的SAVE_CHESS_WORD
 /// 第七~八行 ▼0步0銀0金0角0飛 △0步0銀0金0角0飛
 bool Minishogi::SaveBoard(string filename) const {
 	fstream file("board//" + filename, ios::app);
 	if (file) {
-		file << (GetTurn() ? "-" : "+") << "Step : " << to_string(GetStep()) << "\n";
+		file << (GetTurn() ? "-" : "+") << GetSFEN() << "\n";
 		PrintNoncolorBoard(file);
 		file.close();
 		sync_cout << "Succeed to Save Board." << sync_endl;
@@ -970,23 +1083,19 @@ bool Minishogi::SaveBoard(string filename) const {
 bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 	fstream file("board//" + filename, ios::in);
 	if (file) {
-		char str[128];
-		string boardStr[8];
+		string boardStr, buf;
 		file.seekg(offset, ios::beg);
-		for (int i = 0; i < 8; i++) {
-			if (file.eof()) {
-				sync_cout << "Error : Fail to Load Board. It's eof." << sync_endl;
-				file.close();
-				return false;
+		do {
+			for (int i = 0; i < 8; i++) {
+				if (!getline(file, buf)) {
+					file.close();
+					return false;
+				}
+				boardStr += buf + "\n";
 			}
-			file.getline(str, 128);
-			boardStr[i] = str;
-		}
-		offset = file.tellg();
+			offset = file.tellg();
+		} while (!Initialize(boardStr));
 		file.close();
-		if (!Initialize(boardStr)) {
-			return false;
-		}
 		return true;
 	}
 	sync_cout << "Error : Fail to Load Board. Cannot find file." << sync_endl;
@@ -997,7 +1106,7 @@ void Minishogi::PrintKifu(ostream &os) const {
 	os << "Kifu hash : " << setw(10) << hex << GetKifuHash() << "\n";
 	os << "Initboard : " << setw(18) << hex << GetKey(0) << dec << "\n";
 	for (int i = 0; i < ply; i++) {
-		os << setw(2) << i << " : " << (i % 2 ? "▼" : "△");
+		os << setw(2) << i << " : " << COLOR_WORD[i % 2];
 		os << moveHist[i] << setw(18) << hex << GetKey(i + 1) << dec << "\n";
 	}
 }
@@ -1013,7 +1122,7 @@ bool Minishogi::IsLegelAction(Move m) {
 }
 
 /// 移動完有沒有被將軍
-bool Minishogi::IsInCheckedAfter(const Square srcIndex, const Square dstIndex) const {
+bool Minishogi::IsInCheckedAfter(Square srcIndex, Square dstIndex) const {
 	const Bitboard dstboard = 1 << dstIndex;
     Bitboard op_occupied = occupied[~turn];
     if (board[dstIndex]) // eat
@@ -1092,7 +1201,7 @@ bool Minishogi::IsSennichite() const {
 bool Minishogi::SEE(const Move move, Value threshold) const {
 	Square srcIndex = from_sq(move), dstIndex = to_sq(move);
 
-	int balance = CHESS_SCORE[type_of(board[dstIndex])] - threshold;
+	int balance = PIECE_SCORE[type_of(board[dstIndex])] - threshold;
 	int myChessValue[8], opChessValue[8];
 	int my_count = 0, op_count = 0;
 	const Bitboard moveboard = srcIndex < BOARD_NB ? (1 << srcIndex) : 0;
@@ -1106,7 +1215,7 @@ bool Minishogi::SEE(const Move move, Value threshold) const {
 		int attsrc = BitScan(srcboard);
 		srcboard ^= 1 << attsrc;
 		if (Movable(attsrc, tem_board) & dstboard)
-			opChessValue[op_count++] = CHESS_SCORE[type_of(board[attsrc])];
+			opChessValue[op_count++] = PIECE_SCORE[type_of(board[attsrc])];
 	}
 	/************ End opChessValue ************/
 	if (op_count == 0) return true; // 對方都吃不到我下的位置
@@ -1118,7 +1227,7 @@ bool Minishogi::SEE(const Move move, Value threshold) const {
 		int attsrc = BitScan(srcboard);
 		srcboard ^= 1 << attsrc;
 		if (Movable(attsrc) & dstboard)
-			myChessValue[my_count++] = CHESS_SCORE[type_of(board[attsrc])];
+			myChessValue[my_count++] = PIECE_SCORE[type_of(board[attsrc])];
 	}
 	/************ End myChessValue ************/
 	if (my_count == 0) return false; // 在對方能吃到我的前提，我方都無法還擊
@@ -1127,7 +1236,7 @@ bool Minishogi::SEE(const Move move, Value threshold) const {
 	sort(opChessValue, opChessValue + op_count, [](const int &a, const int &b) { return a < b; });
 	sort(myChessValue, myChessValue + my_count, [](const int &a, const int &b) { return a < b; });
 
-	balance -= CHESS_SCORE[type_of(GetChessOn(srcIndex))];
+	balance -= PIECE_SCORE[type_of(GetChessOn(srcIndex))];
 	for (int op = 0, my = 0; my < my_count;) {
 		balance += opChessValue[op++];
 		if (op < op_count)

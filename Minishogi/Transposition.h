@@ -1,11 +1,11 @@
 #ifndef _TRANSPOSITION_H_
 #define _TRANSPOSITION_H_
 
+#include <assert.h>
+
 #include "Types.h"
 #include "Zobrist.h"
 #include "Observer.h"
-#include "Move.h"
-#include <assert.h>
 
 namespace Transposition {
 	struct TTentry {

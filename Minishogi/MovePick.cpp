@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <iostream>
 
+#include "Observer.h"
 #include "Minishogi.h"
 #include "Movepick.h"
 
@@ -102,10 +103,10 @@ void MovePicker::score(GenType type) {
 
 	for (auto& m : *this) {
 		const Square from = from_sq(m), to = to_sq(m);
-		const Chess from_pc = pos.GetChessOn(from), to_pc = pos.GetChessOn(to);
+		const Piece from_pc = pos.GetChessOn(from), to_pc = pos.GetChessOn(to);
 
 		if (type == CAPTURES) {
-			m.value = CHESS_SCORE[type_of(to_pc)]
+			m.value = PIECE_SCORE[type_of(to_pc)]
 				+ ((*captureHistory)[from_pc][to][type_of(to_pc)] >> 4);
 		}
 		else if (type == QUIETS) {
@@ -116,7 +117,7 @@ void MovePicker::score(GenType type) {
 		}
 		else { // Type == EVASIONS 
 			if (to_pc) {
-				m.value = CHESS_SCORE[type_of(to_pc)] - Value(type_of(from_pc));
+				m.value = PIECE_SCORE[type_of(to_pc)] - Value(type_of(from_pc));
 			}
 			else {
 				m.value = (*mainHistory)[pos.GetTurn()][from][to] - (1 << 28);
@@ -212,11 +213,11 @@ top:
 		/* fallthrough */
 
 	case QUIET:
-		if (!skipQuiets && select<Next>([&]() {return
+		if (!skipQuiets && select<Next>([&]() {
 #ifdef REFUTATION_DISABLE
-				true;
+			return true;
 #else
-				move != refutations[0] && move != refutations[1] && move != refutations[2];
+			return move != refutations[0] && move != refutations[1] && move != refutations[2];
 #endif
 		}))
 			return move;

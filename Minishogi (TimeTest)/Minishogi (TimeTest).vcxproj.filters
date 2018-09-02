@@ -1,80 +1,80 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="原始程式檔">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="標頭檔">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
     <Filter Include="資源檔">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="標頭檔">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="原始程式檔">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Minishogi.cpp">
+    <ClCompile Include="..\Minishogi\Minishogi.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="MovePick.cpp">
+    <ClCompile Include="..\Minishogi\Evaluate.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Observer.cpp">
+    <ClCompile Include="..\Minishogi\Zobrist.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Search.cpp">
+    <ClCompile Include="..\Minishogi\Transposition.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Thread.cpp">
+    <ClCompile Include="..\Minishogi\Thread.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Transposition.cpp">
+    <ClCompile Include="..\Minishogi\Search.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Zobrist.cpp">
+    <ClCompile Include="..\Minishogi\Observer.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="Evaluate.cpp">
+    <ClCompile Include="..\Minishogi\MovePick.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="MainMinishogi.cpp">
+    <ClCompile Include="MainTime.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Observer.h">
+    <ClInclude Include="..\Minishogi\Zobrist.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Zobrist.h">
+    <ClInclude Include="..\Minishogi\Types.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Minishogi.h">
+    <ClInclude Include="..\Minishogi\Transposition.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Bitboard.h">
+    <ClInclude Include="..\Minishogi\Thread.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="FileMapping.h">
+    <ClInclude Include="..\Minishogi\Search.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Types.h">
+    <ClInclude Include="..\Minishogi\Observer.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Transposition.h">
+    <ClInclude Include="..\Minishogi\MovePick.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="MovePick.h">
+    <ClInclude Include="..\Minishogi\Minishogi.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Search.h">
+    <ClInclude Include="..\Minishogi\FileMapping.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Thread.h">
+    <ClInclude Include="..\Minishogi\Evaluate.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Evaluate.h">
+    <ClInclude Include="..\Minishogi\Bitboard.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

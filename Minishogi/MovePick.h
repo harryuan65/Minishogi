@@ -3,7 +3,6 @@
 
 #include <array>
 #include "Minishogi.h"
-#include "Observer.h"
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value
@@ -68,7 +67,7 @@ typedef Stats<int16_t, 29952, PIECE_NB, BOARD_NB> PieceToHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see chessprogramming.wikispaces.com/Countermove+Heuristic
-/// [現在在"前一步的dstIndex"位置上的Chess][前一步的dstIndex]
+/// [現在在"前一步的dstIndex"位置上的Piece][前一步的dstIndex]
 typedef Stats<Move, 0, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 enum GenType {

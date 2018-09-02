@@ -1,8 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <atlstr.h>
 #include <fstream>
+#include <windows.h>
 
-#include "FileMapping.h"
 #include "Thread.h"
 #include "Minishogi.h"
 #include "Search.h"
@@ -23,7 +22,8 @@ int main() {
 	fstream file;
 	string playDetailStr = TIMETEST_PATH + GetCurrentTimeString() + "_TimeTest.txt";
 
-	SetConsoleTitle(L"Minishogi (TimeTest) - " AI_VERSION);
+	setlocale(LC_ALL, "");
+	SetConsoleTitle("Minishogi (TimeTest) - " AI_VERSION);
 	sync_cout << "AI Version : " << AI_VERSION << "\n" << Search::GetSettingStr() << sync_endl;
 
 	sync_cout << "輸入搜尋的深度" << sync_endl;
@@ -42,12 +42,11 @@ int main() {
 	sync_cout << Search::GetSettingStr() << "確定要開始?" << sync_endl;
 	system("pause");
 
-	CreateDirectory(CA2W(TIMETEST_PATH), NULL);
+	CreateDirectory(TIMETEST_PATH, NULL);
 	file.open(playDetailStr, ios::app);
 	if (file) file << "AI Version : " << AI_VERSION << "\n" << Search::GetSettingStr() << endl;
 	file.close();
 
-	Evaluate::Initialize();
 	Zobrist::Initialize();
 	Transposition::Initialize();
 	Observer::GameStart();

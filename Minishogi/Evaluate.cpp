@@ -1,213 +1,128 @@
+#include <iostream>
 #include <fstream>
 #define NOMINMAX
-#include <atlstr.h>
+#include <windows.h>
 
 #include "Evaluate.h"
 #include "Thread.h"
+#include "Observer.h"
+using namespace std;
 
 namespace Evaluate {
 	Evaluater evaluater;
 
-	void Evaluater::Init() {
-		for (int i = 0; i < BOARD_NB; i++) {
-			for (int j = 0; j < BOARD_NB; j++) {
-				kk[i][j][0] = rand() % 100;
-				kk[i][j][1] = rand() % 100;
-			}
-		}
-		for (int i = 0; i < BOARD_NB; i++) {
-			for (int j = 0; j < BOARD_NB; j++) {
-				for (int k = 0; k < BONA_PIECE_NB; k++) {
-					kkp[i][j][k][0] = rand() % 100;
-					kkp[i][j][k][1] = rand() % 100;
-				}
-			}
-		}
-		for (int i = 0; i < BOARD_NB; i++) {
-			for (int j = 0; j < BONA_PIECE_NB; j++) {
-				for (int k = 0; k < j; k++) {
-					kpp[i][j][k][0] = rand() % 100;
-					kpp[i][j][k][1] = rand() % 100;
-					kpp[i][k][j][0] = kpp[i][j][k][0];
-					kpp[i][k][j][1] = kpp[i][j][k][1];
-				}
-			}
-		}
-	}
-
-	void Evaluater::Load(string path) {
-		ifstream ifsKK(EVAL_PATH KK_FILE, ios::binary);
-		ifstream ifsKKP(EVAL_PATH KKP_FILE, ios::binary);
-		ifstream ifsKPP(EVAL_PATH KPP_FILE, ios::binary);
-		if (!ifsKK || !ifsKKP || !ifsKPP) {
+	bool Evaluater::Load(std::string kkptName) {
+		ifstream ifKK(KPPT_DIRPATH + kkptName + "//" + KK_FILENAME, ios::binary);
+		ifstream ifKKP(KPPT_DIRPATH + kkptName + "//" + KKP_FILENAME, ios::binary);
+		ifstream ifKPP(KPPT_DIRPATH + kkptName + "//" + KPP_FILENAME, ios::binary);
+		if (!ifKK || !ifKKP || !ifKPP) {
 			cout << "Error : Evaluater load failed." << endl;
-			return;
+			Observer::LearnLog << Observer::GetTimeStamp() << " Load KKPT from " << + KPPT_DIRPATH << kkptName << " failed.\n";
+			return false;
 		}
 
-		ifsKK.read(reinterpret_cast<char*>(kk), sizeof(kk));
-		ifsKKP.read(reinterpret_cast<char*>(kkp), sizeof(kkp));
-		ifsKPP.read(reinterpret_cast<char*>(kpp), sizeof(kpp));
+		ifKK.read(reinterpret_cast<char*>(kk), sizeof(kk));
+		ifKKP.read(reinterpret_cast<char*>(kkp), sizeof(kkp));
+		ifKPP.read(reinterpret_cast<char*>(kpp), sizeof(kpp));
+		cout << "Evaluater load successed." << endl;
+		Observer::LearnLog << Observer::GetTimeStamp() << " Load KKPT from " << KPPT_DIRPATH << kkptName << " success.\n";
+		CheckNonZero();
+		return true;
 	}
 
-	void Evaluater::Save(string path) {
-		CreateDirectory(CA2W(EVAL_PATH), NULL);
+	bool Evaluater::Save(std::string kkptName) {
+		CreateDirectory((KPPT_DIRPATH + kkptName).c_str(), NULL);
 
-		ofstream ofsKK(EVAL_PATH KK_FILE, ios::binary);
-		ofstream ofsKKP(EVAL_PATH KKP_FILE, ios::binary);
-		ofstream ofsKPP(EVAL_PATH KPP_FILE, ios::binary);
+		ofstream ofKK(KPPT_DIRPATH + kkptName + "//" + KK_FILENAME, ios::binary);
+		ofstream ofKKP(KPPT_DIRPATH + kkptName + "//" + KKP_FILENAME, ios::binary);
+		ofstream ofKPP(KPPT_DIRPATH + kkptName + "//" + KPP_FILENAME, ios::binary);
 
-		if (!ofsKK.write(reinterpret_cast<char*>(kk), sizeof(kk)) ||
-			!ofsKKP.write(reinterpret_cast<char*>(kkp), sizeof(kkp)) ||
-			!ofsKPP.write(reinterpret_cast<char*>(kpp), sizeof(kpp)))
-			cout << "Error : Evaluater save failed." << endl;
-		else
+		if (!ofKK.write(reinterpret_cast<char*>(kk), sizeof(kk)) ||
+			!ofKKP.write(reinterpret_cast<char*>(kkp), sizeof(kkp)) ||
+			!ofKPP.write(reinterpret_cast<char*>(kpp), sizeof(kpp))) {
+			cout << "Error : Evaluater save failed." << endl; 
+			Observer::LearnLog << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << kkptName << " failed.\n";
+			return false;
+		}
+		else {
 			cout << "Evaluater save successed." << endl;
+			Observer::LearnLog << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << kkptName << " success.\n";
+			return true;
+		}
 	}
 
 	void Evaluater::Clean() {
 		memset(this, 0, sizeof(Evaluater));
+		cout << "Evaluater Clean." << endl;
+		Observer::LearnLog << Observer::GetTimeStamp() << " Clean KKPT.\n";
+	}
+
+	void Evaluater::Blend(Evaluater &e, float ratio) {
+		float ratio2 = 1 - ratio;
+		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1)
+			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2)
+				for (int i = 0; i < 2; i++)
+					kk[k1][k2][i] = kk[k1][k2][i] * ratio + e.kk[k1][k2][i] * ratio2;
+
+		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1)
+			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2)
+				for (BonaPiece p = BONA_PIECE_ZERO; p < BONA_PIECE_NB; ++p)
+					for (int i = 0; i < 2; i++)
+						kkp[k1][k2][p][i] = kkp[k1][k2][p][i] * ratio + e.kkp[k1][k2][p][i] * ratio2;
+
+		for (Square k = SQUARE_ZERO; k < BOARD_NB; ++k)
+			for (BonaPiece p1 = BONA_PIECE_ZERO; p1 < BONA_PIECE_NB; ++p1)
+				for (BonaPiece p2 = BONA_PIECE_ZERO; p2 < BONA_PIECE_NB; ++p2)
+					for (int i = 0; i < 2; i++)
+						kpp[k][p1][p2][i] = kpp[k][p1][p2][i] * ratio + e.kpp[k][p1][p2][i] * ratio2;
+	}
+
+	void Evaluater::CheckNonZero() const {
+		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1) {
+			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2) {
+				if (kk[k1][k2][0] != 0 || kk[k1][k2][1] != 0) {
+					k1 = BOARD_NB; k2 = BOARD_NB;
+					cout << "KK has non zero value.\n";
+				}
+			}
+		}
+
+		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1) {
+			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2) {
+				for (BonaPiece p = BONA_PIECE_ZERO; p < BONA_PIECE_NB; ++p) {
+					if (kkp[k1][k2][p][0] != 0 || kkp[k1][k2][p][1] != 0) {
+						k1 = BOARD_NB; k2 = BOARD_NB; p = BONA_PIECE_NB;
+						cout << "KKP has non zero value.\n";
+					}
+				}
+			}
+		}
+
+		for (Square k = SQUARE_ZERO; k < BOARD_NB; ++k) {
+			for (BonaPiece p1 = BONA_PIECE_ZERO; p1 < BONA_PIECE_NB; ++p1) {
+				for (BonaPiece p2 = BONA_PIECE_ZERO; p2 < BONA_PIECE_NB; ++p2) {
+					if (kpp[k][p1][p2][0] != 0 || kpp[k][p1][p2][1] != 0) {
+						k = BOARD_NB; p1 = BONA_PIECE_NB; p2 = BONA_PIECE_NB;
+						cout << "KPP has non zero value.\n";
+					}
+				}
+			}
+		}
 	}
 
 	Value EvalSum::Sum(const Color c) const {
-		if (meterial == VALUE_NONE || pin == VALUE_NONE)
-			return VALUE_NONE;
-		// [0](先手玉) + [1](後手玉) + [2](KK+KKP) 
-		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) + meterial + pin;
-		const Value scoreTurn = (Value)(pos[0][1] + pos[1][1] + pos[2][1]);
-
-		return (c == WHITE ? scoreBoard : -scoreBoard) + scoreTurn;
-	}
-
-	Value EvalSum::PosSum(const Color c) const {
-		if (meterial == VALUE_NONE || pin == VALUE_NONE)
-			return VALUE_NONE;
-		// [0](先手玉) + [1](後手玉) + [2](KK+KKP) 
-		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) + meterial + pin;
-		const Value scoreTurn = (Value)(pos[0][1] + pos[1][1] + pos[2][1]);
+		if (meterial == VALUE_NULL || pin == VALUE_NULL)
+			return VALUE_NULL;
+		// [0](先手KPP) + [1](後手KPP) + [2](KK+KKP) 
+		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + meterial + pin;
+		const Value scoreTurn = (Value)(pos[0][1] + pos[1][1] + pos[2][1]) / FV_SCALE;
 
 		return (c == WHITE ? scoreBoard : -scoreBoard) + scoreTurn;
 	}
 
 	void EvalSum::Clean() {
 		memset(this, 0, sizeof(EvalSum));
-		meterial = VALUE_NONE;
-		pin = VALUE_NONE;
-	}
-
-	void Initialize() {
-		evaluater.Init();
+		meterial = VALUE_NULL;
+		pin = VALUE_NULL;
 	}
 }
-
-/*void Evaluate::CalcAllPin(Minishogi &b) {
-	Bitboard pinner, snipper, totalOccupied = b.GetOccupied(WHITE) | b.GetOccupied(BLACK);
-	Square sq_wk = BitScan(b.GetBitboard(W_KING));
-	Square sq_bk = BitScan(b.GetBitboard(B_KING));
-	EvalSum* sum = b.GetEvalSum();
-	sum->pin = VALUE_ZERO;
-
-	snipper = (b.GetBitboard(B_ROOK) | b.GetBitboard(B_PRO_ROOK) & RookMask[sq_wk]) |
-		(b.GetBitboard(B_BISHOP) | b.GetBitboard(B_PRO_BISHOP) & BishopMask[sq_wk]);
-
-	while (snipper) {
-		int attsrc = BitScan(snipper);
-		snipper ^= 1 << attsrc;
-		pinner = BetweenBB[sq_wk][attsrc] & totalOccupied;
-		if (pinner && !more_than_one(pinner) && pinner & b.GetOccupied(WHITE)) {
-			sum->pin += PIN_SCORE[b.GetBoard(BitScan(pinner))];
-		}
-	}
-
-	snipper = (b.GetBitboard(W_ROOK) | b.GetBitboard(W_PRO_ROOK) & RookMask[sq_bk]) |
-		(b.GetBitboard(W_BISHOP) | b.GetBitboard(W_PRO_BISHOP) & BishopMask[sq_bk]);
-
-	while (snipper) {
-		int attsrc = BitScan(snipper);
-		snipper ^= 1 << attsrc;
-		pinner = BetweenBB[sq_bk][attsrc] & totalOccupied;
-		if (pinner && !more_than_one(pinner) && pinner & b.GetOccupied(BLACK)) {
-			sum->pin += PIN_SCORE[b.GetBoard(BitScan(pinner))];
-		}
-	}
-}
-
-void Evaluate::CalcAllPos(Minishogi &b) {
-	const auto kk = b.GetThread()->evaluater.Kk;
-	const auto kkp = b.GetThread()->evaluater.Kkp;
-	const auto kpp = b.GetThread()->evaluater.Kpp;
-	const auto pieceListW = b.GetPieceList(WHITE);
-	const auto pieceListB = b.GetPieceList(BLACK);
-
-	Square sq_wk = BitScan(b.GetBitboard(W_KING));
-	Square sq_bk = BitScan(b.GetBitboard(B_KING)), sq_bki = Square(BOARD_NB - sq_bk);
-	EvalSum* sum = b.GetEvalSum();
-
-	sum->pos[0][0] = 0;
-	sum->pos[0][1] = 0;
-	sum->pos[1][0] = 0;
-	sum->pos[1][1] = 0;
-	sum->pos[2] = kk[sq_wk][sq_bk];
-	for (int i = 0; i < KING_INDEX; i++) {
-		int w0 = pieceListW[i];
-		int b0 = pieceListB[i];
-		sum->pos[0] += kkp[sq_wk][sq_bk][w0];
-		for (int j = 0; j < i; j++) {
-			sum->pos[0] += kpp[sq_wk][w0][pieceListW[j]];
-			sum->pos[1] += kpp[sq_bki][b0][pieceListB[j]];
-		}
-	}
-}
-
-void CalcDiffPos(Minishogi &b) {
-	const auto kk = b.GetThread()->evaluater.Kk;
-	const auto kkp = b.GetThread()->evaluater.Kkp;
-	const auto kpp = b.GetThread()->evaluater.Kpp;
-	const auto pieceListW = b.GetPieceList(WHITE);
-	const auto pieceListB = b.GetPieceList(BLACK);
-
-	Square sq_wk = BitScan(b.GetBitboard(W_KING));
-	Square sq_bk = BitScan(b.GetBitboard(B_KING)), sq_bki = Square(BOARD_NB - sq_bk);
-	EvalSum* sum = b.GetEvalSum();
-
-	if (pc == W_KING) {
-		sum->pos[0][0] = 0;
-		sum->pos[0][1] = 0;
-		sum->pos[2] = kk[sq_wk][sq_bk];
-		for (int i = 0; i < KING_INDEX; i++) {
-			int w0 = pieceListW[i];
-			sum->pos[2] += kkp[sq_wk][sq_bk][w0];
-			for (int j = 0; j < i; j++) {
-				sum->pos[0] += kpp[sq_wk][w0][pieceListW[j]];
-			}
-		}
-		if (capture) {
-		}
-	}
-	else if (pc == B_KING) {
-		sum->pos[1][0] = 0;
-		sum->pos[1][1] = 0;
-		sum->pos[2] = kk[sq_wk][sq_bk];
-		for (int i = 0; i < KING_INDEX; i++) {
-			int w0 = pieceListW[i];
-			int w1 = pieceListB[i];
-			sum->pos[2] += kkp[sq_wk][sq_bk][w0];
-			for (int j = 0; j < i; j++) {
-				sum->pos[1] += kpp[sq_bki][w1][pieceListW[j]];
-			}
-		}
-		if (capture) {
-			int i;
-			for (i = 0; i < dirty; ++i) {
-				sum->pos[0] -= kpp[sq_wk][k0][list_fb[i]];
-				sum->pos[0] += kpp[sq_wk][k2][list_fb[i]];
-			}
-			for (++i; i < PIECE_NO_KING; ++i) {
-				sum->pos[0] -= kpp[sq_wk][k0][list_fb[i]];
-				sum->pos[0] += kpp[sq_wk][k2][list_fb[i]];
-			}
-		}
-	}
-	else {
-
-	}
-}*/

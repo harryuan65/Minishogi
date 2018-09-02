@@ -1,7 +1,9 @@
 #include <assert.h>
 #include <iostream>
 #include <windows.h>
+
 #include "Thread.h"
+#include "Observer.h"
 
 Thread::Thread(const Minishogi &m, Color c) : us(c) {
 	rootPos.Set(m, this);
@@ -26,7 +28,7 @@ Thread::~Thread() {
 
 void Thread::Start() {
 	if (!stdThread)
-		stdThread = new thread(&Thread::IdleLoop, this);
+		stdThread = new std::thread(&Thread::IdleLoop, this);
 }
 
 bool Thread::CheckStop(Move em) {
@@ -63,9 +65,9 @@ RootMove Thread::GetBestMove() {
 	return bestMove;
 }
 
-void Thread::Dump(ostream &os) {
-	os << log << endl;
-	log.clear();
+void Thread::Dump(std::ostream &os) {
+	os << resultStr << std::endl;
+	resultStr.clear();
 }
 
 void Thread::IdleLoop() {

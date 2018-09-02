@@ -1,5 +1,8 @@
+#ifndef _THREAD_H_
+#define _THREAD_H_
+
 /*
-* 正常流程 : 
+* 正常流程 :
 * GameLoop : Set enemy move to Thread 0
 * GameLoop : Waiting move from Thread 0
 * Thread 0 : Stop Presearch
@@ -11,21 +14,16 @@
 * 回到第一步
 */
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
-
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <iomanip>
 #include <vector>
-#include <iostream>
 
 #include "Types.h"
 #include "Movepick.h"
 #include "Minishogi.h"
-#include "Observer.h"
-using namespace Evaluate;
 
 typedef std::mutex Mutex;
 typedef std::condition_variable ConditionVariable;
@@ -36,18 +34,18 @@ constexpr int CounterMovePruneThreshold = 0;
 struct RootMove {
 	Move enemyMove = MOVE_ILLEGAL;
 	Move pv[MAX_PLY + 1];
-	Value value = VALUE_NONE;
+	Value value = VALUE_NULL;
 	int depth = 0;
-	unsigned int nodes = (1 << 31);
+	uint64_t nodes = (1 << 31);
 	float effectBranch = 0;
 
-	string PV() {
-		stringstream ss;
-		ss << setiosflags(ios::fixed) << setprecision(2);
-		ss << "Depth " << setw(2) << depth << ", ";
-		ss << "Value " << setw(6) << value << ", ";
-		ss << "Nodes " << setw(8) << nodes << ", ";
-		ss << "Effect Branch " << setw(4) << effectBranch << ",\nPV : ";
+	std::string PV() {
+		std::stringstream ss;
+		ss << std::setiosflags(std::ios::fixed) << std::setprecision(2);
+		ss << "Depth " << std::setw(2) << depth << ", ";
+		ss << "Value " << std::setw(6) << value << ", ";
+		ss << "Nodes " << std::setw(8) << nodes << ", ";
+		ss << "Effect Branch " << std::setw(4) << effectBranch << ",\nPV : ";
 		for (int i = 0; pv[i] != MOVE_NULL; i++)
 			ss << pv[i] << " ";
 		return ss.str();
@@ -70,7 +68,6 @@ struct Stack {
 
 class Thread {
 public:
-	//Evaluater *evaluater;
 	ButterflyHistory mainHistory;
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
@@ -82,41 +79,66 @@ public:
 	~Thread();
 	void Start();
 
-	void IDAS(RootMove &rm, int depth, bool isCompleteSearch);
+	void Search(RootMove &rm, int depth);
+	// isFullSearch : return Correct value with fix depth
+	void IDAS(RootMove &rm, int depth, bool isFullSearch);
 	void PreIDAS();
 
 	bool IsStop();
-	uint64_t GetSearchDuration();
+	bool IsExit();
 	bool CheckStop(Move em);
 	void SetEnemyMove(Move m);
+	uint64_t GetSearchDuration();
 	RootMove GetBestMove();
-	void Dump(ostream &os);
+	const Minishogi& GetMinishogi() const;
+	Value GetEvaluate() {
+		return rootPos.GetEvaluate();
+	}
 
+	void DoMove(Move move);
+	void UndoMove();
+	void Dump(std::ostream &os);
 	void IdleLoop();
 
 private:
 	Mutex mutex;
 	ConditionVariable cv;
-	thread *stdThread;
+	std::thread *stdThread;
 	Stack stack[MAX_PLY + 7], *ss;
 
 	Color us;
 	Minishogi rootPos;
 	RootMove bestMove;
-	vector<RootMove> rootMoves;
+	std::vector<RootMove> rootMoves;
 	int beginTime = 0;
 	bool isExit = false;
 	bool finishDepth = false;
 
-	string log = "";
+	std::string resultStr;
 };
 
 inline bool Thread::IsStop() { 
 	return isStop || isReject || isExit; 
 }
 
+inline bool Thread::IsExit() {
+	return isExit;
+}
+
 inline uint64_t Thread::GetSearchDuration() { 
 	return beginTime ? clock() - beginTime : 0; 
+}
+
+inline const Minishogi& Thread::GetMinishogi() const {
+	return rootPos;
+}
+
+inline void Thread::DoMove(Move move) {
+	rootPos.DoMove(move);
+}
+
+inline void Thread::UndoMove() {
+	rootPos.UndoMove();
 }
 
 #endif

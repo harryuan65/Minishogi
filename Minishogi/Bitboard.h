@@ -4,7 +4,7 @@
 
 typedef unsigned __int32 Bitboard;
 
-/*    Chess Move Area    */
+/*    Piece Move Area    */
 const Bitboard Movement[][BOARD_NB] = {
 	/* 0 */{ 0 },
 	/* 1 PAWN */

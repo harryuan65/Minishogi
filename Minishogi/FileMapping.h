@@ -29,7 +29,7 @@ public:
 	// INPUT name : name of mapping object
 	void Open(const std::string name) {
 		Close();
-		std::wstring szName(name.begin(), name.end());
+		std::string szName(name.begin(), name.end());
 		hMapFile = CreateFileMapping(
 			INVALID_HANDLE_VALUE,    // use paging file
 			NULL,                    // default security
