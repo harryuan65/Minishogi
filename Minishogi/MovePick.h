@@ -89,7 +89,7 @@ public:
 	MovePicker(MovePicker&) = delete;
 	MovePicker& operator=(const MovePicker&) = delete;
 	//MovePicker(Minishogi&, Move, Value, const CapturePieceToHistory*);
-	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*,  const CapturePieceToHistory*, Square);
+	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Square);
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Move, Move*);
 	Move GetNextMove(bool skipQuiets = false);
 

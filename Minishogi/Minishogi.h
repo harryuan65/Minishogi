@@ -56,10 +56,11 @@ public:
 
 	Thread* GetThread() const;
 	Color GetTurn() const;
-	int GetStep() const;
+	int GetPly() const;
 	Value GetEvaluate();
 	Key GetKey() const;
 	Key GetKey(int p) const;
+	Move GetPrevMove() const;
 	Piece GetChessOn(int sq) const;
 	Piece GetCapture() const;
 	int GetBoard(Square sq) const;
@@ -95,16 +96,16 @@ private:
 	// BonaPiece -> Piece no.
 	BonaPieceIndex bonaIndexList[BONA_PIECE_NB];
 
-	Move moveHist[MAX_HISTORY_PLY - 1];
-	Piece captureHist[MAX_HISTORY_PLY - 1];
+	Move moveHist[MAX_PLY - 1];
+	Piece captureHist[MAX_PLY - 1];
 	// 移動與吃子的BonaPiece變化
 	// 0 MoverDiff 1 CaptureDiff
-	BonaPieceDiff bonaPieceDiffHist[MAX_HISTORY_PLY - 1][2];
+	BonaPieceDiff bonaPieceDiffHist[MAX_PLY - 1][2];
 
-	Evaluate::EvalSum evalHist[MAX_HISTORY_PLY];
-	Key keyHist[MAX_HISTORY_PLY];
-	Key key2Hist[MAX_HISTORY_PLY];
-	Bitboard checker_bb[MAX_HISTORY_PLY];
+	Evaluate::EvalSum evalHist[MAX_PLY];
+	Key keyHist[MAX_PLY];
+	Key key2Hist[MAX_PLY];
+	Bitboard checker_bb[MAX_PLY];
 };
 
 /// 現在是否被將軍
@@ -125,12 +126,12 @@ inline Color Minishogi::GetTurn() const {
 	return turn; 
 }
 
-inline int Minishogi::GetStep() const { 
+inline int Minishogi::GetPly() const { 
 	return ply;
  }
 
 inline Value Minishogi::GetEvaluate() { 
-	if (evalHist[ply].pin == VALUE_NULL) {
+	if (evalHist[ply].pin == VALUE_NONE) {
 		CalcAllPin();
 		CalcDiffPos();
 	}
@@ -147,6 +148,10 @@ inline Key Minishogi::GetKey() const {
 
 inline Key Minishogi::GetKey(int p) const { 
 	return (turn ^ (p % 2 == 0)) ? key2Hist[p] : keyHist[p];
+}
+
+inline Move Minishogi::GetPrevMove() const {
+	return ply > 0 ? moveHist[ply - 1] : MOVE_NULL;
 }
 
 inline Piece Minishogi::GetChessOn(int sq) const { 

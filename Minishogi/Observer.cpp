@@ -24,9 +24,8 @@ namespace Observer {
 
 	// ³]©w
 	int depth = 10;
+	int ttBit = 27;
 	int limitTime = 0;
 	bool isSaveRecord = true;
 	std::string kpptName = "";
-
-	std::stringstream LearnLog;
 }

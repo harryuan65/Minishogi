@@ -2,16 +2,14 @@
 #include <fstream>
 #include <windows.h>
 
-#include "Search.h"
 #include "Thread.h"
 #include "MovePick.h"
 #include "Transposition.h"
 #include "Observer.h"
-using namespace Transposition;
 
 namespace {
 	Value NegaScout(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isResearch);
-	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isTTuse);
+	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth);
 
 	void UpdatePv(Move* pv, Move move, Move* childPv);
 	void UpdateAttackHeuristic(const Minishogi &minishogi, Move move, Move *attackMove, int attackCnt, int bouns);
@@ -28,10 +26,7 @@ void Thread::Search(RootMove &rm, int depth) {
 	ss->pv[0] = MOVE_NULL;
 	ss->ply = 0;
 	(ss - 1)->nmp_flag = (ss - 1)->lmr_flag = false;
-	if (depth == 0)
-		rm.value = QuietSearch(true, rootPos, ss, MOVE_ILLEGAL, -VALUE_INFINITE, VALUE_INFINITE, 0, false);
-	else
-		rm.value = NegaScout(true, rootPos, ss, MOVE_ILLEGAL, -VALUE_INFINITE, VALUE_INFINITE, depth, false);
+	rm.value = NegaScout(true, rootPos, ss, MOVE_NONE, -VALUE_INFINITE, VALUE_INFINITE, depth, false);
 	rm.depth = depth;
 	do {
 		rm.pv[i] = ss->pv[i];
@@ -172,12 +167,19 @@ void Thread::PreIDAS() {
 #else
 	isTerminal = true;
 #endif
-	while (isTerminal && !CheckStop(MOVE_ILLEGAL))
+	while (isTerminal && !CheckStop(MOVE_NONE))
 		Sleep(10);
 }
 
 namespace {
 	Value NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isResearch) {
+		if (depth < 1)
+#ifndef QUIES_DISABLE
+			return QuietSearch(pvNode, pos, ss, rootMove, alpha, beta, 0);
+#else
+			return pos.GetEvaluate();
+#endif
+
 		Observer::data[Observer::DataType::mainNode]++;
 		Observer::data[Observer::DataType::researchNode] += isResearch;
 
@@ -187,7 +189,6 @@ namespace {
 		TTentry *tte;
 		Square prevSq;
 		bool ttHit;
-		//const bool rootNode = ss->ply == 0;
 
 		if (thisThread->CheckStop(rootMove))
 			return VALUE_ZERO;
@@ -199,12 +200,12 @@ namespace {
 		ss->lmr_flag = (ss - 1)->lmr_flag;
 		ss->currentMove = bestMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
-		(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
+		//(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
 		prevSq = to_sq((ss - 1)->currentMove);
 
 		// Transposition table lookup
-		tte = Probe(pos.GetKey(), pos.GetTurn(), ttHit);
-		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NULL;
+		tte = thisThread->tt.Probe(pos.GetKey(), pos.GetTurn(), ttHit);
+		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NONE;
 		ttMove = ttHit ? tte->move : MOVE_NULL;
 
 		// At non-PV nodes we check for an early TT cutoff
@@ -212,9 +213,8 @@ namespace {
 			ttHit &&
 			ttMove &&
 			tte->depth >= depth &&
-			ttValue != VALUE_NULL &&
-			(ttValue >= beta ? (tte->bound & TTentry::FAILHIGH) :
-			(tte->bound & TTentry::UNKNOWN)) &&
+			ttValue != VALUE_NONE &&
+		   (ttValue >= beta ? (tte->bound & TTentry::FAILHIGH) : (tte->bound & TTentry::UNKNOWN)) &&
 			pos.PseudoLegal(ttMove)) {
 			if (ttValue >= beta) {
 				if (!pos.GetChessOn(to_sq(ttMove)))
@@ -228,14 +228,6 @@ namespace {
 				UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(ttMove)), to_sq(ttMove), penalty);
 			}
 			return ttValue;
-		}
-
-		if (depth < 1) {
-#ifndef QUIES_DISABLE
-			return QuietSearch(pvNode, pos, ss, rootMove, alpha, beta, 0, true);
-#else
-			return pos.GetEvaluate();
-#endif
 		}
 
 #ifndef NULLMOVE_DISABLE
@@ -260,13 +252,15 @@ namespace {
 					return QuietSearch(pvNode, pos, ss, rootMove, alpha, beta, 0);
 			}
 		}*/
-		//Value nullValue = VALUE_NULL;
+		//Value nullValue = VALUE_NONE;
 		if (!pvNode &&
 			depth > 3 &&
 			!(ss - 1)->nmp_flag &&
 			!pos.IsInChecked()) {
 			int R = (depth <= 6 || (depth <= 8 && abs(pos.GetEvaluate()) < 6000)) ? 1 : 2;
 
+			ss->currentMove = MOVE_NULL;
+			ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
 			ss->nmp_flag = true;
 			pos.DoNullMove();
 			Value nullValue = -NegaScout(false, pos, ss + 1, rootMove, -beta, -beta + 1, depth - R - 1, isResearch);
@@ -286,14 +280,14 @@ namespace {
 			}
 			// Debug : null move zugzwangs
 			/*else {
-				nullValue = VALUE_NULL;
+				nullValue = VALUE_NONE;
 			}*/
 		}
 #endif
 
 		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
 		Move capturesSearched[32], quietsSearched[64], countermove = MOVE_NULL;//thisThread->counterMoves[pos.GetChessOn(prevSq)][prevSq];
-		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
+		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, nullptr);
 		bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 		int captureCount = 0, quietCount = 0;
 
@@ -305,6 +299,7 @@ namespace {
 			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 
 			pos.DoMove(move);
+			// 千日手判斷
 			if ((pos.GetTurn() == BLACK || pos.IsInChecked()) && pos.IsSennichite()) {
 				pos.UndoMove();
 				continue;
@@ -330,11 +325,11 @@ namespace {
 				depth >= 3 &&
 				bestValue > VALUE_MATED_IN_MAX_PLY &&
 				ss->moveCount >= 5 &&
-				!(ss - 1)->lmr_flag &&
-				!isCapture &&
+			  !(ss - 1)->lmr_flag &&
+			   !isCapture &&
 				from_sq(move) < BOARD_NB &&
-				!isInChecked &&
-				!pos.IsInChecked()) {
+			   !isInChecked &&
+			   !pos.IsInChecked()) {
 				ss->lmr_flag = true;
 				R = 1;
 			}
@@ -406,7 +401,7 @@ namespace {
 		}
 
 		// Debug : null move zugzwangs
-		/*if (value < beta && nullValue != VALUE_NULL && nullValue > value)
+		/*if (value < beta && nullValue != VALUE_NONE && nullValue > value)
 			Observer::data[Observer::zugzwangsNum]++;*/
 
 			// Debug : LMR test
@@ -449,72 +444,79 @@ namespace {
 		return bestValue;
 	}
 
-	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth, bool isTTuse) {
+	Value QuietSearch(bool pvNode, Minishogi& pos, Stack *ss, Move rootMove, Value alpha, Value beta, int depth) {
 		Observer::data[Observer::DataType::quiesNode]++;
 
 		const bool isInChecked = pos.IsInChecked();
 		const Key key = pos.GetKey();
 		Thread *thisThread = pos.GetThread();
 		Value bestValue, ttValue, oldAlpha;
-		Move ttMove, move, bestMove = MOVE_NULL;
+		Move ttMove, move, bestMove;
 		TTentry *tte;
-		bool ttHit;
+		bool ttHit, ttMoveLegal;
 		//int ttDepth = isInChecked || depth >= 0 ? 0 : -1;
 
 		if (thisThread->CheckStop(rootMove))
 			return VALUE_ZERO;
 
-		if (pvNode)
+		if (pvNode) {
+			ss->pv[0] = MOVE_NULL;
 			oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-
-		ss->pv[0] = MOVE_NULL;
-		(ss + 1)->ply = ss->ply + 1;
-		bestValue = -VALUE_INFINITE;
-		ss->moveCount = 0;
-
-		tte = Probe(key, pos.GetTurn(), ttHit);
-		if (!isTTuse)
-			ttHit = false;
-		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NULL;
-		ttMove = ttHit ? tte->move : MOVE_NULL;
-		if (ttHit && ttValue != VALUE_NULL && ttMove && !pos.PseudoLegal(ttMove)) {
-			ttValue = VALUE_NULL;
-			ttMove = MOVE_NULL;
 		}
+
+		ss->moveCount = 0;
+		(ss + 1)->ply = ss->ply + 1;
+		ss->currentMove = bestMove = MOVE_NULL;
+		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
+
+		tte = thisThread->tt.Probe(key, pos.GetTurn(), ttHit);
+		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NONE;
+		ttMove = ttHit ? tte->move : MOVE_NULL;
+		ttMoveLegal = ttHit ? pos.PseudoLegal(ttMove) : true;
 
 		if (!pvNode &&
 			ttHit &&
+		  (!ttMove || ttMoveLegal) &&
 			tte->depth >= depth &&
-			ttValue != VALUE_NULL &&
-			(ttValue >= beta ? (tte->bound & TTentry::FAILHIGH) : (tte->bound & TTentry::UNKNOWN))) {
+			ttValue != VALUE_NONE &&
+		   (ttValue >= beta ? (tte->bound & TTentry::FAILHIGH) : (tte->bound & TTentry::UNKNOWN))) {
 			return ttValue;
 		}
 
-		if (!isInChecked) {
+		if (isInChecked) {
+			bestValue = -VALUE_INFINITE;
+		}
+		else {
 			bestValue = pos.GetEvaluate();
 
-			if (ttHit && ttValue != VALUE_NULL && 
-			   (tte->bound & (ttValue > bestValue ? TTentry::FAILHIGH : TTentry::UNKNOWN))) {
+			// Can ttValue be used as a better position evaluation?
+			if (ttHit &&
+			  (!ttMove || ttMoveLegal) &&
+				ttValue != VALUE_NONE && 
+			   (ttValue > bestValue ? (tte->bound & TTentry::FAILHIGH) : (tte->bound & TTentry::UNKNOWN))) {
 				bestValue = ttValue;
 			}
 
+			// Stand pat. Return immediately if static value is at least beta
 			if (bestValue >= beta) {
-				if (!ttHit)
-					tte->save(key, 0, value_to_tt(bestValue, ss->ply), MOVE_NULL, TTentry::FAILHIGH);
+				//if (!ttHit)
+				//	tte->save(key, DEPTH_NULL, value_to_tt(bestValue, ss->ply), MOVE_NULL, TTentry::FAILHIGH);
 				return bestValue;
 			}
 
-			if (bestValue > alpha)
+			if (pvNode && bestValue > alpha)
 				alpha = bestValue;
 		}
 
-		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, to_sq((ss - 1)->currentMove));
+		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
+		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, to_sq((ss - 1)->currentMove));
 
 		while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 			ss->currentMove = move;
+			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 
 			pos.DoMove(move);
-			Value value = -QuietSearch(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isTTuse);
+			Value value = -QuietSearch(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1);
 			pos.UndoMove();
 
 			if (value > bestValue) {
@@ -535,7 +537,7 @@ namespace {
 		}
 		if (isInChecked && bestValue == -VALUE_INFINITE)
 			return mated_in(ss->ply);
-
+		
 		tte->save(key, depth, value_to_tt(bestValue, ss->ply), bestMove, pvNode && bestValue > oldAlpha ? TTentry::EXACT : TTentry::UNKNOWN);
 		assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 		return bestValue;
@@ -596,7 +598,7 @@ namespace {
 	// "plies to mate from the current position". Non-mate scores are unchanged.
 	// The function is called before storing a value in the transposition table.
 	inline Value value_to_tt(Value v, int ply) {
-		assert(v != VALUE_NULL);
+		assert(v != VALUE_NONE);
 		return  v >= VALUE_MATE_IN_MAX_PLY ? v + ply
 			: v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
 	}
@@ -606,7 +608,7 @@ namespace {
 	// from the transposition table (which refers to the plies to mate/be mated
 	// from current position) to "plies to mate/be mated from the root".
 	inline Value value_from_tt(Value v, int ply) {
-		return  v == VALUE_NULL ? VALUE_NULL
+		return  v == VALUE_NONE ? VALUE_NONE
 			: v >= VALUE_MATE_IN_MAX_PLY ? v - ply
 			: v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
 	}
@@ -614,76 +616,4 @@ namespace {
 	inline int stat_bonus(int d) {
 		return d > 17 ? 0 : 32 * d * d + 64 * d - 64;
 	}
-}
-
-
-std::string Search::GetSettingStr() {
-	std::stringstream ss;
-	ss << "Main Depth          : " << Observer::depth << "\n";
-	ss << "Time Limit          : " << (Observer::limitTime ? std::to_string(Observer::limitTime) + " ms" : "Disable") << "\n";
-#ifndef KPPT_DISABLE
-	if (Observer::kpptName.length() != 0)
-		ss << "KKP Table           : " << Observer::kpptName << "\n";
-	else
-		ss << "KKP Table           : Enable\n";
-#else
-	ss << "KKP Table           : Disable\n";
-#endif
-	ss << "Transposition Table : " << (Transposition::IsEnable() ? "Enable" : "Disable") << "\n";
-	if (Transposition::IsEnable()) {
-#ifdef ENEMY_ISO_TT
-		ss << "Transposition Type  : Enemy Isomorphism\n";
-#else
-		ss << "Transposition Type  : Single Hashcode\n";
-#endif
-		ss << "Transposition Size  : " << ((Transposition::TPSize * sizeof(TTentry)) >> 20) << " MiB\n";
-		ss << "Transposition Entry : 2^" << log2(Transposition::TPSize) << "\n";
-	}
-
-#ifndef ITERATIVE_DEEPENING_DISABLE
-	ss << "Iterative Deepening : Enable\n";
-#else
-	ss << "Iterative Deepening : Disable\n";
-#endif
-#ifndef ASPIRE_WINDOW_DISABLE
-	ss << "Aspire Window       : Enable\n";
-#else
-	ss << "Aspire Window       : Disable\n";
-#endif
-#ifndef PVS_DISABLE
-	ss << "PVS                 : Enable\n";
-#else
-	ss << "PVS                 : Disable\n";
-#endif 
-#ifndef NULLMOVE_DISABLE
-	ss << "Null Move Pruning   : Enable\n";
-#else
-	ss << "Null Move Pruning   : Disable\n";
-#endif
-#ifndef LMR_DISABLE
-	ss << "Late Move Reduction : Enable\n";
-#else
-	ss << "Late Move Reduction : Disable\n";
-#endif
-#ifndef QUIES_DISABLE
-	ss << "Quiet Search        : Enable\n";
-#else
-	ss << "Quiet Search        : Disable\n";
-#endif
-#ifndef MOVEPICK_DISABLE
-	ss << "MovePicker          : Enable\n";
-#else
-	ss << "MovePicker          : Disable\n";
-#endif
-#ifndef BACKGROUND_SEARCH_DISABLE
-
-#ifdef BACKGROUND_SEARCH_LIMITDEPTH
-	ss << "Background Search   : Limit Depth\n";
-#else
-	ss << "Background Search   : Infinite Depth\n";
-#endif
-#else
-	ss << "Background Search   : Disable\n";
-#endif
-	return ss.str();
 }

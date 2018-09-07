@@ -17,7 +17,6 @@ namespace Evaluate {
 		ifstream ifKPP(KPPT_DIRPATH + kkptName + "//" + KPP_FILENAME, ios::binary);
 		if (!ifKK || !ifKKP || !ifKPP) {
 			cout << "Error : Evaluater load failed." << endl;
-			Observer::LearnLog << Observer::GetTimeStamp() << " Load KKPT from " << + KPPT_DIRPATH << kkptName << " failed.\n";
 			return false;
 		}
 
@@ -25,7 +24,6 @@ namespace Evaluate {
 		ifKKP.read(reinterpret_cast<char*>(kkp), sizeof(kkp));
 		ifKPP.read(reinterpret_cast<char*>(kpp), sizeof(kpp));
 		cout << "Evaluater load successed." << endl;
-		Observer::LearnLog << Observer::GetTimeStamp() << " Load KKPT from " << KPPT_DIRPATH << kkptName << " success.\n";
 		CheckNonZero();
 		return true;
 	}
@@ -41,12 +39,10 @@ namespace Evaluate {
 			!ofKKP.write(reinterpret_cast<char*>(kkp), sizeof(kkp)) ||
 			!ofKPP.write(reinterpret_cast<char*>(kpp), sizeof(kpp))) {
 			cout << "Error : Evaluater save failed." << endl; 
-			Observer::LearnLog << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << kkptName << " failed.\n";
 			return false;
 		}
 		else {
 			cout << "Evaluater save successed." << endl;
-			Observer::LearnLog << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << kkptName << " success.\n";
 			return true;
 		}
 	}
@@ -54,7 +50,6 @@ namespace Evaluate {
 	void Evaluater::Clean() {
 		memset(this, 0, sizeof(Evaluater));
 		cout << "Evaluater Clean." << endl;
-		Observer::LearnLog << Observer::GetTimeStamp() << " Clean KKPT.\n";
 	}
 
 	void Evaluater::Blend(Evaluater &e, float ratio) {
@@ -62,19 +57,19 @@ namespace Evaluate {
 		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1)
 			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2)
 				for (int i = 0; i < 2; i++)
-					kk[k1][k2][i] = kk[k1][k2][i] * ratio + e.kk[k1][k2][i] * ratio2;
+					kk[k1][k2][i] = (float)kk[k1][k2][i] * ratio + (float)e.kk[k1][k2][i] * ratio2;
 
 		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1)
 			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2)
 				for (BonaPiece p = BONA_PIECE_ZERO; p < BONA_PIECE_NB; ++p)
 					for (int i = 0; i < 2; i++)
-						kkp[k1][k2][p][i] = kkp[k1][k2][p][i] * ratio + e.kkp[k1][k2][p][i] * ratio2;
+						kkp[k1][k2][p][i] = (float)kkp[k1][k2][p][i] * ratio + (float)e.kkp[k1][k2][p][i] * ratio2;
 
 		for (Square k = SQUARE_ZERO; k < BOARD_NB; ++k)
 			for (BonaPiece p1 = BONA_PIECE_ZERO; p1 < BONA_PIECE_NB; ++p1)
 				for (BonaPiece p2 = BONA_PIECE_ZERO; p2 < BONA_PIECE_NB; ++p2)
 					for (int i = 0; i < 2; i++)
-						kpp[k][p1][p2][i] = kpp[k][p1][p2][i] * ratio + e.kpp[k][p1][p2][i] * ratio2;
+						kpp[k][p1][p2][i] = (float)kpp[k][p1][p2][i] * ratio + (float)e.kpp[k][p1][p2][i] * ratio2;
 	}
 
 	void Evaluater::CheckNonZero() const {
@@ -111,8 +106,8 @@ namespace Evaluate {
 	}
 
 	Value EvalSum::Sum(const Color c) const {
-		if (meterial == VALUE_NULL || pin == VALUE_NULL)
-			return VALUE_NULL;
+		if (meterial == VALUE_NONE || pin == VALUE_NONE)
+			return VALUE_NONE;
 		// [0](先手KPP) + [1](後手KPP) + [2](KK+KKP) 
 		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + meterial + pin;
 		const Value scoreTurn = (Value)(pos[0][1] + pos[1][1] + pos[2][1]) / FV_SCALE;
@@ -122,7 +117,7 @@ namespace Evaluate {
 
 	void EvalSum::Clean() {
 		memset(this, 0, sizeof(EvalSum));
-		meterial = VALUE_NULL;
-		pin = VALUE_NULL;
+		meterial = VALUE_NONE;
+		pin = VALUE_NONE;
 	}
 }

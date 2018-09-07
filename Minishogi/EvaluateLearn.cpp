@@ -1,13 +1,28 @@
 #include <algorithm>
 #include <assert.h>
 #include <iostream>
+#include <fstream>
+#include <string>
+#define NOMINMAX
+#include <windows.h>
+
+#include "Thread.h"
+#include "Zobrist.h"
+#include "Search.h"
+#include "Observer.h"
 #include "Evaluate.h"
 #include "EvaluateLearn.h"
+using namespace std;
 using namespace Evaluate;
 
 namespace EvaluateLearn {
 	LearnFloatType Weight::eta = 64.0f;
 	int Weight::skip_count = 10;
+
+	std::vector<std::string> rootSFEN;
+	int cycleNum;
+	string logPathStr; 
+	stringstream log;
 
 	Weight(*kk_w)[BOARD_NB][BOARD_NB];
 	Weight(*kkp_w)[BOARD_NB][BOARD_NB][BONA_PIECE_NB];
@@ -86,6 +101,20 @@ namespace EvaluateLearn {
 		return !skip_update;
 	}
 
+	bool LoadRootPos(string filename) {
+		string sfen;
+		ifstream file("board//" + filename);
+
+		if (file) {
+			rootSFEN.clear();
+			while (getline(file, sfen))
+				rootSFEN.push_back(sfen);
+			file.close();
+			return true;
+		}
+		return false;
+	}
+
 	void InitGrad() {
 		if (kk_w == nullptr) {
 			const int sizekk  = BOARD_NB * BOARD_NB;
@@ -120,7 +149,7 @@ namespace EvaluateLearn {
 	}
 
 	double CalcGrad(Value searchValue, Value quietValue, bool winner, double progress) {
-		if (searchValue == VALUE_NULL || quietValue == VALUE_NULL)
+		if (searchValue == VALUE_NONE || quietValue == VALUE_NONE)
 			return 0.0;
 		double p = winest(searchValue);
 		double q = winest(quietValue);
@@ -196,5 +225,146 @@ namespace EvaluateLearn {
 
 		for (int i = 0; i < 5; i++)
 			th[i].join();
+	}
+
+
+	inline void DumpLog(string path) {
+		ofstream ofLog(path, ios::app);
+		if (ofLog) {
+			ofLog << log.str();
+			log.str("");
+			ofLog.close();
+		}
+	}
+
+	void Learning() {
+		Thread *pthread = nullptr;
+		Minishogi rootPos;
+		Move moves[MAX_PLY];
+		Value values[MAX_PLY];
+
+		uint64_t addGradCount = 0, epoch = 0;
+		double sumError = 0.0;
+		streamoff readBoardOffset = 0;
+
+		for (int cycle = 0; cycle < cycleNum; cycle++, readBoardOffset = 0) {
+			for (int b = 0; rootPos.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset); b++) {
+				int ply = 0;
+				Color winner;
+				moves[0] = MOVE_NULL;
+				values[0] = VALUE_NONE;
+
+				// Playing
+				pthread = new Thread(rootPos, WHITE, Observer::ttBit);
+				cout << "Cycle " << cycle << " Game " << b << " ";
+				while (ply < MAX_PLY - 50) {
+					RootMove rm;
+					pthread->IDAS(rm, Observer::depth, true);
+					if (rm.pv[0] == MOVE_NULL)
+						break;
+					pthread->DoMove(rm.pv[0]);
+					moves[ply] = rm.pv[0];
+					values[ply] = rm.value;
+					ply++;
+					cout << ".";
+				}
+				cout << endl;
+				assert(pthread->GetMinishogi().CheckLegal());
+				winner = ~pthread->GetMinishogi().GetTurn();
+				delete pthread;
+
+				if (ply >= MAX_PLY - 50)
+					continue;
+
+				// Learning
+				pthread = new Thread(rootPos, WHITE, 1);
+				const Minishogi &pos = pthread->GetMinishogi();
+				double progress = pow(GAMMA, ply); RootMove quietRM;
+				for (int i = 0; i < ply; pthread->DoMove(moves[i++]), progress /= GAMMA) {
+					Color rootTurn = pos.GetTurn();
+					bool isWin = winner == rootTurn;
+					Value searchValue = values[i];
+					int j;
+
+					if ((searchValue >= EVAL_LIMIT && isWin) || (searchValue <= -EVAL_LIMIT && !isWin))
+						continue;
+
+					pthread->Search(quietRM, 0);
+
+					double dj_dw = CalcGrad(searchValue, quietRM.value, isWin, progress);
+					//double dj_dw = CalcGrad(searchValue, quietRM.value, isWin, double(i + 1) / ply);
+					//cout << isWin << " " << searchValue << " " << quietRM.value/* << " " << pthread->GetEvaluate()*/ << " " << progress << " " << dj_dw << "\n";
+
+					if (dj_dw == 0.0)
+						continue;
+					sumError += dj_dw * dj_dw;
+
+					for (j = 0; quietRM.pv[j] != MOVE_NULL; j++)
+						pthread->DoMove(quietRM.pv[j]);
+
+					AddGrad(pos, rootTurn, dj_dw);
+
+					for (j--; j >= 0; j--)
+						pthread->UndoMove();
+
+					if (++addGradCount % LEARN_PATCH_SIZE == 0) {
+						UpdateKPPT(++epoch);
+						cout << "epoch : " << epoch << " mse : " << sqrt(sumError / LEARN_PATCH_SIZE) << endl;
+						log << Observer::GetTimeStamp() << " epoch : " << epoch << " mse : " << sqrt(sumError / LEARN_PATCH_SIZE) << "\n";
+						sumError = 0.0;
+						if (addGradCount % SAVE_PATCH_SIZE == 0)
+							Evaluate::evaluater.Save(Observer::GetTimeStamp());
+						DumpLog(logPathStr);
+					}
+				}
+			}
+			log << Observer::GetTimeStamp() << " Cycle " << cycle << " finished. Add Grad Count " << addGradCount << "\n";
+			DumpLog(logPathStr);
+		}
+	}
+
+	void SelfLearn() {
+		cout << "AI Version : " << AI_VERSION << "\n" << Observer::GetSettingStr() << endl;
+		SetConsoleTitle("Nyanpass " AI_VERSION " - EvaluateLearn");
+
+		cout << "輸入搜尋的深度" << endl;
+		cin >> Observer::depth;
+
+		cout << "輸入KPP名稱" << endl;
+		cin >> Observer::kpptName;
+		if (!evaluater.Load(Observer::kpptName)) {
+			Observer::kpptName = "";
+			evaluater.Clean();
+			log << Observer::GetTimeStamp() << " Clean KKPT.\n";
+			log << Observer::GetTimeStamp() << " Load KKPT from " << +KPPT_DIRPATH << Observer::kpptName << " failed.\n";
+		}
+		else {
+			log << Observer::GetTimeStamp() << " Load KKPT from " << KPPT_DIRPATH << Observer::kpptName << " success.\n";
+		}
+
+		cout << "輸入訓練Cycle次數" << endl;
+		cin >> cycleNum;
+
+		// Initialize
+		logPathStr = KPPT_DIRPATH + Observer::GetTimeStamp() + "_log.txt";
+		CreateDirectory(KPPT_DIRPATH, NULL);
+		EvaluateLearn::InitGrad();
+		Zobrist::Initialize();
+		log << Observer::GetTimeStamp() << " Set Depth " << Observer::depth << ",Cycle " << cycleNum
+			<< ",LEARN_PATCH_SIZE " << LEARN_PATCH_SIZE << ",EVAL_LIMIT " << EVAL_LIMIT << ",LAMBDA " << LAMBDA
+			<< ",GAMMA " << GAMMA << ",eta " << Weight::eta << ",skip_count " << Weight::skip_count << "\n";
+		log << Observer::GetTimeStamp() << " Learning Start.\n";
+		DumpLog(logPathStr);
+
+		Learning();
+
+		if (Evaluate::evaluater.Save(Observer::GetTimeStamp() + "_Finish"))
+			log << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " failed.\n";
+		else
+			log << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " success.\n";
+		log << Observer::GetTimeStamp() << " Learning End.\n";
+		DumpLog(logPathStr);
+
+		SetConsoleTitle("Nyanpass " AI_VERSION " - EvaluateLearn : Stop");
 	}
 }

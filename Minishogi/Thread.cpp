@@ -5,8 +5,9 @@
 #include "Thread.h"
 #include "Observer.h"
 
-Thread::Thread(const Minishogi &m, Color c) : us(c) {
+Thread::Thread(const Minishogi &m, Color c, int ttBit) : us(c) {
 	rootPos.Set(m, this);
+	tt.Initialize(ttBit);
 	counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);
 	captureHistory.fill(0);
@@ -24,6 +25,7 @@ Thread::~Thread() {
 	isExit = true;
 	if (stdThread)
 		stdThread->join();
+	sync_cout << "Thread " << us << " : Delete" << sync_endl;
 }
 
 void Thread::Start() {
@@ -34,7 +36,7 @@ void Thread::Start() {
 bool Thread::CheckStop(Move em) {
 	if (isStop || isReject || isExit ||
 		(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
-		(bestMove.enemyMove != MOVE_ILLEGAL && (em != bestMove.enemyMove || finishDepth))) {
+		(bestMove.enemyMove != MOVE_NONE && (em != bestMove.enemyMove || finishDepth))) {
 		isStop = true;
 	}
 	return isStop;
@@ -76,7 +78,7 @@ void Thread::IdleLoop() {
 		if (bestMove.enemyMove == MOVE_UNDO) {
 			rootPos.UndoMove();
 			rootPos.UndoMove();
-			bestMove.enemyMove = MOVE_ILLEGAL;
+			bestMove.enemyMove = MOVE_NONE;
 		}
 		else if (bestMove.enemyMove == MOVE_NULL) {
 			isExit = true;
@@ -120,7 +122,7 @@ void Thread::IdleLoop() {
 				rootPos.DoMove(bestMove.pv[0]);
 			else
 				isExit = true;
-			bestMove.enemyMove = MOVE_ILLEGAL;
+			bestMove.enemyMove = MOVE_NONE;
 			sync_cout << "Thread " << us << " : Domove " << bestMove.pv[0] << sync_endl;
 
 			cv.notify_all();
@@ -138,5 +140,5 @@ void Thread::IdleLoop() {
 			isStop = false;
 		}
 	}
-	sync_cout << "Thread " << us << " : Stoped" << sync_endl;
+	sync_cout << "Thread " << us << " : Exit" << sync_endl;
 }

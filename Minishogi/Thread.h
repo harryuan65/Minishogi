@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "Types.h"
+#include "Transposition.h"
 #include "Movepick.h"
 #include "Minishogi.h"
 
@@ -32,9 +33,9 @@ typedef std::condition_variable ConditionVariable;
 constexpr int CounterMovePruneThreshold = 0;
 
 struct RootMove {
-	Move enemyMove = MOVE_ILLEGAL;
+	Move enemyMove = MOVE_NONE;
 	Move pv[MAX_PLY + 1];
-	Value value = VALUE_NULL;
+	Value value = VALUE_NONE;
 	int depth = 0;
 	uint64_t nodes = (1 << 31);
 	float effectBranch = 0;
@@ -56,9 +57,9 @@ struct Stack {
 	Move pv[MAX_PLY + 1];
 	PieceToHistory* contHistory;
 	int ply;
-	Move currentMove; // 改用pos裡的
+	Move currentMove;
 	//Move excludedMove;
-	Move killers[2];
+	//Move killers[2];
 	//Value staticEval;
 	//int statScore;
 	int moveCount;
@@ -72,10 +73,9 @@ public:
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
 	CounterMoveHistory counterMoves;
+	Transposition tt;
 
-	std::atomic_bool isStop = false, isReject = false; //private
-
-	Thread(const Minishogi &m, Color c);
+	Thread(const Minishogi &m, Color c, int ttBit);
 	~Thread();
 	void Start();
 
@@ -91,9 +91,6 @@ public:
 	uint64_t GetSearchDuration();
 	RootMove GetBestMove();
 	const Minishogi& GetMinishogi() const;
-	Value GetEvaluate() {
-		return rootPos.GetEvaluate();
-	}
 
 	void DoMove(Move move);
 	void UndoMove();
@@ -111,6 +108,7 @@ private:
 	RootMove bestMove;
 	std::vector<RootMove> rootMoves;
 	int beginTime = 0;
+	std::atomic_bool isStop = false, isReject = false;
 	bool isExit = false;
 	bool finishDepth = false;
 

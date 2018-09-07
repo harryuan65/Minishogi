@@ -3,7 +3,7 @@
 
 class FileMapping {
 private:
-	const size_t BUF_SIZE = (1 << (sizeof(short) * 8)) - 1;
+	const DWORD BUF_SIZE = (1 << (sizeof(short) * 8)) - 1;
 	HANDLE hMapFile = NULL;
 	LPVOID pBuf = NULL;
 

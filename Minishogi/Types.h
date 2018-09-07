@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <mutex>
 #include <sstream>
-
 typedef uint64_t Key;
 
 enum SyncCout { IO_LOCK, IO_UNLOCK };
@@ -21,21 +20,17 @@ inline std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 constexpr int SINGLE_GENE_MAX_ACTIONS = 112;
 constexpr int TOTAL_GENE_MAX_ACTIONS = 162;  // AtkGene 21, MoveGene 29, HandGene 112
-constexpr int DEPTH_QUIET_MAX = -5;
 constexpr int DEPTH_QS_CHECKS = 0;
 constexpr int DEPTH_QS_RECAPTURES = -5;
+constexpr int DEPTH_QUIET_MAX = -5;
+constexpr int DEPTH_NULL = -6;
 constexpr int MAX_MOVES = 256;
-constexpr int MAX_PLY = 128;
-constexpr int MAX_HISTORY_PLY = 256;
+constexpr int MAX_SEARCH_DEPTH = 30;
+constexpr int MAX_PLY = 256;
 const std::string PIECE_2_CHAR = ".PSGBRK..PS.BR...psgbrk..ps.br";
-const std::string HAND_2_CHAR = "psgbrPSGBR";
-constexpr char CHESS_WORD[][3] = {
-	"  ","步","銀","金","角","飛","王","  ",
-	"  ","ㄈ","全","  ","馬","龍","  ","  ",
-	"  ","步","銀","金","角","飛","玉","  ",
-	"  ","ㄈ","全","  ","馬","龍"
-};
-const std::string NONCOLOR_CHESS_WORD = " ． △步△銀△金△角△飛△王 ．  ． △ㄈ△全 ． △馬△龍 ．  ．  ． ▼步▼銀▼金▼角▼飛▼玉 ．  ． ▼ㄈ▼全 ． ▼馬▼龍";
+const std::string HAND_2_CHAR = "PSGBR";
+const std::string PIECE_WORD = "  步銀金角飛王    ㄈ全  馬龍      步銀金角飛玉    ㄈ全  馬龍";
+const std::string NONCOLOR_PIECE_WORD = " ． △步△銀△金△角△飛△王        △ㄈ△全    △馬△龍            ▼步▼銀▼金▼角▼飛▼玉        ▼ㄈ▼全    ▼馬▼龍";
 const std::string COLOR_WORD[] = { "△", "▼" };
 
 enum Color : int {
@@ -49,9 +44,9 @@ enum Value : int {
 	VALUE_KNOWN_WIN = 10000,
 	VALUE_MATE      = 30000,
 	VALUE_INFINITE  = 31001,
-	VALUE_NULL      = 32002,
-	VALUE_MATE_IN_MAX_PLY  = (int)VALUE_MATE - 2 * MAX_PLY,
-	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_PLY
+	VALUE_NONE      = 32002,
+	VALUE_MATE_IN_MAX_PLY  = (int)VALUE_MATE - 2 * MAX_SEARCH_DEPTH,
+	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_SEARCH_DEPTH
 };
 
 enum Square : int {
@@ -62,7 +57,7 @@ enum Square : int {
 	SQ_E5, SQ_E4, SQ_E3, SQ_E2, SQ_E1,
 	SQ_F5, SQ_F4, SQ_F3, SQ_F2, SQ_F1,
 	SQ_G5, SQ_G4, SQ_G3, SQ_G2, SQ_G1,
-	SQ_NULL,
+	SQ_NONE,
 	SQUARE_ZERO = 0,
 	BOARD_NB    = 25,
 	SQUARE_NB   = 35
@@ -70,10 +65,10 @@ enum Square : int {
 
 /// | isPro 1bit | srcSq 6bits | dstSq 6bits |
 enum Move : int {
+	MOVE_NULL = 0,
 	MOVE_UNDO = 1 << 13,
 	//MOVE_SAVEBOARD = 2 << 13,
-	MOVE_ILLEGAL = 3 << 13,
-	MOVE_NULL = 0
+	MOVE_NONE = 3 << 13
 };
 
 enum Piece : int {
@@ -127,13 +122,13 @@ enum BonaPiece : int {
 
 // BonaPieceList Index
 enum BonaPieceIndex : int {
-	BPI_NULL   = -1,
 	BPI_PAWN   = 0,
 	BPI_SILVER = 2,
 	BPI_GOLD   = 4,
 	BPI_BISHOP = 6,
 	BPI_ROOK   = 8,
 	BPI_KING   = 10,
+	BPI_NONE   = 12,
 	BONA_PIECE_INDEX_NB = 12
 };
 
@@ -230,7 +225,7 @@ constexpr Move make_move(Square from, Square to, bool isPro) {
 	return Move(((isPro << 12) | from << 6) | to);
 }
 
-/// Exclude MOVE_NULL, MOVE_UNDO, MOVE_SAVEBOARD, MOVE_ILLEGAL
+/// Exclude MOVE_NULL, MOVE_UNDO, MOVE_SAVEBOARD, MOVE_NONE
 constexpr bool IsDoMove(Move m) {
 	return m && !(m >> 13);
 }
@@ -249,21 +244,17 @@ const static int toU32(Move m) {
 	return (is_promote(m) << 24) | (to_sq(m) << 6) | from_sq(m);
 }
 
-static std::istream& operator >> (std::istream &is, Move &m) {
+/*static std::istream& operator >> (std::istream &is, Move &m) {
 	std::string str;
 	is >> str;
-	if (str == "SURRENDER" || str == "surrender") {
+	if (str == "SURRENDER" || str == "surrender")
 		m = MOVE_NULL;
-	}
-	else if (str == "UNDO" || str == "undo") {
+	else if (str == "UNDO" || str == "undo")
 		m = MOVE_UNDO;
-	}
-	/*else if (str == "SAVEBOARD" || str == "saveboard") {
-		m = MOVE_SAVEBOARD;
-	}*/
-	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+')) {
-		m = MOVE_ILLEGAL;
-	}
+	//else if (str == "SAVEBOARD" || str == "saveboard")
+	//	m = MOVE_SAVEBOARD;
+	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+'))
+		m = MOVE_NONE;
 	else if (str[1] == '*') {
 		m = make_move(Square(HAND_2_CHAR.find(str[0]) + BOARD_NB),
 			          Square((str[2] - 'a') * 5 + '5' - str[3]),
@@ -275,6 +266,33 @@ static std::istream& operator >> (std::istream &is, Move &m) {
 			          str.length() == 5);
 	}
 	return is;
+}*/
+
+static Move string2move(std::string str, Color turn) {
+	Move m;
+	if (str == "SURRENDER" || str == "surrender")
+		m = MOVE_NULL;
+	else if (str == "UNDO" || str == "undo")
+		m = MOVE_UNDO;
+	//else if (str == "SAVEBOARD" || str == "saveboard")
+	//	m = MOVE_SAVEBOARD;
+	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+'))
+		m = MOVE_NONE;
+	else if (str[1] == '*') {
+		if (HAND_2_CHAR.find(str[0]) == std::string::npos)
+			m = MOVE_NONE;
+		else
+			m = make_move(Square(HAND_2_CHAR.find(str[0]) + (turn ? SQ_F5 : SQ_G5)),
+				Square((str[2] - 'a') * 5 + '5' - str[3]),
+				false);
+	}
+	else {
+		m = make_move(Square((str[0] - 'a') * 5 + '5' - str[1]),
+			Square((str[2] - 'a') * 5 + '5' - str[3]),
+			str.length() == 5);
+	}
+	return m;
+
 }
 
 static std::ostream& operator << (std::ostream& os, Move m) {
@@ -290,7 +308,7 @@ static std::ostream& operator << (std::ostream& os, Move m) {
 		break;*/
 	default:
 		if (from_sq(m) >= BOARD_NB)
-			os << HAND_2_CHAR[from_sq(m) - BOARD_NB] << "*";
+			os << HAND_2_CHAR[from_sq(m) % 5] << "*";
 		else
 			os << char('a' + from_sq(m) / 5) << char('5' - from_sq(m) % 5);
 		os << char('a' + to_sq(m) / 5) << char('5' - to_sq(m) % 5) << (is_promote(m) ? "+" : " ");
@@ -299,10 +317,10 @@ static std::ostream& operator << (std::ostream& os, Move m) {
 }
 
 constexpr Square EatToHand[] = {
-	SQ_NULL, SQ_F5, SQ_F4,    SQ_F3, SQ_F2, SQ_F1, SQ_NULL, SQ_NULL,
-	SQ_NULL, SQ_F5, SQ_F4,  SQ_NULL, SQ_F2, SQ_F1, SQ_NULL, SQ_NULL,
-	SQ_NULL, SQ_G5, SQ_G4,    SQ_G3, SQ_G2, SQ_G1, SQ_NULL, SQ_NULL,
-	SQ_NULL, SQ_G5, SQ_G4,  SQ_NULL, SQ_G2, SQ_G1
+	SQ_NONE, SQ_F5, SQ_F4,   SQ_F3, SQ_F2, SQ_F1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_F5, SQ_F4, SQ_NONE, SQ_F2, SQ_F1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_G5, SQ_G4,   SQ_G3, SQ_G2, SQ_G1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_G5, SQ_G4, SQ_NONE, SQ_G2, SQ_G1
 };
 
 constexpr Piece HandToChess[] = {

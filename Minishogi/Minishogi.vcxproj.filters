@@ -39,7 +39,16 @@
     <ClCompile Include="Evaluate.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="MainMinishogi.cpp">
+    <ClCompile Include="GamePlay.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeTest.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="EvaluateLearn.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
   </ItemGroup>
@@ -68,14 +77,20 @@
     <ClInclude Include="MovePick.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Search.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
     <ClInclude Include="Thread.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="Evaluate.h">
       <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="GamePlay.h">
+      <Filter>原始程式檔</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeTest.h">
+      <Filter>原始程式檔</Filter>
+    </ClInclude>
+    <ClInclude Include="EvaluateLearn.h">
+      <Filter>原始程式檔</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

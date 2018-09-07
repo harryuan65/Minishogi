@@ -21,7 +21,7 @@
 #define BACKGROUND_SEARCH_DISABLE
 #define BACKGROUND_SEARCH_LIMITDEPTH
 
-#define AI_VERSION "#103"
+#define AI_VERSION "#105 quiet fix10"
 
 namespace Observer {
 
@@ -68,10 +68,10 @@ namespace Observer {
 
 	// ³]©w
 	extern int depth;
+	extern int ttBit;
 	extern int limitTime;
 	extern bool isSaveRecord;
 	extern std::string kpptName;
-	extern std::stringstream LearnLog;
 
 	inline std::tm localtime_xp(std::time_t timer) {
 		std::tm bt{};
@@ -92,15 +92,6 @@ namespace Observer {
 		char buffer[64];
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", &bt);
 		return std::string(buffer);
-	}
-
-	inline void LearnLogDump(std::string path) {
-		std::ofstream ofLog(path, std::ios::app);
-		if (ofLog) {
-			ofLog << LearnLog.str();
-			LearnLog.str("");
-			ofLog.close();
-		}
 	}
 
 	inline void StartSearching() {
@@ -142,25 +133,25 @@ namespace Observer {
 			total_data[i] += game_data[i];
 	}
 
-	inline static void PrintData(std::ostream &os, uint64_t *pdata) {
-		bool isZero = pdata[searchNum] == 0;
-		if (isZero)  pdata[searchNum] = 1;
+	inline static void PrintData(std::ostream &os, uint64_t *d) {
+		bool isZero = d[searchNum] == 0;
+		if (isZero) d[searchNum] = 1;
 		os << std::setiosflags(std::ios::fixed) << std::setprecision(2);
 		os << "Average Report (per search) :\n";
-		os << " Total node              : " << std::setw(10) << (pdata[mainNode] + pdata[quiesNode]) / pdata[searchNum] << "\n";
-		os << " Main search nodes       : " << std::setw(10) << pdata[mainNode] / pdata[searchNum] << "\n";
-		os << " Research nodes          : " << std::setw(10) << pdata[researchNode] / pdata[searchNum] << "\n";
-		os << " Quies search nodes      : " << std::setw(10) << pdata[quiesNode] / pdata[searchNum] << "\n";
-		os << " Avg scout search branch : " << std::setw(13) << (float)pdata[scoutSearchBranch] / pdata[scoutGeneNums] << "\n";
-		//os << " ttProbe isomorphic nums : " << std::setw(10) << pdata[ttIsoNum] / pdata[searchNum] << "\n";
-		//os << " ttProbe isomorphic rate : " << std::setw(13) << (100.0f * pdata[ttIsoNum] / pdata[ttProbe]) << " %\n";
-		os << " ttProbe collision nums  : " << std::setw(10) << pdata[ttCollision] / pdata[searchNum] << "\n";
-		os << " ttProbe collision rate  : " << std::setw(13) << (100.0f * pdata[ttCollision] / pdata[ttProbe]) << " %\n";
-		//os << " zugzwangs num           : " << std::setw(13) <<  (float)pdata[zugzwangsNum] / pdata[searchNum] << "\n";
-		os << " Null Move num           : " << std::setw(10) << pdata[nullMoveNum] / pdata[searchNum] << "\n";
-		//os << " LMR Failed node         : " << std::setw(10) << pdata[lmrTestNum] << "\n";
-		os << " Search time             : " << std::setw(13) << (float)pdata[searchTime] / pdata[searchNum] / 1000 << "\n";
-		if (isZero)  pdata[searchNum] = 0;
+		os << " Total node              : " << std::setw(10) << (d[mainNode] + d[quiesNode]) / d[searchNum] << "\n";
+		os << " Main search nodes       : " << std::setw(10) << d[mainNode] / d[searchNum] << "\n";
+		os << " Research nodes          : " << std::setw(10) << d[researchNode] / d[searchNum] << "\n";
+		os << " Quies search nodes      : " << std::setw(10) << d[quiesNode] / d[searchNum] << "\n";
+		os << " Avg scout search branch : " << std::setw(13) << (float)d[scoutSearchBranch] / d[scoutGeneNums] << "\n";
+		//os << " ttProbe isomorphic nums : " << std::setw(10) << d[ttIsoNum] / d[searchNum] << "\n";
+		//os << " ttProbe isomorphic rate : " << std::setw(13) << (100.0f * d[ttIsoNum] / d[ttProbe]) << " %\n";
+		os << " ttProbe collision nums  : " << std::setw(10) << d[ttCollision] / d[searchNum] << "\n";
+		os << " ttProbe collision rate  : " << std::setw(13) << (100.0f * d[ttCollision] / d[ttProbe]) << " %\n";
+		//os << " zugzwangs num           : " << std::setw(13) <<  (float)d[zugzwangsNum] / d[searchNum] << "\n";
+		os << " Null Move num           : " << std::setw(10) << d[nullMoveNum] / d[searchNum] << "\n";
+		//os << " LMR Failed node         : " << std::setw(10) << d[lmrTestNum] << "\n";
+		os << " Search time             : " << std::setw(13) << (float)d[searchTime] / d[searchNum] / 1000 << "\n";
+		if (isZero) d[searchNum] = 0;
 	}
 
 	inline void PrintSearchReport(std::ostream &os) {
@@ -216,6 +207,77 @@ namespace Observer {
 		}
 		os << "(+:Player 1 win,-:Player 2 Win)\n";
 		os << std::endl;
+	}
+
+	inline std::string GetSettingStr() {
+		std::stringstream ss;
+		ss << "Main Depth          : " << depth << "\n";
+		ss << "Time Limit          : " << (limitTime ? std::to_string(limitTime) + " ms" : "Disable") << "\n";
+#ifndef KPPT_DISABLE
+		if (kpptName.length() != 0)
+			ss << "KKP Table           : " << kpptName << "\n";
+		else
+			ss << "KKP Table           : Disable\n";
+#else
+		ss << "KKP Table           : Disable\n";
+#endif
+#ifdef TRANSPOSITION_DISABLE
+		ss << "Transposition Table : Enable\n";
+#else
+#ifdef ENEMY_ISO_TT
+		ss << "Transposition Table : Enemy Isomorphism\n";
+#else
+		ss << "Transposition Table : Single Hashcode\n";
+#endif
+		ss << "Transposition Entry : 2^" << ttBit << "\n";
+#endif
+
+#ifndef ITERATIVE_DEEPENING_DISABLE
+		ss << "Iterative Deepening : Enable\n";
+#else
+		ss << "Iterative Deepening : Disable\n";
+#endif
+#ifndef ASPIRE_WINDOW_DISABLE
+		ss << "Aspire Window       : Enable\n";
+#else
+		ss << "Aspire Window       : Disable\n";
+#endif
+#ifndef PVS_DISABLE
+		ss << "PVS                 : Enable\n";
+#else
+		ss << "PVS                 : Disable\n";
+#endif 
+#ifndef NULLMOVE_DISABLE
+		ss << "Null Move Pruning   : Enable\n";
+#else
+		ss << "Null Move Pruning   : Disable\n";
+#endif
+#ifndef LMR_DISABLE
+		ss << "Late Move Reduction : Enable\n";
+#else
+		ss << "Late Move Reduction : Disable\n";
+#endif
+#ifndef QUIES_DISABLE
+		ss << "Quiet Search        : Enable\n";
+#else
+		ss << "Quiet Search        : Disable\n";
+#endif
+#ifndef MOVEPICK_DISABLE
+		ss << "MovePicker          : Enable\n";
+#else
+		ss << "MovePicker          : Disable\n";
+#endif
+#ifndef BACKGROUND_SEARCH_DISABLE
+
+#ifdef BACKGROUND_SEARCH_LIMITDEPTH
+		ss << "Background Search   : Limit Depth\n";
+#else
+		ss << "Background Search   : Infinite Depth\n";
+#endif
+#else
+		ss << "Background Search   : Disable\n";
+#endif
+		return ss.str();
 	}
 }
 #endif

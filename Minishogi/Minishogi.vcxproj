@@ -149,24 +149,29 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Evaluate.cpp" />
+    <ClCompile Include="EvaluateLearn.cpp" />
+    <ClCompile Include="GamePlay.cpp" />
     <ClCompile Include="Minishogi.cpp" />
-    <ClCompile Include="MainMinishogi.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="MovePick.cpp" />
     <ClCompile Include="Observer.cpp" />
     <ClCompile Include="Search.cpp" />
     <ClCompile Include="Thread.cpp" />
+    <ClCompile Include="TimeTest.cpp" />
     <ClCompile Include="Transposition.cpp" />
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bitboard.h" />
     <ClInclude Include="Evaluate.h" />
+    <ClInclude Include="EvaluateLearn.h" />
     <ClInclude Include="FileMapping.h" />
+    <ClInclude Include="GamePlay.h" />
     <ClInclude Include="Minishogi.h" />
     <ClInclude Include="MovePick.h" />
     <ClInclude Include="Observer.h" />
-    <ClInclude Include="Search.h" />
     <ClInclude Include="Thread.h" />
+    <ClInclude Include="TimeTest.h" />
     <ClInclude Include="Transposition.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Zobrist.h" />

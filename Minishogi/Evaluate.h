@@ -7,10 +7,10 @@
 class Minishogi;
 
 namespace Evaluate {
-	constexpr char KPPT_DIRPATH[] = "kppt//";
-	constexpr char KK_FILENAME[] = "kk_binary.bin";
-	constexpr char KKP_FILENAME[] = "kkp_binary.bin";
-	constexpr char KPP_FILENAME[] = "kpp_binary.bin";
+	constexpr char* KPPT_DIRPATH = "kppt//";
+	constexpr char* KK_FILENAME = "kk_binary.bin";
+	constexpr char* KKP_FILENAME = "kkp_binary.bin";
+	constexpr char* KPP_FILENAME = "kpp_binary.bin";
 	constexpr int FV_SCALE = 32;
 
 

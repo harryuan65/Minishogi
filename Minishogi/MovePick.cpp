@@ -45,8 +45,8 @@ namespace {
   /// MovePicker constructor for the main search
 MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh,
 	const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
-	: pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch),
-	refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } }, depth(d) {
+	: pos(p), depth(d), mainHistory(mh), captureHistory(cph), contHistory(ch)
+	/*,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } }*/ {
 
 	assert(d > 0);
 
@@ -62,8 +62,8 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 
 /// MovePicker constructor for quiescence search
 MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh,
-	const CapturePieceToHistory* cph, Square rs)
-	: pos(p), mainHistory(mh), captureHistory(cph), recaptureSquare(rs), depth(d) {
+	const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
+	: pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), recaptureSquare(rs), depth(d) {
 
 	assert(d <= 0);
 

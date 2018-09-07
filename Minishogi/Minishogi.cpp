@@ -52,7 +52,7 @@ bool Minishogi::Initialize(string str) {
 	for (int i = 0; i < 5; i++) {
 		getline(ss, token);
 		for (int j = 0, find; j < 5; j++, ++sq) {
-			if ((find = NONCOLOR_CHESS_WORD.find(token.substr(j * 4, 4))) != string::npos) {
+			if ((find = NONCOLOR_PIECE_WORD.find(token.substr(j * 4, 4))) != string::npos) {
 				if (find == 0)
 					continue;
 				Piece pc = Piece(find / 4);
@@ -298,7 +298,7 @@ string Minishogi::GetSFEN() const {
 
 void Minishogi::DoMove(Move m) {
 	ply++;
-	assert(ply < MAX_HISTORY_PLY);
+	assert(ply < MAX_PLY);
 
 	Square from = from_sq(m);
 	Square to = to_sq(m);
@@ -384,7 +384,7 @@ void Minishogi::DoMove(Move m) {
 #endif
 	moveHist[ply - 1] = m;
 
-	evalHist[ply].pin = VALUE_NULL;
+	evalHist[ply].pin = VALUE_NONE;
 	CalcAllChecker();
 }
 
@@ -433,6 +433,26 @@ void Minishogi::UndoMove() {
 #ifndef KPPT_DISABLE
 	UndoBonaPiece(bonaPieceDiff[0]);
 #endif
+}
+
+void Minishogi::DoNullMove() {
+	ply++;
+	turn = ~turn;
+	moveHist[ply - 1] = MOVE_NULL;
+	captureHist[ply - 1] = NO_PIECE;
+	evalHist[ply] = evalHist[ply - 1];
+	keyHist[ply] = keyHist[ply - 1];
+#ifdef ENEMY_ISO_TT
+	key2Hist[ply] = key2Hist[ply - 1];
+#else
+	keyHist[ply] ^= 1;
+#endif
+	checker_bb[ply] = checker_bb[ply - 1];
+}
+
+void Minishogi::UndoNullMove() {
+	ply--;
+	turn = ~turn;
 }
 
 /// 移動後 會不會造成對方處於被將狀態
@@ -581,7 +601,7 @@ void Minishogi::CalcDiffPos() {
 #ifdef KPPT_DISABLE
 	return;
 #endif
-	if (ply == 0 || evalHist[ply - 1].pin == VALUE_NULL) {
+	if (ply == 0 || evalHist[ply - 1].pin == VALUE_NONE) {
 		CalcAllPos();
 		return;
 	}
@@ -696,26 +716,6 @@ void Minishogi::CalcDiffPos() {
 	/*Value v = GetEvaluate();
 	CalcAllPos();
 	assert(v == GetEvaluate());*/
-}
-
-void Minishogi::DoNullMove() {
-	ply++;
-	turn = ~turn;
-	moveHist[ply - 1] = MOVE_NULL;
-	captureHist[ply - 1] = NO_PIECE;
-	evalHist[ply] = evalHist[ply - 1];
-	keyHist[ply] = keyHist[ply - 1];
-#ifdef ENEMY_ISO_TT
-	key2Hist[ply] = key2Hist[ply - 1];
-#else
-	keyHist[ply] ^= 1;
-#endif
-	checker_bb[ply] = checker_bb[ply - 1];
-}
-
-void Minishogi::UndoNullMove() {
-	ply--;
-	turn = ~turn;
 }
 
 bool Minishogi::PseudoLegal(Move m) const {
@@ -1008,36 +1008,31 @@ void Minishogi::PrintChessBoard() const {
 		cout << " " << char('a' + rank) << "｜";
 		for (int file = 0; file < 5; file++) {
 			Piece p = (Piece)board[rank * 5 + file];
-			SetConsoleTextAttribute(hConsole, 10 + color_of(p) * 2 + is_promote(p));
-			printf("%s", CHESS_WORD[p]);
+			if (p != NO_PIECE)
+				SetConsoleTextAttribute(hConsole, 10 + color_of(p) * 2 + is_promote(p));
+			cout << PIECE_WORD.substr(p * 2, 2);
 			SetConsoleTextAttribute(hConsole, 7);
 			cout << "｜";
 		}
 		cout << char('a' + rank) << "   ";
 
-		if (rank == 0) {
-			for (int i = 0; i < 5; i++) {
+		if (rank == 0)
+			for (int i = 0; i < 5; i++)
 				if (board[SQ_F5 + i])
-					cout << board[SQ_F5 + i] << CHESS_WORD[i + 1];
+					cout << board[SQ_F5 + i] << PIECE_WORD.substr((i + 1) * 2, 2);
 				else
 					cout << "   ";
-			}
-		}
-		if (rank == 4) {
-			for (int i = 0; i < 5; i++) {
+		if (rank == 4)
+			for (int i = 0; i < 5; i++)
 				if (board[SQ_G5 + i])
-					cout << board[SQ_G5 + i] << CHESS_WORD[i + 1];
+					cout << board[SQ_G5 + i] << PIECE_WORD.substr((i + 1) * 2, 2);
 				else
 					cout << "   ";
-			}
-		}
 		cout << "\n";
 	}
 	cout << "—┼—┼—┼—┼—┼—┼—      先手持駒\n";
 	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
 	cout << "SFEN : " << GetSFEN() << "\n";
-	//for (int i = 0; i < BONA_PIECE_INDEX_NB; i++)
-	//	cout << bonaIndexList[pieceListW[i]] << " " << pieceListW[i] << " " << pieceListB[i] << "\n";
 	cout << "----------" << COLOR_WORD[turn] << " Turn----------\n";
 	cout << endl;
 }
@@ -1047,18 +1042,17 @@ void Minishogi::PrintNoncolorBoard(ostream &os) const {
 	for (Square sq = SQUARE_ZERO; sq < BOARD_NB; ++sq) {
 		if (board[sq] == NO_PIECE)
 			os << " ． ";
-		else {
-			os << NONCOLOR_CHESS_WORD.substr(board[sq] * 4, 4);
-		}
+		else
+			os << NONCOLOR_PIECE_WORD.substr(board[sq] * 4, 4);
 		if (sq % 5 == 4)
 			os << "\n";
 	}
 	os << COLOR_WORD[BLACK];
 	for (int i = 0; i < 5; i++)
-		os << board[i + 25] << CHESS_WORD[i + 1];
+		os << board[i + 25] << PIECE_WORD.substr((i + 1) * 2, 2);
 	os << "\n" << COLOR_WORD[WHITE];
 	for (int i = 0; i < 5; i++)
-		os << board[i + 30] << CHESS_WORD[i + 1];
+		os << board[i + 30] << PIECE_WORD.substr((i + 1) * 2, 2);
 	os << "\n";
 	os << "Zobrist : " << setw(16) << hex << GetKey() << dec << "\n";
 	os << "[" << COLOR_WORD[turn] << " Turn]\n\n";
