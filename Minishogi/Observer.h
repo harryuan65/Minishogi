@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "usi.h"
+
 //#define KPPT_DISABLE
 //#define ITERATIVE_DEEPENING_DISABLE
 //#define ASPIRE_WINDOW_DISABLE
@@ -18,10 +20,9 @@
 #define ENEMY_ISO_TT
 //#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
-#define BACKGROUND_SEARCH_DISABLE
-#define BACKGROUND_SEARCH_LIMITDEPTH
+//#define BACKGROUND_SEARCH_DISABLE
 
-#define AI_VERSION "#105 quiet fix10"
+#define AI_VERSION "#106"
 
 namespace Observer {
 
@@ -47,9 +48,12 @@ namespace Observer {
 		PLAYER2
 	};
 
+	void startLogger(bool b);
+
 	// 單一盤面搜尋結果
 	extern uint64_t data[COUNT];
 	static clock_t beginTime = 0;
+	extern TimePoint start_time;
 
 	// 整局結果
 	extern uint64_t game_data[COUNT];
@@ -67,11 +71,8 @@ namespace Observer {
 	extern std::vector<uint32_t> kifuHash2;
 
 	// 設定
-	extern int depth;
-	extern int ttBit;
 	extern int limitTime;
 	extern bool isSaveRecord;
-	extern std::string kpptName;
 
 	inline std::tm localtime_xp(std::time_t timer) {
 		std::tm bt{};
@@ -98,6 +99,7 @@ namespace Observer {
 		for (int i = 0; i < COUNT; i++)
 			data[i] = 0;
 		beginTime = clock();
+		start_time = now();
 	}
 
 	inline void EndSearching() {
@@ -157,7 +159,7 @@ namespace Observer {
 	inline void PrintSearchReport(std::ostream &os) {
 		if (!os) return;
 		if (data[scoutGeneNums] == 0) data[scoutGeneNums] = 1;
-		os << "Search Deapth            : " << std::setw(10) << depth << "\n";
+		os << "Search Deapth            : " << std::setw(10) << USI::Options["Depth"] << "\n";
 		PrintData(os, data);
 		os << std::endl;
 	}
@@ -168,7 +170,7 @@ namespace Observer {
 		os << "Game Result :\n";
 		os << " Winner                  : " << std::setw(10) << (winner ? "Player2" : "Player1") << "\n";
 		//os << " Kifu hashcode           : " << std::setw(10) << hex << kifuHash.back() << dec << "\n";
-		os << " Search depths           : " << std::setw(10) << depth << "\n";
+		os << " Search depths           : " << std::setw(10) << USI::Options["Depth"] << "\n";
 		os << " Search nums             : " << std::setw(10) << game_data[searchNum] << "\n";
 		PrintData(os, game_data);
 		os << std::endl;
@@ -178,7 +180,7 @@ namespace Observer {
 		if (!os) return;
 		if (gameNum == 0) return;
 		os << "Game Result :\n";
-		os << " Search depths           : " << std::setw(10) << depth << "\n";
+		os << " Search depths           : " << std::setw(10) << USI::Options["Depth"] << "\n";
 		os << " Search nums             : " << std::setw(10) << total_data[searchNum] << "\n";
 		PrintData(os, total_data);
 		os << std::endl;
@@ -211,11 +213,11 @@ namespace Observer {
 
 	inline std::string GetSettingStr() {
 		std::stringstream ss;
-		ss << "Main Depth          : " << depth << "\n";
+		ss << "Main Depth          : " << USI::Options["Depth"] << "\n";
 		ss << "Time Limit          : " << (limitTime ? std::to_string(limitTime) + " ms" : "Disable") << "\n";
 #ifndef KPPT_DISABLE
-		if (kpptName.length() != 0)
-			ss << "KKP Table           : " << kpptName << "\n";
+		if (std::string(USI::Options["EvalDir"]) == "none")
+			ss << "KKP Table           : " << USI::Options["EvalDir"] << "\n";
 		else
 			ss << "KKP Table           : Disable\n";
 #else
@@ -229,7 +231,7 @@ namespace Observer {
 #else
 		ss << "Transposition Table : Single Hashcode\n";
 #endif
-		ss << "Transposition Entry : 2^" << ttBit << "\n";
+		ss << "Transposition Entry : 2^" << USI::Options["HashEntry"] << "\n";
 #endif
 
 #ifndef ITERATIVE_DEEPENING_DISABLE
@@ -268,12 +270,7 @@ namespace Observer {
 		ss << "MovePicker          : Disable\n";
 #endif
 #ifndef BACKGROUND_SEARCH_DISABLE
-
-#ifdef BACKGROUND_SEARCH_LIMITDEPTH
-		ss << "Background Search   : Limit Depth\n";
-#else
-		ss << "Background Search   : Infinite Depth\n";
-#endif
+		ss << "Background Search   : Enable\n";
 #else
 		ss << "Background Search   : Disable\n";
 #endif

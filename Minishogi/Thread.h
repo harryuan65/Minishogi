@@ -28,28 +28,37 @@
 
 typedef std::mutex Mutex;
 typedef std::condition_variable ConditionVariable;
+struct LimitsType;
 
 /// Threshold used for countermoves based pruning
 constexpr int CounterMovePruneThreshold = 0;
 
 struct RootMove {
-	Move enemyMove = MOVE_NONE;
+	Key rootKey;
+	Move rootMove;
 	Move pv[MAX_PLY + 1];
-	Value value = VALUE_NONE;
-	int depth = 0;
-	uint64_t nodes = (1 << 31);
-	float effectBranch = 0;
+	Value value;
+	int depth;
+	
+	RootMove() { Clean(); }
 
-	std::string PV() {
-		std::stringstream ss;
-		ss << std::setiosflags(std::ios::fixed) << std::setprecision(2);
-		ss << "Depth " << std::setw(2) << depth << ", ";
-		ss << "Value " << std::setw(6) << value << ", ";
-		ss << "Nodes " << std::setw(8) << nodes << ", ";
-		ss << "Effect Branch " << std::setw(4) << effectBranch << ",\nPV : ";
-		for (int i = 0; pv[i] != MOVE_NULL; i++)
-			ss << pv[i] << " ";
-		return ss.str();
+	void Clean() {
+		rootKey = KEY_NULL;
+		rootMove = MOVE_NULL;
+		pv[0] = MOVE_NULL;
+		value = VALUE_NONE;
+		depth = 0;
+	}
+
+	void operator=(const RootMove rm) { 
+		int i = 0;
+		do {
+			pv[i] = rm.pv[i];
+		} while (rm.pv[i++] != MOVE_NULL);
+		rootKey = rm.rootKey;
+		rootMove = rm.rootMove;
+		value = rm.value;
+		depth = rm.depth;
 	}
 };
 
@@ -74,69 +83,80 @@ public:
 	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
 	CounterMoveHistory counterMoves;
 	Transposition tt;
+	int selDepth;
 
-	Thread(const Minishogi &m, Color c, int ttBit);
+	Thread(int ttBit = 1);
 	~Thread();
-	void Start();
 
 	void Search(RootMove &rm, int depth);
-	// isFullSearch : return Correct value with fix depth
-	void IDAS(RootMove &rm, int depth, bool isFullSearch);
+	void IDAS(RootMove &rm, int depth);
 	void PreIDAS();
 
 	bool IsStop();
-	bool IsExit();
-	bool CheckStop(Move em);
-	void SetEnemyMove(Move m);
-	uint64_t GetSearchDuration();
-	RootMove GetBestMove();
+	bool CheckStop(Key rootKey = KEY_NULL);
+	uint64_t GetSearchDuration() const;
 	const Minishogi& GetMinishogi() const;
 
-	void DoMove(Move move);
-	void UndoMove();
-	void Dump(std::ostream &os);
+	//void SetEnemyMove(Key k);
+	//RootMove GetBestMove();
+
+	bool DoMove(Move move);
+	bool UndoMove();
+
+	void InitSearch();
+	//void StartGameLoop();
+	//void GameLoop();
+	void StartSearching(const Minishogi &rootPos, const LimitsType& limits);
+	void StartWorking();
 	void IdleLoop();
+	void Stop();
+	virtual void Run();
+
+protected:
+	Minishogi pos;
+	bool isExit = false;
 
 private:
-	Mutex mutex;
-	ConditionVariable cv;
-	std::thread *stdThread;
+	Mutex searchMutex;
+	ConditionVariable searchCV;
+	std::thread stdThread;
 	Stack stack[MAX_PLY + 7], *ss;
 
-	Color us;
-	Minishogi rootPos;
 	RootMove bestMove;
 	std::vector<RootMove> rootMoves;
 	int beginTime = 0;
-	std::atomic_bool isStop = false, isReject = false;
-	bool isExit = false;
-	bool finishDepth = false;
-
-	std::string resultStr;
+	bool searching = false, finishDepth = false;
+	std::atomic_bool isStop = false;
 };
 
 inline bool Thread::IsStop() { 
-	return isStop || isReject || isExit; 
+	return isStop || isExit; 
 }
 
-inline bool Thread::IsExit() {
-	return isExit;
-}
-
-inline uint64_t Thread::GetSearchDuration() { 
+inline uint64_t Thread::GetSearchDuration() const { 
 	return beginTime ? clock() - beginTime : 0; 
 }
 
 inline const Minishogi& Thread::GetMinishogi() const {
-	return rootPos;
+	return pos;
 }
 
-inline void Thread::DoMove(Move move) {
-	rootPos.DoMove(move);
+inline bool Thread::DoMove(Move move) {
+	if (searching)
+		return false;
+	pos.DoMove(move);
+	return true;
 }
 
-inline void Thread::UndoMove() {
-	rootPos.UndoMove();
+inline bool Thread::UndoMove() {
+	if (searching)
+		return false;
+	pos.UndoMove();
+	return true;
+}
+
+inline void Thread::Stop() {
+	isStop = true;
 }
 
 #endif

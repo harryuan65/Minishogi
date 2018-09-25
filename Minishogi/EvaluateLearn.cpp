@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
+#include <vector>
 #define NOMINMAX
 #include <windows.h>
 
@@ -10,19 +12,117 @@
 #include "Zobrist.h"
 #include "Search.h"
 #include "Observer.h"
+#include "Minishogi.h"
 #include "Evaluate.h"
 #include "EvaluateLearn.h"
 using namespace std;
 using namespace Evaluate;
+namespace fs = std::tr2::sys;
+
+Move algebraic2move(string str, Minishogi &pos) {
+	Piece srcPiece = NO_PIECE;
+	int i = 0, srcFile = -1, srcRank = -1, dstFile = -1, dstRank = -1;
+	bool isDrop = false, isPromote = false;
+
+	// mover pro (+)
+	if (str[i] == '+') {
+		srcPiece = PROMOTE;
+		i++;
+	}
+	// mover type (PSGBRK)
+	if (PIECE_2_CHAR.find(str[i]) < BLACKCHESS) {
+		srcPiece = Piece((pos.GetTurn() << 4) | srcPiece | PIECE_2_CHAR.find(str[i]));
+		i++;
+	}
+	// mover file (abcde)
+	if ('a' <= str[i] && str[i] <= 'e') {
+		srcFile = str[i] - 'a';
+		i++;
+	}
+	// mover rank (12345)
+	if ('1' <= str[i] && str[i] <= '5') {
+		srcRank = '5' - str[i];
+		i++;
+	}
+	// atk (x)
+	if (str[i] == 'x') {
+		i++;
+	}
+	// drop (@)
+	if (str[i] == '@') {
+		isDrop = true;
+		i++;
+	}
+	// dst file (abcde)
+	if ('a' <= str[i] && str[i] <= 'e') {
+		dstFile = str[i] - 'a';
+		i++;
+	}
+	// dst rank (12345) 
+	if ('1' <= str[i] && str[i] <= '5') {
+		dstRank = '5' - str[i];
+		i++;
+	}
+	// pro (+#=)
+	if (str[i] == '+') {
+		isPromote = true;
+	}
+	// no dst info
+	if (dstFile == -1 && dstRank == -1) {
+		swap(srcFile, dstFile);
+		swap(srcRank, dstRank);
+	}
+	// no src info
+	if (srcPiece == NO_PIECE && srcFile == -1 && srcRank == -1) {
+		srcPiece = Piece((pos.GetTurn() << 4) | PAWN);
+	}
+
+	// Find Suitable Move
+	Move moveList[TOTAL_GENE_MAX_ACTIONS], *end = pos.GetLegalMoves(moveList);
+	for (Move *start = moveList; start < end; start++) {
+		if (srcPiece != NO_PIECE && pos.GetChessOn(from_sq(*start)) != srcPiece)
+			continue;
+		if (srcFile != -1 && from_sq(*start) % 5 != srcFile)
+			continue;
+		if (srcRank != -1 && from_sq(*start) / 5 != srcRank)
+			continue;
+		if (dstFile != -1 && to_sq(*start) % 5 != dstFile)
+			continue;
+		if (dstRank != -1 && to_sq(*start) / 5 != dstRank)
+			continue;
+		if (isDrop != is_drop(from_sq(*start)))
+			continue;
+		if (isPromote != is_promote(*start))
+			continue;
+		return *start;
+	}
+	
+	cout << "Error : Illegal Move. Move Detail : " << endl;
+	cout << "Move String " << str << " srcPiece " << srcPiece << endl;
+	cout << "srcFile " << srcFile << " srcRank " << srcRank << endl;
+	cout << "dstFile " << dstFile << " dstRank " << dstRank << endl;
+	cout << "isDrop " << isDrop << " isPromote " << isPromote << endl;
+	cout << pos << endl;
+	system("pause");
+	assert(false);
+	return MOVE_NULL;
+}
+
+string fen2sfen(string fen) {
+	string board, hand, turn;
+	istringstream iss(fen);
+	getline(iss, board, '[');
+	getline(iss, hand, ']');
+	iss >> turn;
+	return board + " " + (turn == "w" ? "b" : "w") + " " + hand + " 1";
+}
 
 namespace EvaluateLearn {
+	double LAMBDA = 0.5;
+	double GAMMA = 0.93;
 	LearnFloatType Weight::eta = 64.0f;
 	int Weight::skip_count = 10;
-
-	std::vector<std::string> rootSFEN;
-	int cycleNum;
-	string logPathStr; 
-	stringstream log;
+	Thread *th;
 
 	Weight(*kk_w)[BOARD_NB][BOARD_NB];
 	Weight(*kkp_w)[BOARD_NB][BOARD_NB][BONA_PIECE_NB];
@@ -35,10 +135,10 @@ namespace EvaluateLearn {
 #define KKPW (*kkp_w)
 #define KPPW (*kpp_w)
 #define SET_A_LIMIT_TO(X,MIN,MAX)  \
-    X[0] = std::min(X[0],(MAX));   \
-    X[0] = std::max(X[0],(MIN));   \
-    X[1] = std::min(X[1],(MAX));   \
-    X[1] = std::max(X[1],(MIN));
+    X[0] = min(X[0],(MAX));   \
+    X[0] = max(X[0],(MIN));   \
+    X[1] = min(X[1],(MAX));   \
+    X[1] = max(X[1],(MIN));
 
 	void WriteKPP(Square k1, BonaPiece p1, BonaPiece p2, ValueKpp value) {
 		Square mk1 = mirror_board_sq(k1);
@@ -73,7 +173,7 @@ namespace EvaluateLearn {
 		int64_t q3 = &KPP[mk1][mp1][mp2] - q0;
 		int64_t q4 = &KPP[mk1][mp2][mp1] - q0;
 
-		return std::min({ q1, q2, q3, q4 });
+		return min({ q1, q2, q3, q4 });
 	}
 
 	inline void Weight::addGrad(LearnFloatType g1, LearnFloatType g2) {
@@ -99,20 +199,6 @@ namespace EvaluateLearn {
 
 		grad = { 0, 0 };
 		return !skip_update;
-	}
-
-	bool LoadRootPos(string filename) {
-		string sfen;
-		ifstream file("board//" + filename);
-
-		if (file) {
-			rootSFEN.clear();
-			while (getline(file, sfen))
-				rootSFEN.push_back(sfen);
-			file.close();
-			return true;
-		}
-		return false;
 	}
 
 	void InitGrad() {
@@ -146,6 +232,12 @@ namespace EvaluateLearn {
 				}
 			}
 		}
+	}
+
+	double CalcGrad(Value searchValue, Value quietValue) {
+		if (searchValue == VALUE_NONE || quietValue == VALUE_NONE)
+			return 0.0;
+		return winest(quietValue) - winest(searchValue);
 	}
 
 	double CalcGrad(Value searchValue, Value quietValue, bool winner, double progress) {
@@ -188,7 +280,7 @@ namespace EvaluateLearn {
 					Weight& w = KKW[k1][k2];
 					if (w.update(skip_update)) {
 						SET_A_LIMIT_TO(w.weight, LearnFloatType((int32_t)INT16_MIN * 4), LearnFloatType((int32_t)INT16_MAX * 4));
-						KK[k1][k2] = { (int32_t)std::round(w.weight[0]), (int32_t)std::round(w.weight[1]) };
+						KK[k1][k2] = { (int32_t)round(w.weight[0]), (int32_t)round(w.weight[1]) };
 					}
 				}
 			}
@@ -199,7 +291,7 @@ namespace EvaluateLearn {
 						Weight& w = KKPW[k1][k2][p];
 						if (w.update(skip_update)) {
 							SET_A_LIMIT_TO(w.weight, (LearnFloatType)(INT16_MIN / 2), (LearnFloatType)(INT16_MAX / 2));
-							KKP[k1][k2][p] = ValueKkp{ (int32_t)std::round(w.weight[0]), (int32_t)std::round(w.weight[1]) };
+							KKP[k1][k2][p] = ValueKkp{ (int32_t)round(w.weight[0]), (int32_t)round(w.weight[1]) };
 						}
 					}
 				}
@@ -211,39 +303,30 @@ namespace EvaluateLearn {
 						Weight& w = KPPW[k][p1][p2];
 						if (w.update(skip_update)) {
 							SET_A_LIMIT_TO(w.weight, (LearnFloatType)(INT16_MIN / 2), (LearnFloatType)(INT16_MAX / 2));
-							WriteKPP(k, p1, p2, ValueKpp{ (int16_t)std::round(w.weight[0]), (int16_t)std::round(w.weight[1]) });
+							WriteKPP(k, p1, p2, ValueKpp{ (int16_t)round(w.weight[0]), (int16_t)round(w.weight[1]) });
 						}
 					}
 				}
 			}
 		};
 
-		std::thread th[5];
+		thread th[5];
 
 		for (int i = 0; i < 5; i++)
-			th[i] = std::thread(func, i);
+			th[i] = thread(func, i);
 
 		for (int i = 0; i < 5; i++)
 			th[i].join();
 	}
 
-
-	inline void DumpLog(string path) {
-		ofstream ofLog(path, ios::app);
-		if (ofLog) {
-			ofLog << log.str();
-			log.str("");
-			ofLog.close();
-		}
-	}
-
+	/*
 	void Learning() {
 		Thread *pthread = nullptr;
-		Minishogi rootPos;
+		Minishogi rootPos(nullptr);
 		Move moves[MAX_PLY];
 		Value values[MAX_PLY];
 
-		uint64_t addGradCount = 0, epoch = 0;
+		uint64_t updateGradCount = 0, epoch = 0;
 		double sumError = 0.0;
 		streamoff readBoardOffset = 0;
 
@@ -255,11 +338,11 @@ namespace EvaluateLearn {
 				values[0] = VALUE_NONE;
 
 				// Playing
-				pthread = new Thread(rootPos, WHITE, Observer::ttBit);
+				pthread = new Thread(rootPos, USI::Options["HashEntry"]);
 				cout << "Cycle " << cycle << " Game " << b << " ";
 				while (ply < MAX_PLY - 50) {
 					RootMove rm;
-					pthread->IDAS(rm, Observer::depth, true);
+					pthread->IDAS(rm, USI::Options["HashEntry"]);
 					if (rm.pv[0] == MOVE_NULL)
 						break;
 					pthread->DoMove(rm.pv[0]);
@@ -277,7 +360,7 @@ namespace EvaluateLearn {
 					continue;
 
 				// Learning
-				pthread = new Thread(rootPos, WHITE, 1);
+				pthread = new Thread(rootPos, 1);
 				const Minishogi &pos = pthread->GetMinishogi();
 				double progress = pow(GAMMA, ply); RootMove quietRM;
 				for (int i = 0; i < ply; pthread->DoMove(moves[i++]), progress /= GAMMA) {
@@ -293,7 +376,7 @@ namespace EvaluateLearn {
 
 					double dj_dw = CalcGrad(searchValue, quietRM.value, isWin, progress);
 					//double dj_dw = CalcGrad(searchValue, quietRM.value, isWin, double(i + 1) / ply);
-					//cout << isWin << " " << searchValue << " " << quietRM.value/* << " " << pthread->GetEvaluate()*/ << " " << progress << " " << dj_dw << "\n";
+					//cout << isWin << " " << searchValue << " " << quietRM.value << " " << progress << " " << dj_dw << "\n";
 
 					if (dj_dw == 0.0)
 						continue;
@@ -307,64 +390,221 @@ namespace EvaluateLearn {
 					for (j--; j >= 0; j--)
 						pthread->UndoMove();
 
-					if (++addGradCount % LEARN_PATCH_SIZE == 0) {
+					if (++updateGradCount % LEARN_PATCH_SIZE == 0) {
 						UpdateKPPT(++epoch);
 						cout << "epoch : " << epoch << " mse : " << sqrt(sumError / LEARN_PATCH_SIZE) << endl;
 						log << Observer::GetTimeStamp() << " epoch : " << epoch << " mse : " << sqrt(sumError / LEARN_PATCH_SIZE) << "\n";
 						sumError = 0.0;
-						if (addGradCount % SAVE_PATCH_SIZE == 0)
-							Evaluate::evaluater.Save(Observer::GetTimeStamp());
+						if (updateGradCount % SAVE_PATCH_SIZE == 0)
+							Evaluate::evaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
 						DumpLog(logPathStr);
 					}
 				}
 			}
-			log << Observer::GetTimeStamp() << " Cycle " << cycle << " finished. Add Grad Count " << addGradCount << "\n";
+			log << Observer::GetTimeStamp() << " Cycle " << cycle << " finished. Add Grad Count " << updateGradCount << "\n";
 			DumpLog(logPathStr);
 		}
 	}
 
 	void SelfLearn() {
+		int cycleNum;
 		cout << "AI Version : " << AI_VERSION << "\n" << Observer::GetSettingStr() << endl;
 		SetConsoleTitle("Nyanpass " AI_VERSION " - EvaluateLearn");
-
-		cout << "輸入搜尋的深度" << endl;
-		cin >> Observer::depth;
-
-		cout << "輸入KPP名稱" << endl;
-		cin >> Observer::kpptName;
-		if (!evaluater.Load(Observer::kpptName)) {
-			Observer::kpptName = "";
-			evaluater.Clean();
-			log << Observer::GetTimeStamp() << " Clean KKPT.\n";
-			log << Observer::GetTimeStamp() << " Load KKPT from " << +KPPT_DIRPATH << Observer::kpptName << " failed.\n";
-		}
-		else {
-			log << Observer::GetTimeStamp() << " Load KKPT from " << KPPT_DIRPATH << Observer::kpptName << " success.\n";
-		}
 
 		cout << "輸入訓練Cycle次數" << endl;
 		cin >> cycleNum;
 
 		// Initialize
-		logPathStr = KPPT_DIRPATH + Observer::GetTimeStamp() + "_log.txt";
-		CreateDirectory(KPPT_DIRPATH, NULL);
+		CreateDirectory(KPPT_DIRPATH.c_str(), NULL);
 		EvaluateLearn::InitGrad();
 		Zobrist::Initialize();
-		log << Observer::GetTimeStamp() << " Set Depth " << Observer::depth << ",Cycle " << cycleNum
+		cout << Observer::GetTimeStamp() << " Set Depth " << USI::Options["Depth"] << ",Cycle " << cycleNum
 			<< ",LEARN_PATCH_SIZE " << LEARN_PATCH_SIZE << ",EVAL_LIMIT " << EVAL_LIMIT << ",LAMBDA " << LAMBDA
 			<< ",GAMMA " << GAMMA << ",eta " << Weight::eta << ",skip_count " << Weight::skip_count << "\n";
-		log << Observer::GetTimeStamp() << " Learning Start.\n";
-		DumpLog(logPathStr);
+		cout << Observer::GetTimeStamp() << " Learning StartGameLoop.\n";
 
 		Learning();
 
-		if (Evaluate::evaluater.Save(Observer::GetTimeStamp() + "_Finish"))
-			log << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " failed.\n";
+		if (Evaluate::evaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp() + "_Finish"))
+			cout << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " failed.\n";
 		else
-			log << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " success.\n";
-		log << Observer::GetTimeStamp() << " Learning End.\n";
-		DumpLog(logPathStr);
+			cout << Observer::GetTimeStamp() << " Save KKPT to " << KPPT_DIRPATH << Observer::GetTimeStamp() + "_Finish" << " success.\n";
+		cout << Observer::GetTimeStamp() << " Learning End.\n";
 
 		SetConsoleTitle("Nyanpass " AI_VERSION " - EvaluateLearn : Stop");
+	}
+	*/
+	
+	struct KifuLearn : public Thread {
+	public:
+		string kifu_path = KIFULEARN_DIRPATH;
+		Value eval_limit = (Value)3000;
+		double mse_target = 0.0;
+		int update_patch = 100000;
+		int save_patch = 10000000;
+
+		virtual void Run() {
+			uint64_t updateGradCount = 0, epoch = 0;
+			double sumError = 0.0;
+
+			do {
+				for (auto &p : fs::directory_iterator(KIFULEARN_DIRPATH)) {
+					if (CheckStop())
+						break;
+
+					//cout << "Load Kifu at " << fs::path(p).relative_path().string() << endl;
+					ifstream ifile(fs::path(p).relative_path());
+					vector<LearnData> kifus;
+					string line, token;
+					Move m;
+					char c;
+					float f;
+
+					// Load Kifu
+					kifus.emplace_back();
+					while (getline(ifile, line)) {
+						istringstream iss(line);
+						iss >> token;
+						// Load Infos
+						if (token == "[White") {
+							iss >> token;
+							kifus.back().isTeacher[0] = token != "\"Nyanpass";
+						}
+						else if (token == "[Black") {
+							iss >> token;
+							kifus.back().isTeacher[1] = token != "\"Nyanpass";
+						}
+						else if (token == "[Result") {
+							iss >> token;
+							kifus.back().winner = Color(token[1] == '0');
+						}
+						else if (token == "[FEN") {
+							getline(iss, token);
+							token.erase(0, 2);
+							kifus.back().sfen = fen2sfen(token);
+						}
+						// Load Moves & Evals
+						else if (token[0] == '{') {
+							for (int j = 0; j < 7; j++)
+								getline(ifile, line);
+							while (true) {
+								if (kifus.back().moves.size() % 2 == 0)
+									ifile >> token;
+								if (token[0] == '{')
+									break;
+								ifile >> token >> c;
+								if (token[0] == '{')
+									break;
+								kifus.back().moves.push_back(token);
+								getline(ifile, token, '/');
+								istringstream ss(token);
+								ss >> f;
+								kifus.back().values.push_back(Value(int(f * PIECE_SCORE[PAWN])));
+								getline(ifile, token, '}');
+							}
+							/*cout << kifus.back().sfen << " "
+								<< kifus.back().isTeacher[0] << " "
+								<< kifus.back().isTeacher[1] << " "
+								<< kifus.back().winner << " "
+								<< kifus.back().moves.size() << endl;*/
+							kifus.emplace_back();
+						}
+					}
+					kifus.pop_back();
+
+					// Learning
+					for (auto &ld : kifus) {
+						if (CheckStop())
+							break;
+
+						pos.InitializeSFEN(ld.sfen);
+						for (int ply = 0; ply < ld.moves.size(); ply++, pos.DoMove(m)) {
+							RootMove quietRM;
+							Color rootTurn = pos.GetTurn();
+							bool isWin = ld.winner == rootTurn;
+							int j;
+							m = algebraic2move(ld.moves[ply], pos);
+							//cout << pos << m << endl;
+
+							if (!m)
+								break;
+
+							if (!ld.isTeacher[rootTurn] || (ld.values[ply] >= eval_limit && isWin) || (ld.values[ply] <= -eval_limit && !isWin))
+								continue;
+
+							InitSearch();
+							Search(quietRM, 0);
+
+							double dj_dw = CalcGrad(ld.values[ply], quietRM.value);
+
+							if (dj_dw == 0.0)
+								continue;
+							sumError += dj_dw * dj_dw;
+
+							for (j = 0; quietRM.pv[j] != MOVE_NULL; j++)
+								pos.DoMove(quietRM.pv[j]);
+
+							AddGrad(pos, rootTurn, dj_dw);
+
+							for (j--; j >= 0; j--)
+								pos.UndoMove();
+
+							if (++updateGradCount % update_patch == 0) {
+								UpdateKPPT(++epoch);
+								cout << "epoch : " << epoch << " mse : " << sqrt(sumError / update_patch) << endl;
+								if (updateGradCount % save_patch == 0)
+									Evaluate::evaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
+								if (mse_target && sqrt(sumError / update_patch) < mse_target)
+									Stop();
+								sumError = 0.0;
+							}
+						}
+					}
+				}
+			} while (mse_target && !CheckStop());
+			Evaluate::evaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
+			cout << "Update Grad Count : " << updateGradCount << endl;
+			cout << "Learn end." << endl;
+			
+			isExit = true;
+		}
+	};
+
+	void StartKifuLearn(istringstream& is) {
+		KifuLearn *kl = new KifuLearn();
+
+		while (true) {
+			string option;
+			is >> option;
+
+			if (option == "")
+				break;
+			else if (option == "kifu_path")
+				is >> kl->kifu_path;
+			else if (option == "eta")
+				is >> Weight::eta;
+			else if (option == "lambda")
+				is >> LAMBDA;
+			else if (option == "eval_limit")
+				is >> kl->eval_limit;
+			else if (option == "mse_target")
+				is >> kl->mse_target;
+			else if (option == "update_patch")
+				is >> kl->update_patch;
+			else if (option == "save_patch")
+				is >> kl->save_patch;
+		}
+		
+		if (th)
+			delete th;
+		EvaluateLearn::InitGrad();
+		USI::Limits.ponder = false;
+		th = kl;
+		th->StartWorking();
+	}
+
+	void Stop() {
+		if (th)
+			th->Stop();
 	}
 }

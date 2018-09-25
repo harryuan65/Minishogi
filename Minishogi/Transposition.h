@@ -55,6 +55,7 @@ public:
 	//TTentry* Probe(Key key, bool &ttHit);
 	TTentry* Probe(Key key, int turn, bool &ttHit);
 	uint64_t ZobristToIndex(Key zobrist);
+	int HashFull() const;
 
 private:
 	TTentry* transpositTable;

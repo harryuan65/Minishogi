@@ -7,13 +7,12 @@
 class Minishogi;
 
 namespace Evaluate {
-	constexpr char* KPPT_DIRPATH = "kppt//";
-	constexpr char* KK_FILENAME = "kk_binary.bin";
-	constexpr char* KKP_FILENAME = "kkp_binary.bin";
-	constexpr char* KPP_FILENAME = "kpp_binary.bin";
+	const std::string KPPT_DIRPATH = "kppt/";
+	const std::string KK_FILENAME = "kk_binary.bin";
+	const std::string KKP_FILENAME = "kkp_binary.bin";
+	const std::string KPP_FILENAME = "kpp_binary.bin";
 	constexpr int FV_SCALE = 32;
-
-
+	
 	typedef std::array<int32_t, 2> ValueKk;
 	typedef std::array<int32_t, 2> ValueKkp;
 	typedef std::array<int16_t, 2> ValueKpp;
@@ -40,7 +39,6 @@ namespace Evaluate {
 		bool Save(std::string path);
 		void Clean();
 		void Blend(Evaluater &e, float ratio);
-		void CheckNonZero() const;
 	};
 	
 	struct EvalSum {
@@ -54,6 +52,7 @@ namespace Evaluate {
 
 	extern Evaluater evaluater;
 
+	void Load();
 }
 
 #endif

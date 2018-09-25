@@ -159,6 +159,8 @@
     <ClCompile Include="Thread.cpp" />
     <ClCompile Include="TimeTest.cpp" />
     <ClCompile Include="Transposition.cpp" />
+    <ClCompile Include="usi.cpp" />
+    <ClCompile Include="usioption.cpp" />
     <ClCompile Include="Zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -174,6 +176,7 @@
     <ClInclude Include="TimeTest.h" />
     <ClInclude Include="Transposition.h" />
     <ClInclude Include="Types.h" />
+    <ClInclude Include="usi.h" />
     <ClInclude Include="Zobrist.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

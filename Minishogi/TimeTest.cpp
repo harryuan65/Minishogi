@@ -17,29 +17,28 @@ namespace TimeTest {
 	vector<RootMove> rms;
 
 	void Testing() {
-		Minishogi pos;
+		Minishogi pos(nullptr);
 		Thread *thread;
 		streamoff readBoardOffset = 0;
 		fstream file;
 
 		while (pos.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset)) {
 			rms.emplace_back();
-			thread = new Thread(pos, pos.GetTurn(), Observer::ttBit);
+			thread = new Thread(USI::Options["HashEntry"]);
 			cout << "---------- Board " << Observer::game_data[Observer::searchNum] << " ----------" << endl;
 			pos.PrintChessBoard();
 			cout << "Evaluate : " << setw(15) << pos.GetEvaluate() << endl;
 
 			Observer::StartSearching();
-			thread->IDAS(rms.back(), Observer::depth, false);
+			thread->IDAS(rms.back(), USI::Options["HashEntry"]);
 			Observer::EndSearching();
 
 			//cout << rms.back().PV() << endl;
 			Observer::PrintSearchReport(cout);
 			file.open(logPathStr, ios::app);
 			file << "---------- Board " << Observer::game_data[Observer::searchNum] - 1 << " ----------" << endl;
-			pos.PrintNoncolorBoard(file);
+			file << pos << "\n";
 			file << "Evaluate : " << setw(15) << pos.GetEvaluate() << "\n";
-			thread->Dump(file);
 			if (file) Observer::PrintSearchReport(file);
 			file.close();
 
@@ -53,30 +52,6 @@ namespace TimeTest {
 		cout << "AI Version : " << AI_VERSION << "\n" << Observer::GetSettingStr() << endl;
 		SetConsoleTitle("Nyanpass " AI_VERSION " - TimeTest");
 		logPathStr = TIMETEST_PATH + Observer::GetTimeStamp() + "_TimeTest.txt";
-
-		cout << "輸入搜尋的深度" << endl;
-		cin >> Observer::depth;
-
-#ifndef KPPT_DISABLE
-		cout << "輸入KPP名稱" << endl;
-		cin >> Observer::kpptName;
-		if (!Evaluate::evaluater.Load(Observer::kpptName)) {
-			Observer::kpptName = "";
-			Evaluate::evaluater.Clean();
-		}
-#else
-		Evaluate::evaluater.Clean();
-#endif
-
-#ifndef TRANSPOSITION_DISABLE
-		int size;
-		cout << "輸入同型表entry數量(2^n)" << endl;
-		cin >> size;
-		Observer::ttBit = size;
-#endif
-
-		cout << Observer::GetSettingStr() << "確定要開始?" << endl;
-		system("pause");
 
 		CreateDirectory(TIMETEST_PATH, NULL);
 		file.open(logPathStr, ios::app);

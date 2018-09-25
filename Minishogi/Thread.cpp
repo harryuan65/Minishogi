@@ -2,12 +2,17 @@
 #include <iostream>
 #include <windows.h>
 
+#include "usi.h"
+#include "Types.h"
 #include "Thread.h"
 #include "Observer.h"
+using namespace std;
+using namespace USI;
 
-Thread::Thread(const Minishogi &m, Color c, int ttBit) : us(c) {
-	rootPos.Set(m, this);
+Thread::Thread(int ttBit) : pos(this) , stdThread(&Thread::IdleLoop, this) {
 	tt.Initialize(ttBit);
+	selDepth = 0;
+
 	counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);
 	captureHistory.fill(0);
@@ -15,69 +20,83 @@ Thread::Thread(const Minishogi &m, Color c, int ttBit) : us(c) {
 		for (int j = 0; j < SQUARE_NB; j++)
 			contHistory[i][j].fill(0);
 	contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
+
 	ss = stack + 4; // To reference from (ss-4) to (ss+2)
-	std::memset(ss - 4, 0, 7 * sizeof(Stack));
+	memset(ss - 4, 0, 7 * sizeof(Stack));
 	for (int i = 4; i > 0; i--)
 		(ss - i)->contHistory = &contHistory[NO_PIECE][0]; // Use as sentinel
 }
 
 Thread::~Thread() {
 	isExit = true;
-	if (stdThread)
-		stdThread->join();
-	sync_cout << "Thread " << us << " : Delete" << sync_endl;
+	lock_guard<Mutex> lk(mutex);
+	searching = true;
+	searchCV.notify_all();
+	stdThread.join();
+	sync_cout << "Thread : Delete" << sync_endl;
 }
 
-void Thread::Start() {
-	if (!stdThread)
-		stdThread = new std::thread(&Thread::IdleLoop, this);
-}
-
-bool Thread::CheckStop(Move em) {
-	if (isStop || isReject || isExit ||
+bool Thread::CheckStop(Key rootKey) {
+	if (isStop || isExit ||
 		(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
-		(bestMove.enemyMove != MOVE_NONE && (em != bestMove.enemyMove || finishDepth))) {
+		(!Limits.ponder && (Limits.rootKey != rootKey || finishDepth))) {
 		isStop = true;
 	}
 	return isStop;
 }
 
-void Thread::SetEnemyMove(Move m) {
-	if (m) {
-		std::lock_guard<Mutex> lk(mutex);
-		bestMove.depth = 0;
-		bestMove.enemyMove = m;
-		if (m == MOVE_UNDO) {
-			isReject = true;
-		}
-		sync_cout << "GameLoop : Set enemy move to Thread " << us << sync_endl;
-	}
+/*void Thread::SetEnemyMove(Key k) {
+	lock_guard<Mutex> lk(moveMutex);
+	bestMove.depth = 0;
+	Limits.rootKey = k;
+	sync_cout << "GameLoop : Set enemy move to Thread " << sync_endl;
 }
 
 RootMove Thread::GetBestMove() {
-	std::unique_lock<Mutex> lk(mutex);
+	unique_lock<Mutex> lk(moveMutex);
 	if (!bestMove.depth) {
-		sync_cout << "GameLoop : Waiting move from Thread " << us << sync_endl;
+		sync_cout << "GameLoop : Waiting move from Thread " << sync_endl;
 		beginTime = clock();
-		cv.wait(lk, [&] { return bestMove.depth; });
+		moveCV.wait(lk, [&] { return bestMove.depth; });
 		beginTime = 0;
 		lk.unlock();
 	}
-	sync_cout << "GameLoop : Thread " << us << " Finished" << sync_endl;
+	sync_cout << "GameLoop : Thread Finished" << sync_endl;
 	return bestMove;
+}*/
+
+void Thread::InitSearch() {
+	int ply = pos.GetPly();
+
+	finishDepth = false;
+	ss = stack + 4;
+	memset(ss - 4, 0, 7 * sizeof(Stack));
+	for (int i = 1; i <= 4 && i <= ply; i++) {
+		(ss - i)->currentMove = pos.GetMove(ply - i);
+		pos.UndoMove();
+	}
+	for (int i = 4; i >= 1; i--) {
+		if ((ss - i)->currentMove) {
+			(ss - i)->contHistory = &contHistory[pos.GetChessOn(from_sq((ss - i)->currentMove))][to_sq((ss - i)->currentMove)];
+			pos.DoMove((ss - i)->currentMove);
+		}
+		else {
+			(ss - i)->contHistory = &contHistory[NO_PIECE][0];
+		}
+	}
 }
 
-void Thread::Dump(std::ostream &os) {
-	os << resultStr << std::endl;
-	resultStr.clear();
+/*void Thread::StartGameLoop() {
+	if (!stdThread)
+		stdThread = new thread(&Thread::GameLoop, this);
 }
 
-void Thread::IdleLoop() {
+void Thread::GameLoop() {
 	while (!isExit) {
 		mutex.lock();
 		if (bestMove.enemyMove == MOVE_UNDO) {
-			rootPos.UndoMove();
-			rootPos.UndoMove();
+			pos.UndoMove();
+			pos.UndoMove();
 			bestMove.enemyMove = MOVE_NONE;
 		}
 		else if (bestMove.enemyMove == MOVE_NULL) {
@@ -86,15 +105,15 @@ void Thread::IdleLoop() {
 			break;
 		}
 		else if (IsDoMove(bestMove.enemyMove)) {
-			rootPos.DoMove(bestMove.enemyMove);
+			pos.DoMove(bestMove.enemyMove);
 		}
 		mutex.unlock();
 
-		if (rootPos.IsGameOver()) {
+		if (pos.IsGameOver()) {
 			isExit = true;
 			break;
 		}
-		if (rootPos.GetTurn() == us) {
+		if (pos.GetTurn() == us) {
 			mutex.lock();
 			Observer::StartSearching();
 			bestMove.depth = 0;
@@ -112,14 +131,14 @@ void Thread::IdleLoop() {
 				finishDepth = false;
 				sync_cout << "Thread " << us << " : IDAS" << sync_endl;
 
-				IDAS(rm, Observer::depth, false);
+				IDAS(rm, Observer::depth);
 
 				mutex.lock();
 				bestMove = rm;
 			}
 			rootMoves.clear();
 			if (bestMove.pv[0])
-				rootPos.DoMove(bestMove.pv[0]);
+				pos.DoMove(bestMove.pv[0]);
 			else
 				isExit = true;
 			bestMove.enemyMove = MOVE_NONE;
@@ -141,4 +160,83 @@ void Thread::IdleLoop() {
 		}
 	}
 	sync_cout << "Thread " << us << " : Exit" << sync_endl;
+}*/
+
+void Thread::StartSearching(const Minishogi &rootPos, const LimitsType& limits) {
+	if (Limits.ponder) {
+		Limits.rootKey = limits.rootKey;
+		Limits.ponder = false;
+	}
+	else {
+		bestMove.Clean();
+	}
+
+	isStop = true;
+	lock_guard<Mutex> lk(searchMutex);
+
+	pos.Initialize(rootPos);
+	Limits = limits;
+	assert(pos.GetKey() == Limits.rootKey);
+
+	searching = true;
+	searchCV.notify_one(); // Wake up the thread in idle_loop()
+}
+
+void Thread::StartWorking() {
+	isStop = true;
+	lock_guard<Mutex> lk(searchMutex);
+	searching = true;
+	searchCV.notify_one(); // Wake up the thread in idle_loop()
+}
+
+void Thread::IdleLoop() {
+	while (!isExit) {
+		unique_lock<Mutex> lk(searchMutex);
+
+		searching = false;
+		searchCV.notify_one();
+		searchCV.wait(lk, [&] { return searching; });
+
+		lk.unlock();
+		isStop = false;
+
+		if (!isExit)
+			Run();
+
+	}
+}
+
+void Thread::Run() {
+	if (Limits.ponder) {
+		rootMoves.clear();
+		if (Options["FullMovePonder"] && pos.GetPly() > 0) {
+			Move ponderMove = pos.GetPrevMove();
+			pos.UndoMove();
+			InitSearch();
+			Observer::StartSearching();
+			PreIDAS();
+			Observer::EndSearching();
+			pos.DoMove(ponderMove);
+		}
+		else {
+			InitSearch();
+			rootMoves.emplace_back();
+			rootMoves[0].rootKey = pos.GetKey();
+			Observer::StartSearching();
+			IDAS(rootMoves[0], MAX_PLY);
+			Observer::EndSearching();
+		}
+	}
+	else {
+		for (int i = 0; i < rootMoves.size(); i++) {
+			if (rootMoves[i].rootKey == Limits.rootKey) {
+				bestMove = rootMoves[i];
+			}
+		}
+		InitSearch();
+		bestMove.rootKey = pos.GetKey();
+		Observer::StartSearching();
+		IDAS(bestMove, USI::Options["Depth"]);
+		Observer::EndSearching();
+	}
 }

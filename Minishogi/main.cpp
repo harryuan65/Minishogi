@@ -1,31 +1,10 @@
-﻿#include <iostream>
-#include <string>
-
-#include "GamePlay.h"
-#include "TimeTest.h"
-#include "EvaluateLearn.h"
-using namespace std;
+﻿#include "usi.h"
 
 int main(int argc, char **argv) {
 	setlocale(LC_ALL, "");
+	Zobrist::Initialize();
+	USI::Options.Initialize();
+	USI::loop(argc, argv);
 
-	if (argc == 1) {
-		string mode;
-		cin >> mode;
-
-		if (mode == "gameplay")
-			GamePlay::GamePlay(argc, argv);
-		else if (mode == "timetest")
-			TimeTest::TimeTest();
-		else if (mode == "evallearn")
-			EvaluateLearn::SelfLearn();
-		//else if (mode == "usi")
-	}
-	else {
-		GamePlay::GamePlay(argc, argv);
-	}
-
-	cout << "\a";
-	system("pause");
 	return 0;
 }

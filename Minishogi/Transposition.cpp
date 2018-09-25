@@ -3,33 +3,33 @@
 using std::cout;
 
 Transposition::~Transposition() {
-	if (transpositTable != nullptr)
+	if (transpositTable)
 		delete transpositTable;
 }
 
 void Transposition::Initialize(int ttBit) {
-	assert(ttBit > 0);
-	if (transpositTable != nullptr)
+	if (transpositTable)
 		delete transpositTable;
 #ifndef TRANSPOSITION_DISABLE
 	ttSize = 1 << (uint64_t)ttBit;
 	ttMask = ttSize - 1;
 	transpositTable = new TTentry[ttSize];
-	Clean();
 	cout << "Transposition Table Created. ";
 	cout << "Used Size : " << ((ttSize * sizeof(TTentry)) >> 20) << "MiB\n";
+	Clean();
 #else
-	tpSize = 1;
-	tpMask = tpSize - 1;
-	transpositTable = new TTentry[tpSize];
+	ttSize = 1;
+	ttMask = ttSize - 1;
+	transpositTable = new TTentry[ttSize];
 	cout << "Transposition Table disable.\n";
 #endif
 }
 
 void Transposition::Clean() {
-	cout << "Transposition Table Cleaned.\n";
-	if (transpositTable != nullptr)
+	if (transpositTable) {
 		memset(transpositTable, 0, ttSize * sizeof(TTentry));
+		cout << "Transposition Table Cleaned.\n";
+	}
 }
 
 /*TTentry* Transposition::Probe(Key key, bool &ttHit) {
@@ -63,4 +63,11 @@ TTentry* Transposition::Probe(Key key, int turn, bool &ttHit) {
 	ttHit = true;
 	//Observer::data[Observer::DataType::ttIsoNum] += (transpositTable[index].turn != turn);
 	return &transpositTable[index];
+}
+
+int Transposition::HashFull() const {
+	int cnt = 0;
+	for (int i = 0; i < 1000; i++)
+		cnt += (transpositTable[i].key32 != 0);
+	return cnt;
 }

@@ -11,38 +11,39 @@ using namespace std;
 namespace Evaluate {
 	Evaluater evaluater;
 
-	bool Evaluater::Load(std::string kkptName) {
-		ifstream ifKK(KPPT_DIRPATH + kkptName + "//" + KK_FILENAME, ios::binary);
-		ifstream ifKKP(KPPT_DIRPATH + kkptName + "//" + KKP_FILENAME, ios::binary);
-		ifstream ifKPP(KPPT_DIRPATH + kkptName + "//" + KPP_FILENAME, ios::binary);
+	bool Evaluater::Load(string path) {
+		ifstream ifKK (path + "/" + KK_FILENAME, ios::binary);
+		ifstream ifKKP(path + "/" + KKP_FILENAME, ios::binary);
+		ifstream ifKPP(path + "/" + KPP_FILENAME, ios::binary);
 		if (!ifKK || !ifKKP || !ifKPP) {
-			cout << "Error : Evaluater load failed." << endl;
+			cout << "Error : Evaluater load failed from \"" << path << "\"." << endl;
+			Clean();
 			return false;
 		}
 
 		ifKK.read(reinterpret_cast<char*>(kk), sizeof(kk));
 		ifKKP.read(reinterpret_cast<char*>(kkp), sizeof(kkp));
 		ifKPP.read(reinterpret_cast<char*>(kpp), sizeof(kpp));
-		cout << "Evaluater load successed." << endl;
-		CheckNonZero();
+					
+		cout << "Evaluater load successed from \"" << path << "\"." << endl;
 		return true;
 	}
 
-	bool Evaluater::Save(std::string kkptName) {
-		CreateDirectory((KPPT_DIRPATH + kkptName).c_str(), NULL);
+	bool Evaluater::Save(string path) {
+		CreateDirectory(path.c_str(), NULL);
 
-		ofstream ofKK(KPPT_DIRPATH + kkptName + "//" + KK_FILENAME, ios::binary);
-		ofstream ofKKP(KPPT_DIRPATH + kkptName + "//" + KKP_FILENAME, ios::binary);
-		ofstream ofKPP(KPPT_DIRPATH + kkptName + "//" + KPP_FILENAME, ios::binary);
+		ofstream ofKK(path + "/" + KK_FILENAME, ios::binary);
+		ofstream ofKKP(path + "/" + KKP_FILENAME, ios::binary);
+		ofstream ofKPP(path + "/" + KPP_FILENAME, ios::binary);
 
 		if (!ofKK.write(reinterpret_cast<char*>(kk), sizeof(kk)) ||
 			!ofKKP.write(reinterpret_cast<char*>(kkp), sizeof(kkp)) ||
 			!ofKPP.write(reinterpret_cast<char*>(kpp), sizeof(kpp))) {
-			cout << "Error : Evaluater save failed." << endl; 
+			cout << "Error : Evaluater save failed to \"" << path << "\"." << endl;
 			return false;
 		}
 		else {
-			cout << "Evaluater save successed." << endl;
+			cout << "Evaluater save successed to \"" << path << "\"." << endl;
 			return true;
 		}
 	}
@@ -72,39 +73,6 @@ namespace Evaluate {
 						kpp[k][p1][p2][i] = (float)kpp[k][p1][p2][i] * ratio + (float)e.kpp[k][p1][p2][i] * ratio2;
 	}
 
-	void Evaluater::CheckNonZero() const {
-		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1) {
-			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2) {
-				if (kk[k1][k2][0] != 0 || kk[k1][k2][1] != 0) {
-					k1 = BOARD_NB; k2 = BOARD_NB;
-					cout << "KK has non zero value.\n";
-				}
-			}
-		}
-
-		for (Square k1 = SQUARE_ZERO; k1 < BOARD_NB; ++k1) {
-			for (Square k2 = SQUARE_ZERO; k2 < BOARD_NB; ++k2) {
-				for (BonaPiece p = BONA_PIECE_ZERO; p < BONA_PIECE_NB; ++p) {
-					if (kkp[k1][k2][p][0] != 0 || kkp[k1][k2][p][1] != 0) {
-						k1 = BOARD_NB; k2 = BOARD_NB; p = BONA_PIECE_NB;
-						cout << "KKP has non zero value.\n";
-					}
-				}
-			}
-		}
-
-		for (Square k = SQUARE_ZERO; k < BOARD_NB; ++k) {
-			for (BonaPiece p1 = BONA_PIECE_ZERO; p1 < BONA_PIECE_NB; ++p1) {
-				for (BonaPiece p2 = BONA_PIECE_ZERO; p2 < BONA_PIECE_NB; ++p2) {
-					if (kpp[k][p1][p2][0] != 0 || kpp[k][p1][p2][1] != 0) {
-						k = BOARD_NB; p1 = BONA_PIECE_NB; p2 = BONA_PIECE_NB;
-						cout << "KPP has non zero value.\n";
-					}
-				}
-			}
-		}
-	}
-
 	Value EvalSum::Sum(const Color c) const {
 		if (meterial == VALUE_NONE || pin == VALUE_NONE)
 			return VALUE_NONE;
@@ -121,3 +89,5 @@ namespace Evaluate {
 		pin = VALUE_NONE;
 	}
 }
+
+void Evaluate::Load();

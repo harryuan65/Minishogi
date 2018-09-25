@@ -2,18 +2,15 @@
 #define _EVALUATELEARN_H_
 #include <array>
 #include <vector>
+#include <sstream>
 
 #include "Minishogi.h"
 
-namespace EvaluateLearn {
-	constexpr char CUSTOM_BOARD_FILE[] = "evallearn_board.txt";
-	constexpr int LEARN_PATCH_SIZE = 200;
-	constexpr int SAVE_PATCH_SIZE = 10000;
-	constexpr Value EVAL_LIMIT = (Value)3000;
-	constexpr double LAMBDA = 0.5;
-	constexpr double GAMMA = 0.93;
+Move algebraic2move(std::string str, Minishogi &pos);
+std::string fen2sfen(std::string fen);
 
-	extern std::vector<std::string> rootSFEN;
+namespace EvaluateLearn {
+	const std::string KIFULEARN_DIRPATH = "train/";
 
 	typedef float LearnFloatType;
 	typedef std::array<LearnFloatType, 2> WeightValue;
@@ -29,20 +26,23 @@ namespace EvaluateLearn {
 	};
 
 	struct LearnData {
-		int rootPosIndex;
-		std::vector<Move> moves;
-		std::vector<Value> values;
+		std::string sfen;                // sfen
+		std::vector<std::string> moves;  // winboard notation
+		std::vector<Value> values;       // 我的步兵基準分數
 		Color winner;
-		int learningPly = 0;
+		bool isTeacher[2];
+		//int learningPly = 0;
 	};
 
-	bool LoadRootPos(std::string filename);
 	void InitGrad();
 	double CalcGrad(Value searchValue, Value quietValue, bool winner, double progress);
 	void AddGrad(const Minishogi &m, Color turn, double delta_grad);
 	void UpdateKPPT(uint64_t epoch);
 
-	void SelfLearn();
+	void StartKifuLearn(std::istringstream& is);
+	void Stop();
+	//void SelfLearn();
+	//void KifuLearning(Thread &thread, istringstream& is);
 }
 
 

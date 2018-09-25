@@ -9,6 +9,7 @@
 #include "Transposition.h"
 #include "GamePlay.h"
 using namespace std;
+using namespace Observer;
 
 #define CUSTOM_BOARD_FILE "custom_board.txt"
 #define REPORT_PATH       "output//"
@@ -65,7 +66,7 @@ namespace GamePlay {
 	}
 
 	void Playing() {
-		Minishogi pos;
+		Minishogi pos(nullptr);
 		fstream file;
 		streamoff readBoardOffset = 0;
 		string playDetailPath;
@@ -89,18 +90,18 @@ namespace GamePlay {
 				pos.Initialize();
 			}
 			if (pType[0] == AI)
-				pthread[0] = new Thread(pos, WHITE, Observer::ttBit);
+				pthread[0] = new Thread(USI::Options["HashEntry"]);
 			if (pType[1] == AI)
-				pthread[1] = new Thread(pos, BLACK, Observer::ttBit);
+				pthread[1] = new Thread(USI::Options["HashEntry"]);
 			assert(pType[0] != AI || pthread[0]);
 			assert(pType[0] != AI || pthread[1]);
 
 			// Write Title
-			SetConsoleTitle(("Nyanpass " AI_VERSION " - GamePlay : Game " + to_string(Observer::gameNum)).c_str());
-			sync_cout << "---------- Game " << Observer::gameNum << " ----------" << sync_endl;
-			if (Observer::isSaveRecord) {
-				playDetailPath = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(Observer::gameNum) + ".txt";
-				//kifuStr = REPORT_PATH + currTimeStr + "_Kifu_" + to_string(Observer::gameNum) + ".txt";
+			SetConsoleTitle(("Nyanpass " AI_VERSION " - GamePlay : Game " + to_string(gameNum) + " " + to_string(player1WinNum) + ":" + to_string(player2WinNum)).c_str());
+			sync_cout << "---------- Game " << gameNum << " ----------" << sync_endl;
+			if (isSaveRecord) {
+				playDetailPath = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(gameNum) + ".txt";
+				//kifuStr = REPORT_PATH + currTimeStr + "_Kifu_" + to_string(gameNum) + ".txt";
 				if (gameMode != AI_OtherAI) {
 					file.open(playDetailPath, ios::app);
 					if (file) file << "#▼ : " << pName[1] << "\n#△ : " << pName[0] << "\n";
@@ -111,11 +112,11 @@ namespace GamePlay {
 				}
 			}
 
-			Observer::GameStart();
-			if (pType[0] == AI)
-				pthread[0]->Start();
-			if (pType[1] == AI)
-				pthread[1]->Start();
+			GameStart();
+			//if (pType[0] == AI)
+			//	pthread[0]->StartGameLoop();
+			//if (pType[1] == AI)
+			//	pthread[1]->StartGameLoop();
 			// Game Loop
 			while (true) {
 				Color turn = pos.GetTurn();
@@ -125,11 +126,11 @@ namespace GamePlay {
 				pos.PrintChessBoard();
 				cout << "Evaluate : " << setw(15) << pos.GetEvaluate() << "\n";
 				cout << SyncCout::IO_UNLOCK;
-				if (Observer::isSaveRecord && pType[turn] != OtherAI) {
+				if (isSaveRecord && pType[turn] != OtherAI) {
 					file.open(playDetailPath, ios::app);
 					if (file) {
-						file << "---------- Game " << Observer::gameNum << " Step " << pos.GetPly() << " ----------\n";
-						pos.PrintNoncolorBoard(file);
+						file << "---------- Game " << gameNum << " Step " << pos.GetPly() << " ----------\n";
+						file << pos << "\n";
 						file << "Evaluate : " << setw(15) << pos.GetEvaluate() << "\n";
 						if (pos.IsGameOver())
 							file << COLOR_WORD[turn] << " Cannot Move.\n";
@@ -150,7 +151,7 @@ namespace GamePlay {
 						sync_cout << "請輸入移動指令或其他指令(UNDO, SURRENDER) : " << sync_endl;
 						string buf;
 						cin >> buf;
-						move = string2move(buf, turn);
+						move = usi2move(buf, turn);
 
 						if (IsDoMove(move) && 
 							!pos.IsLegelAction(move) &&
@@ -176,19 +177,18 @@ namespace GamePlay {
 					sync_cout << COLOR_WORD[turn] << "DoMove : " << move << sync_endl;
 					break;
 				case AI:
-					RootMove rm = pthread[turn]->GetBestMove();
+					//RootMove rm = pthread[turn]->GetBestMove();
 					cout << endl << SyncCout::IO_LOCK;
-					Observer::PrintSearchReport(cout);
+					PrintSearchReport(cout);
 					cout << SyncCout::IO_UNLOCK;
 					file.open(playDetailPath, ios::app);
-					if (file) Observer::PrintSearchReport(file);
+					if (file) PrintSearchReport(file);
 					file.close();
-					move = rm.pv[0];
+					//move = rm.pv[0];
 					sync_cout << COLOR_WORD[turn] << "DoMove : " << move << sync_endl;
 
 					file.open(playDetailPath, ios::app);
 					if (file) {
-						pthread[turn]->Dump(file);
 						file << COLOR_WORD[turn] << "DoMove : " << move << endl;
 					}
 					file.close();
@@ -220,7 +220,7 @@ namespace GamePlay {
 					fm.SendMsg(&actionU32, sizeof(uint32_t), true);
 				}
 				else if (pType[~turn] == AI) {
-					pthread[~turn]->SetEnemyMove(move);
+					//pthread[~turn]->SetEnemyMove(move);
 				}
 			}
 
@@ -229,14 +229,14 @@ namespace GamePlay {
 				delete pthread[0];
 			if (pType[1] == AI && pthread[1])
 				delete pthread[1];
-			Observer::GameOver(!pos.GetTurn(), isSwap, pos.GetKey(0), pos.GetKifuHash());
+			GameOver(!pos.GetTurn(), isSwap, pos.GetKey(0), pos.GetKifuHash());
 			cout << "-------- Game Over! " << (!pos.GetTurn() ? "▼" : "△") << " Win! --------\n";
 			cout << SyncCout::IO_LOCK;
-			Observer::PrintGameReport(cout);
+			PrintGameReport(cout);
 			cout << SyncCout::IO_UNLOCK;
 
 			// Save Record
-			if (Observer::isSaveRecord) {
+			if (isSaveRecord) {
 				if (gameMode == OtherAI_AI) {
 					char msg[20];
 					fm.RecvMsg(msg, 20, true);
@@ -251,8 +251,8 @@ namespace GamePlay {
 					file << "-------- Game Over! " << COLOR_WORD[!pos.GetTurn()] << " Win! --------\n";
 					file << COLOR_WORD[(gameMode == OtherAI_AI) ^ isSwap] 
 						 << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
-					file << Observer::GetSettingStr() << "\n";
-					Observer::PrintGameReport(file);
+					file << GetSettingStr() << "\n";
+					PrintGameReport(file);
 					if (gameMode != AI_OtherAI) {
 						pos.PrintKifu(file);
 					}
@@ -272,11 +272,11 @@ namespace GamePlay {
 				if (gameMode != OtherAI_AI) {
 					file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::out);
 					if (file) {
-						file << "Start at : " << currTimeStr << "\nEnd at   : " << Observer::GetTimeStamp() << "\n\n";
-						Observer::PrintWinnerReport(file);
+						file << "StartGameLoop at : " << currTimeStr << "\nEnd at   : " << GetTimeStamp() << "\n\n";
+						PrintWinnerReport(file);
 						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
-						file << Observer::GetSettingStr() << "\n";
-						Observer::PrintTotalReport(file);
+						file << GetSettingStr() << "\n";
+						PrintTotalReport(file);
 						file.close();
 					}
 					else sync_cout << "Error : Fail to Save AI Report." << sync_endl;
@@ -285,8 +285,8 @@ namespace GamePlay {
 					file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::app);
 					if (file) {
 						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
-						file << Observer::GetSettingStr() << "\n";
-						Observer::PrintTotalReport(file);
+						file << GetSettingStr() << "\n";
+						PrintTotalReport(file);
 						file.close();
 					}
 					else sync_cout << "Error : Fail to Save AI Report." << sync_endl;
@@ -300,11 +300,11 @@ namespace GamePlay {
 	void GamePlay(int argc, char **argv) {
 		string buf, gameDirStr;
 
-		cout << "AI Version : " << AI_VERSION << "\n" << Observer::GetSettingStr() << endl;
+		cout << "AI Version : " << AI_VERSION << "\n" << GetSettingStr() << endl;
 		SetConsoleTitle("Nyanpass " AI_VERSION " - GamePlay");
 
 		if (argc != 4) {
-			currTimeStr = Observer::GetTimeStamp();
+			currTimeStr = GetTimeStamp();
 			fm.Open(currTimeStr);
 			while (true) {
 				cout << selectModeStr << endl;
@@ -363,43 +363,20 @@ namespace GamePlay {
 			isCustomBoard = argv[3][0] != '0';
 		}
 
-		if (pType[0] == AI || pType[1] == AI) {
-			cout << "輸入搜尋的深度" << endl;
-			cin >> Observer::depth;
-
-#ifndef KPPT_DISABLE
-			cout << "輸入KPP名稱" << endl;
-			cin >> Observer::kpptName;
-			if (!Evaluate::evaluater.Load(Observer::kpptName)) {
-				Observer::kpptName = "";
-				Evaluate::evaluater.Clean();
-			}
-#else
-			Evaluate::evaluater.Clean();
-#endif
-		}
-
 		cout << "確定要開始 不開始則進入進階選項(y/n)?" << endl;
 		cin >> buf;
 		if (buf != "y" && buf != "Y") {
 			if (pType[0] == AI || pType[1] == AI) {
-#ifndef TRANSPOSITION_DISABLE
-				int size;
-				cout << "輸入同型表entry數量(2^n)" << endl;
-				cin >> size;
-				Observer::ttBit = size;
-#endif
-
 				cout << "輸入時間限制(ms 0為無限制)" << endl;
-				cin >> Observer::limitTime;
+				cin >> limitTime;
 			}
 
-			if (Observer::isSaveRecord && (pType[0] == Human || pType[1] == Human)) {
+			if (isSaveRecord && (pType[0] == Human || pType[1] == Human)) {
 				cout << "輸入對手的名字" << endl;
 				cin >> pName[gameMode];
 			}
 
-			cout << Observer::GetSettingStr() << "確定要開始?" << endl;
+			cout << GetSettingStr() << "確定要開始?" << endl;
 			system("pause");
 		}
 		if (gameMode == AI_OtherAI) {
@@ -410,13 +387,13 @@ namespace GamePlay {
 			char msg[20];
 			cout << "等待對方回應..." << endl;
 			fm.RecvMsg(msg, 20, true);
-			if (strcmp("Start Game", msg)) {
+			if (strcmp("StartGameLoop Game", msg)) {
 				cout << "Error : 連線失敗" << endl;
 				system("pause");
 			}
 		}
 		else if (gameMode == OtherAI_AI) {
-			fm.SendMsg("Start Game", 11, true);
+			fm.SendMsg("StartGameLoop Game", 11, true);
 		}
 
 		CreateDirectory(REPORT_PATH, NULL);
@@ -426,8 +403,8 @@ namespace GamePlay {
 
 		cout << SyncCout::IO_LOCK;
 		cout << "---------- Total Report ----------\n";
-		Observer::PrintWinnerReport(cout);
-		Observer::PrintTotalReport(cout);;
+		PrintWinnerReport(cout);
+		PrintTotalReport(cout);;
 		cout << SyncCout::IO_UNLOCK;
 		SetConsoleTitle("Nyanpass " AI_VERSION " - GamePlay : Stop");
 	}
