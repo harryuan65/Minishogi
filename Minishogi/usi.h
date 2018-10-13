@@ -41,7 +41,7 @@ public:
     operator std::string() const { assert(type_ == "string" || type_ == "combo"); return current_value_; }
 
 private:
-    friend std::ostream& operator << (std::ostream&, const OptionsMap&);
+    friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
     std::string default_value_, current_value_, type_;
     std::vector<std::string> combo_;
     int min_, max_;
@@ -110,11 +110,12 @@ class Minishogi;
 namespace USI {
     extern OptionsMap Options;
     extern LimitsType Limits;
-	extern Thread *thread;
 
     void loop(int argc, char** argv);
-    void setoption(std::istringstream& ss_cmd); 
-    void go(const Minishogi& pos, std::istringstream& ss_cmd);
+	void position(Minishogi& pos, std::istringstream& up);
+	void go(const Minishogi& pos, std::istringstream& ss_cmd);
+	void timetest(std::istringstream& is);
+	void setoption(std::istringstream& ss_cmd);
 
     std::string value(Value s);
     std::string pv(const RootMove &rm, const Thread &th, Value alpha, Value beta);

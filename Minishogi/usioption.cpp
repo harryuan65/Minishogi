@@ -11,7 +11,7 @@
 #include "Observer.h"
 using namespace std;
 using namespace Evaluate;
-namespace fs = std::tr2::sys;
+namespace fs = std::experimental::filesystem;
 
 vector<string> GetEvalFilesPath() {
     vector<string> filenames;
@@ -54,7 +54,7 @@ void OptionsMap::Initialize() {
 	(*this)["FullMovePonder"]  = Option(false);
     (*this)["NetworkDelay"]    = Option(0, 0, 60000);
     (*this)["ResignValue"]     = Option(-VALUE_MATE, -VALUE_MATE, VALUE_MATE);
-	(*this)["EvalDir"]         = Option(filenames, GetEvalConfig(filenames), [](const Option& opt) { Evaluate::evaluater.Load(opt); });
+	(*this)["EvalDir"]         = Option(filenames, GetEvalConfig(filenames), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
 	(*this)["EvalStandardize"] = Option(true);
 }
 
@@ -62,9 +62,10 @@ ostream& operator<<(ostream& os, const OptionsMap& om) {
     for (auto it = om.begin(); it != om.end(); ++it) {
         const Option& o = it->second;
 
-		// Debug
+#ifdef BACKGROUND_SEARCH_DISABLE
 		if (it->first == "USI_Ponder")
 			continue;
+#endif
 
         os << "\noption name " << it->first << " type " << o.type_;
 

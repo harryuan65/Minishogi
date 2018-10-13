@@ -350,7 +350,7 @@ static Move usi2move(std::string str, Color turn) {
 	return m;
 }
 
-static std::ostream& operator << (std::ostream& os, Move m) {
+static std::ostream& operator<<(std::ostream& os, Move m) {
 	switch (m) {
 	case MOVE_NULL:
 		os << "resign";

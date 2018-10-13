@@ -15,8 +15,8 @@ public:
 	Minishogi(Thread *th) : thisThread(th) {};
 	void Initialize();
 	bool Initialize(const Minishogi &m);
-	bool Initialize(std::string str);
-	bool InitializeSFEN(std::string sfen);
+	bool Initialize(std::string sfen);
+	bool InitializeByBoard(std::string str);
 	std::string Sfen() const;
 
 	void DoMove(std::string m);

@@ -9,7 +9,9 @@
 using namespace std;
 using namespace USI;
 
-Thread::Thread(int ttBit) : pos(this) , stdThread(&Thread::IdleLoop, this) {
+Thread *GlobalThread;
+
+Thread::Thread(int ttBit) : pos(this), stdThread(&Thread::IdleLoop, this) {
 	tt.Initialize(ttBit);
 	selDepth = 0;
 
@@ -28,17 +30,36 @@ Thread::Thread(int ttBit) : pos(this) , stdThread(&Thread::IdleLoop, this) {
 }
 
 Thread::~Thread() {
+	searchMutex.lock();
 	isExit = true;
-	lock_guard<Mutex> lk(mutex);
-	searching = true;
+	isSearching = true;
 	searchCV.notify_all();
+	searchMutex.unlock();
 	stdThread.join();
-	sync_cout << "Thread : Delete" << sync_endl;
+	sync_cout << "Thread Delete" << sync_endl;
+}
+
+void Thread::Clean() {
+	tt.Clean();
+	selDepth = 0;
+
+	counterMoves.fill(MOVE_NULL);
+	mainHistory.fill(0);
+	captureHistory.fill(0);
+	for (int i = 0; i < PIECE_NB; i++)
+		for (int j = 0; j < SQUARE_NB; j++)
+			contHistory[i][j].fill(0);
+	contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
+
+	ss = stack + 4; // To reference from (ss-4) to (ss+2)
+	memset(ss - 4, 0, 7 * sizeof(Stack));
+	for (int i = 4; i > 0; i--)
+		(ss - i)->contHistory = &contHistory[NO_PIECE][0]; // Use as sentinel
 }
 
 bool Thread::CheckStop(Key rootKey) {
 	if (isStop || isExit ||
-		(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
+		//(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
 		(!Limits.ponder && (Limits.rootKey != rootKey || finishDepth))) {
 		isStop = true;
 	}
@@ -178,14 +199,14 @@ void Thread::StartSearching(const Minishogi &rootPos, const LimitsType& limits) 
 	Limits = limits;
 	assert(pos.GetKey() == Limits.rootKey);
 
-	searching = true;
+	isSearching = true;
 	searchCV.notify_one(); // Wake up the thread in idle_loop()
 }
 
 void Thread::StartWorking() {
 	isStop = true;
 	lock_guard<Mutex> lk(searchMutex);
-	searching = true;
+	isSearching = true;
 	searchCV.notify_one(); // Wake up the thread in idle_loop()
 }
 
@@ -193,16 +214,18 @@ void Thread::IdleLoop() {
 	while (!isExit) {
 		unique_lock<Mutex> lk(searchMutex);
 
-		searching = false;
-		searchCV.notify_one();
-		searchCV.wait(lk, [&] { return searching; });
+		isSearching = false;
+
+		while (!isSearching && !isExit) {
+			searchCV.notify_one();
+			searchCV.wait(lk, [&] { return isSearching; });
+		}
 
 		lk.unlock();
 		isStop = false;
 
 		if (!isExit)
 			Run();
-
 	}
 }
 

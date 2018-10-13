@@ -12,18 +12,38 @@
 using namespace std;
 using namespace Evaluate;
 
-string GetEngineName() { return "Nyanpass " AI_VERSION; }
-
 namespace USI {
-    OptionsMap Options;
-    LimitsType Limits;
-	Thread *thread;
-
-    void position(Minishogi& pos, istringstream& up);
-    void go(const Minishogi& pos, istringstream& ss_cmd);
-    void setoption(istringstream& ss_cmd);
+	OptionsMap Options;
+	LimitsType Limits;
 }
 
+struct TimeTestThread : public Thread {
+	string position_path = "board/timetest.sfen";
+
+	TimeTestThread(int ttBit) : Thread(ttBit) {}
+
+	virtual void Run() {
+		streamoff readBoardOffset = 0;
+		Observer::GameStart();
+		while (pos.LoadBoard(position_path, readBoardOffset)) {
+			RootMove rm;
+			cout << "Position : " << Observer::game_data[Observer::searchNum] << endl;
+			cout << pos << endl;
+			cout << "Evaluate : " << pos.GetEvaluate() << endl;
+
+			Clean();
+			Observer::StartSearching();
+			IDAS(rm, USI::Options["Depth"]);
+			Observer::EndSearching();
+
+			Observer::PrintSearchReport(cout);
+			cout << endl;
+		}
+
+		Observer::GameOver(0, 0, 0);
+		Observer::PrintGameReport(cout);
+	}
+};
 
 void USI::position(Minishogi &pos, istringstream &is) {
     string token, sfen;
@@ -40,12 +60,12 @@ void USI::position(Minishogi &pos, istringstream &is) {
     else
         return;
 
-    pos.InitializeSFEN(sfen);
+    pos.Initialize(sfen);
     while ((is >> token) && (m = usi2move(token, pos.GetTurn()))) {
         pos.DoMove(m);
 		pos.GetEvaluate();
     }
-	cout << IO_LOCK << pos << IO_UNLOCK << endl;
+	sync_cout << pos << sync_endl;
 }
 
 void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
@@ -57,8 +77,7 @@ void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
     while (ss_cmd >> token) {
 		if (token == "searchmoves")
 			while (ss_cmd >> token)
-				limits.search_moves.push_back(
-					usi2move(token, Color(pos.GetTurn() ^ (limits.search_moves.size() % 2))));
+				limits.search_moves.push_back(usi2move(token, Color(pos.GetTurn() ^ (limits.search_moves.size() % 2))));
         else if (token == "btime")    ss_cmd >> limits.time[BLACK];
         else if (token == "wtime")    ss_cmd >> limits.time[WHITE];
         else if (token == "binc")     ss_cmd >> limits.inc[BLACK];
@@ -71,7 +90,22 @@ void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
         else if (token == "infinite") limits.infinite = true;
     }
 
-	thread->StartSearching(pos, limits);
+	GlobalThread->StartSearching(pos, limits);
+}
+
+void USI::timetest(istringstream& ss_cmd) {
+	TimeTestThread *th = new TimeTestThread(USI::Options["HashEntry"]);
+	string token;
+
+	while (ss_cmd >> token) {
+		if (token == "position_path") ss_cmd >> th->position_path;
+	}
+
+	delete GlobalThread;
+	EvaluateLearn::InitGrad();
+	USI::Limits.ponder = false;
+	GlobalThread = th;
+	GlobalThread->StartWorking();
 }
 
 void USI::setoption(istringstream& ss_cmd) {
@@ -101,6 +135,10 @@ void USI::setoption(istringstream& ss_cmd) {
 
 void USI::loop(int argc, char** argv) {
 	Observer::startLogger(true);
+	Zobrist::Initialize();
+	Evaluate::GlobalEvaluater.Load(USI::Options["EvalDir"]);
+	GlobalThread = new Thread();
+	cout << Observer::GetSettingStr() << endl;
 
     Minishogi pos(nullptr);
 	ExtMove moveList[SINGLE_GENE_MAX_ACTIONS];
@@ -121,16 +159,15 @@ void USI::loop(int argc, char** argv) {
         // usi command
 		if (token == "quit" ||
 			token == "gameover") {
-			if (thread)
-				thread->Stop();
+			GlobalThread->Stop();
+			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
+			Observer::PrintGameReport(cout);
 		}
 		else if (token == "stop") {
-			if (thread)
-				thread->Stop();
-			EvaluateLearn::Stop();
+			GlobalThread->Stop();
         }
         else if (token == "usi") {
-            sync_cout << "id name " << GetEngineName()
+            sync_cout << "id name " << AI_NAME
                 << "\nid author KKK nya"
                 << "\n" << Options
                 << "\nusiok" << sync_endl;
@@ -141,18 +178,17 @@ void USI::loop(int argc, char** argv) {
                 Limits.start_time = now();
                 //Time.reset();
             }
-			thread->StartSearching(pos, Limits);
+			GlobalThread->StartSearching(pos, Limits);
         }
         else if (token == "usinewgame") {
+			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
+			Observer::PrintGameReport(cout);
+			delete GlobalThread;
+			GlobalThread = new Thread(USI::Options["HashEntry"]);
 			pos.Initialize();
-			if (thread)
-				delete thread;
-			thread = new Thread(USI::Options["HashEntry"]);
+			Observer::GameStart();
 		}
-        else if (token == "isready") {
-			Evaluate::evaluater.Load(USI::Options["EvalDir"]);
-			sync_cout << "readyok" << sync_endl;
-		}
+        else if (token == "isready") { sync_cout << "readyok" << sync_endl; }
         else if (token == "setoption") { setoption(ss_cmd); }
         else if (token == "go") { go(pos, ss_cmd); }
         else if (token == "position") { position(pos, ss_cmd); }
@@ -164,21 +200,20 @@ void USI::loop(int argc, char** argv) {
 		else if (token == "drop") { sync_cout << move_list(moveList, pos.HandGenerator(moveList), pos) << sync_endl; }
         else if (token == "sfen") { sync_cout << pos.Sfen() << sync_endl; }
 		else if (token == "log") { Observer::startLogger(true); }
-		else if (token == "save_kppt") { evaluater.Save(KPPT_DIRPATH + "/" + Observer::GetTimeStamp()); }
+		else if (token == "version") { sync_cout << Observer::GetSettingStr() << sync_endl;	}
+		else if (token == "save_kppt") { GlobalEvaluater.Save(KPPT_DIRPATH + "/" + Observer::GetTimeStamp()); }
+		else if (token == "kifulearn") { EvaluateLearn::StartKifuLearn(ss_cmd); }
+		else if (token == "timetest") { timetest(ss_cmd); }
+		else if (token == "perft") {}
         else if (token == "harry") {
-            if (thread && !Limits.ponder)
-				thread->Stop();
+            if (!Limits.ponder)
+				GlobalThread->Stop();
         }
         else if (token == "resign") {
             sync_cout << "bestmove resign" << sync_endl;
-            if (thread && !Limits.ponder)
-				thread->Stop();
+            if (!Limits.ponder)
+				GlobalThread->Stop();
         }
-		else if (token == "kifulearn") {
-			if (thread)
-				thread->Stop();
-			EvaluateLearn::StartKifuLearn(ss_cmd);
-		}
 		else if (token == "domove") {
 			ss_cmd >> token;
 			pos.DoMove(token);
@@ -194,19 +229,26 @@ void USI::loop(int argc, char** argv) {
 			ss_cmd >> c >> token;
 			sync_cout << fen2sfen(token) << sync_endl;
 		}
+		else if (token == "results") {
+			bool t = 0;
+			int win[2] = { 0 };
+			ss_cmd >> token;
+			for (char c : token)
+				if (c == '+' || c == '-')
+					win[(t = !t) ^ (c == '+')]++;
+			sync_cout << win[0] << " : " << win[1] << sync_endl;
+		}
         else { sync_cout << "unknown command : " << cmd << sync_endl; }
 
         if (argc > 1)
             argc = 1;
     } while (cmd != "quit");
 
-	if (thread)
-		delete thread;
+	delete GlobalThread;
 }
 
 string USI::value(Value v) {
     assert(-SCORE_INFINITE < v && v < SCORE_INFINITE);
-
     stringstream ss;
 
 	if (abs(v) < VALUE_MATE_IN_MAX_PLY)
@@ -219,7 +261,7 @@ string USI::value(Value v) {
 
 string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 	stringstream ss;
-	int elapsed = now() - Observer::start_time + 1;
+	int elapsed = int(now() - Observer::start_time + 1);
 	uint64_t nodes = Observer::data[Observer::mainNode] + Observer::data[Observer::quiesNode];
 
 	if (ss.rdbuf()->in_avail()) // Not at first line

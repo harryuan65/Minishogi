@@ -11,24 +11,24 @@ void Transposition::Initialize(int ttBit) {
 	if (transpositTable)
 		delete transpositTable;
 #ifndef TRANSPOSITION_DISABLE
-	ttSize = 1 << (uint64_t)ttBit;
+	ttSize = (uint64_t)1 << ttBit;
 	ttMask = ttSize - 1;
 	transpositTable = new TTentry[ttSize];
-	cout << "Transposition Table Created. ";
-	cout << "Used Size : " << ((ttSize * sizeof(TTentry)) >> 20) << "MiB\n";
+	cout << "Transposition Table Created ";
+	cout << "Use Size : " << ((ttSize * sizeof(TTentry)) >> 20) << " MiB\n";
 	Clean();
 #else
 	ttSize = 1;
 	ttMask = ttSize - 1;
 	transpositTable = new TTentry[ttSize];
-	cout << "Transposition Table disable.\n";
+	cout << "Transposition Table disable\n";
 #endif
 }
 
 void Transposition::Clean() {
 	if (transpositTable) {
 		memset(transpositTable, 0, ttSize * sizeof(TTentry));
-		cout << "Transposition Table Cleaned.\n";
+		cout << "Transposition Table Cleaned\n";
 	}
 }
 

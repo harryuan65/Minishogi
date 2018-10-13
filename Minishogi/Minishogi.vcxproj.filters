@@ -48,12 +48,6 @@
     <ClCompile Include="EvaluateLearn.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
-    <ClCompile Include="GamePlay.cpp">
-      <Filter>標頭檔</Filter>
-    </ClCompile>
-    <ClCompile Include="TimeTest.cpp">
-      <Filter>標頭檔</Filter>
-    </ClCompile>
     <ClCompile Include="usi.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
@@ -90,12 +84,6 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="EvaluateLearn.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="GamePlay.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
-    <ClInclude Include="TimeTest.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="usi.h">

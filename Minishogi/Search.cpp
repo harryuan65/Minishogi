@@ -36,7 +36,7 @@ void Thread::Search(RootMove &rm, int depth) {
 }
 
 void Thread::IDAS(RootMove &rm, int depth) {
-	std::fstream file;
+	fstream file;
 	Value value, alpha, beta, delta;
 	int rootDepth;
 	bool isWin;
@@ -108,7 +108,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 		sync_cout << "info depth 0 score " << USI::value(VALUE_MATE) << "\nbestmove win" << sync_endl;
 	}
 
-	if (!Limits.ponder) {
+	if (!Limits.ponder || isStop) {
 		if (isWin) {
 			sync_cout << "bestmove win" << sync_endl;
 		}
@@ -118,8 +118,8 @@ void Thread::IDAS(RootMove &rm, int depth) {
 		else {
 			sync_cout << "bestmove " << rm.pv[0];
 			if (Options["USI_Ponder"] && rm.pv[1] != MOVE_NULL)
-				std::cout << " ponder " << rm.pv[1];
-			std::cout << sync_endl;
+				cout << " ponder " << rm.pv[1];
+			cout << sync_endl;
 		}
 	}
 }

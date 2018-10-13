@@ -87,6 +87,7 @@ public:
 
 	Thread(int ttBit = 1);
 	~Thread();
+	void Clean();
 
 	void Search(RootMove &rm, int depth);
 	void IDAS(RootMove &rm, int depth);
@@ -95,13 +96,9 @@ public:
 	bool IsStop();
 	bool CheckStop(Key rootKey = KEY_NULL);
 	uint64_t GetSearchDuration() const;
-	const Minishogi& GetMinishogi() const;
 
 	//void SetEnemyMove(Key k);
 	//RootMove GetBestMove();
-
-	bool DoMove(Move move);
-	bool UndoMove();
 
 	void InitSearch();
 	//void StartGameLoop();
@@ -125,9 +122,11 @@ private:
 	RootMove bestMove;
 	std::vector<RootMove> rootMoves;
 	int beginTime = 0;
-	bool searching = false, finishDepth = false;
+	bool isSearching = false, finishDepth = false;
 	std::atomic_bool isStop = false;
 };
+
+extern Thread *GlobalThread;
 
 inline bool Thread::IsStop() { 
 	return isStop || isExit; 
@@ -135,24 +134,6 @@ inline bool Thread::IsStop() {
 
 inline uint64_t Thread::GetSearchDuration() const { 
 	return beginTime ? clock() - beginTime : 0; 
-}
-
-inline const Minishogi& Thread::GetMinishogi() const {
-	return pos;
-}
-
-inline bool Thread::DoMove(Move move) {
-	if (searching)
-		return false;
-	pos.DoMove(move);
-	return true;
-}
-
-inline bool Thread::UndoMove() {
-	if (searching)
-		return false;
-	pos.UndoMove();
-	return true;
 }
 
 inline void Thread::Stop() {

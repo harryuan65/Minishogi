@@ -97,7 +97,7 @@ namespace GamePlay {
 			assert(pType[0] != AI || pthread[1]);
 
 			// Write Title
-			SetConsoleTitle(("Nyanpass " AI_VERSION " - GamePlay : Game " + to_string(gameNum) + " " + to_string(player1WinNum) + ":" + to_string(player2WinNum)).c_str());
+			SetConsoleTitle(("Nyanpass " AI_NAME " - GamePlay : Game " + to_string(gameNum) + " " + to_string(player1WinNum) + ":" + to_string(player2WinNum)).c_str());
 			sync_cout << "---------- Game " << gameNum << " ----------" << sync_endl;
 			if (isSaveRecord) {
 				playDetailPath = REPORT_PATH + currTimeStr + "_PlayDetail_" + to_string(gameNum) + ".txt";
@@ -229,7 +229,7 @@ namespace GamePlay {
 				delete pthread[0];
 			if (pType[1] == AI && pthread[1])
 				delete pthread[1];
-			GameOver(!pos.GetTurn(), isSwap, pos.GetKey(0), pos.GetKifuHash());
+			GameOver(!pos.GetTurn(), isSwap, pos.GetKifuHash());
 			cout << "-------- Game Over! " << (!pos.GetTurn() ? "▼" : "△") << " Win! --------\n";
 			cout << SyncCout::IO_LOCK;
 			PrintGameReport(cout);
@@ -250,7 +250,7 @@ namespace GamePlay {
 				if (file) {
 					file << "-------- Game Over! " << COLOR_WORD[!pos.GetTurn()] << " Win! --------\n";
 					file << COLOR_WORD[(gameMode == OtherAI_AI) ^ isSwap] 
-						 << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
+						 << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_NAME << "\n";
 					file << GetSettingStr() << "\n";
 					PrintGameReport(file);
 					if (gameMode != AI_OtherAI) {
@@ -274,7 +274,7 @@ namespace GamePlay {
 					if (file) {
 						file << "StartGameLoop at : " << currTimeStr << "\nEnd at   : " << GetTimeStamp() << "\n\n";
 						PrintWinnerReport(file);
-						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
+						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_NAME << "\n";
 						file << GetSettingStr() << "\n";
 						PrintTotalReport(file);
 						file.close();
@@ -284,7 +284,7 @@ namespace GamePlay {
 				else {
 					file.open(REPORT_PATH + currTimeStr + "_AIReport_AI.txt", ios::app);
 					if (file) {
-						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_VERSION << "\n";
+						file << "#" << "Player " << (gameMode == OtherAI_AI ? "2 : " : "1 : ") << AI_NAME << "\n";
 						file << GetSettingStr() << "\n";
 						PrintTotalReport(file);
 						file.close();
@@ -300,8 +300,8 @@ namespace GamePlay {
 	void GamePlay(int argc, char **argv) {
 		string buf, gameDirStr;
 
-		cout << "AI Version : " << AI_VERSION << "\n" << GetSettingStr() << endl;
-		SetConsoleTitle("Nyanpass " AI_VERSION " - GamePlay");
+		cout << "AI Version : " << AI_NAME << "\n" << GetSettingStr() << endl;
+		SetConsoleTitle("Nyanpass " AI_NAME " - GamePlay");
 
 		if (argc != 4) {
 			currTimeStr = GetTimeStamp();
@@ -314,12 +314,12 @@ namespace GamePlay {
 					pType[0] = Human;
 					pType[1] = AI;
 					pName[0] = "Human";
-					pName[1] = AI_VERSION;
+					pName[1] = AI_NAME;
 					break;
 				case AI_Human:
 					pType[0] = AI;
 					pType[1] = Human;
-					pName[0] = AI_VERSION;
+					pName[0] = AI_NAME;
 					pName[1] = "Human";
 					break;
 				case Human_Human:
@@ -331,15 +331,15 @@ namespace GamePlay {
 				case AI_AI:
 					pType[0] = AI;
 					pType[1] = AI;
-					pName[0] = AI_VERSION;
-					pName[1] = AI_VERSION;
+					pName[0] = AI_NAME;
+					pName[1] = AI_NAME;
 					break;
 				case AI_OtherAI:
 					if (!GetOpenFileNameString(gameDirStr))
 						continue;
 					pType[0] = AI;
 					pType[1] = OtherAI;
-					pName[0] = AI_VERSION;
+					pName[0] = AI_NAME;
 					pName[1] = "";
 					break;
 				default:
@@ -359,7 +359,7 @@ namespace GamePlay {
 			pType[0] = OtherAI;
 			pType[1] = AI;
 			pName[0] = argv[2];
-			pName[1] = AI_VERSION;
+			pName[1] = AI_NAME;
 			isCustomBoard = argv[3][0] != '0';
 		}
 
@@ -383,7 +383,7 @@ namespace GamePlay {
 			fm.SendMsg(nullptr, 0, false);
 			// argv[4] = 遊戲路徑 輸出檔名 玩家名 是否自訂棋盤
 			system(("start \"\" \"" + gameDirStr + "\" " + currTimeStr + " " +
-				"\"" + AI_VERSION + "\" " + to_string(isCustomBoard)).c_str());
+				"\"" + AI_NAME + "\" " + to_string(isCustomBoard)).c_str());
 			char msg[20];
 			cout << "等待對方回應..." << endl;
 			fm.RecvMsg(msg, 20, true);
@@ -406,6 +406,6 @@ namespace GamePlay {
 		PrintWinnerReport(cout);
 		PrintTotalReport(cout);;
 		cout << SyncCout::IO_UNLOCK;
-		SetConsoleTitle("Nyanpass " AI_VERSION " - GamePlay : Stop");
+		SetConsoleTitle("Nyanpass " AI_NAME " - GamePlay : Stop");
 	}
 }

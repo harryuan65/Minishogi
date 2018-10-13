@@ -20,9 +20,9 @@
 #define ENEMY_ISO_TT
 //#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
-//#define BACKGROUND_SEARCH_DISABLE
+#define BACKGROUND_SEARCH_DISABLE
 
-#define AI_VERSION "#106"
+#define AI_NAME "Nyanpass #107"
 
 namespace Observer {
 
@@ -52,7 +52,6 @@ namespace Observer {
 
 	// 單一盤面搜尋結果
 	extern uint64_t data[COUNT];
-	static clock_t beginTime = 0;
 	extern TimePoint start_time;
 
 	// 整局結果
@@ -66,13 +65,8 @@ namespace Observer {
 	extern uint32_t player2WinNum;
 	extern std::vector<Winner> winnerTable1;
 	extern std::vector<Winner> winnerTable2;
-	extern std::vector<uint64_t> initKey;
 	extern std::vector<uint32_t> kifuHash1;
 	extern std::vector<uint32_t> kifuHash2;
-
-	// 設定
-	extern int limitTime;
-	extern bool isSaveRecord;
 
 	inline std::tm localtime_xp(std::time_t timer) {
 		std::tm bt{};
@@ -98,16 +92,14 @@ namespace Observer {
 	inline void StartSearching() {
 		for (int i = 0; i < COUNT; i++)
 			data[i] = 0;
-		beginTime = clock();
 		start_time = now();
 	}
 
 	inline void EndSearching() {
 		data[searchNum]++;
-		data[searchTime] += clock() - beginTime;
+		data[searchTime] += now() - start_time;
 		for (int i = 0; i < COUNT; i++)
 			game_data[i] += data[i];
-		beginTime = 0;
 	}
 
 	inline void GameStart() {
@@ -115,7 +107,7 @@ namespace Observer {
 			game_data[i] = 0;
 	}
 
-	inline void GameOver(bool _winner, bool isSwap, uint64_t key, uint32_t _kifuHash) {
+	inline void GameOver(bool _winner, bool isSwap, uint32_t _kifuHash) {
 		gameNum++;
 		winner = (Winner)(_winner != isSwap);
 		if (winner == PLAYER1)
@@ -124,7 +116,6 @@ namespace Observer {
 			player2WinNum++;
 		if (!isSwap) {
 			winnerTable1.push_back(winner);
-			initKey.push_back(key);
 			kifuHash1.push_back(_kifuHash);
 		}
 		else {
@@ -161,11 +152,11 @@ namespace Observer {
 		if (data[scoutGeneNums] == 0) data[scoutGeneNums] = 1;
 		os << "Search Deapth            : " << std::setw(10) << USI::Options["Depth"] << "\n";
 		PrintData(os, data);
-		os << std::endl;
 	}
 
 	inline void PrintGameReport(std::ostream &os) {
 		if (!os) return;
+		if (!game_data[searchNum]) return;
 		os << "Game" << std::setw(3) << gameNum - 1 << "\n";
 		os << "Game Result :\n";
 		os << " Winner                  : " << std::setw(10) << (winner ? "Player2" : "Player1") << "\n";
@@ -193,10 +184,9 @@ namespace Observer {
 		os << " Game play nums          : " << std::setw(10) << gameNum << "\n";
 		os << " Player 1 win nums       : " << std::setw(10) << player1WinNum << "\n";
 		os << " Player 2 win nums       : " << std::setw(10) << player2WinNum << "\n";
-		os << "Game |    Init Borad    | A | B |  A kifu  |  B kifu  | Game\n";
+		os << "Game | A | B |  A kifu  |  B kifu  | Game\n";
 		for (int i = 0; i < winnerTable1.size(); i++) {
-			os << std::setw(4) << i << " | " << std::hex << std::setw(16) << initKey[i] << std::dec << " | ";
-			os << (winnerTable1[i] ? "-" : "+") << " | ";
+			os << std::setw(4) << i << " | " << (winnerTable1[i] ? "-" : "+") << " | ";
 			if (i < winnerTable2.size()) {
 				os << (winnerTable2[i] ? "-" : "+") << " | ";
 			}
@@ -213,11 +203,17 @@ namespace Observer {
 
 	inline std::string GetSettingStr() {
 		std::stringstream ss;
+		ss << "AI Version          : " << AI_NAME << "\n";
 		ss << "Main Depth          : " << USI::Options["Depth"] << "\n";
-		ss << "Time Limit          : " << (limitTime ? std::to_string(limitTime) + " ms" : "Disable") << "\n";
+		//ss << "Time Limit          : " << (limitTime ? std::to_string(limitTime) + " ms" : "Disable") << "\n";
+#ifndef BACKGROUND_SEARCH_DISABLE
+		ss << "Background Search   : Enable\n";
+#else
+		ss << "Background Search   : Disable\n";
+#endif
 #ifndef KPPT_DISABLE
-		if (std::string(USI::Options["EvalDir"]) == "none")
-			ss << "KKP Table           : " << USI::Options["EvalDir"] << "\n";
+		if (std::string(USI::Options["EvalDir"]) != "none")
+			ss << "KKP Table           : " << (std::string)USI::Options["EvalDir"] << "\n";
 		else
 			ss << "KKP Table           : Disable\n";
 #else
@@ -268,11 +264,6 @@ namespace Observer {
 		ss << "MovePicker          : Enable\n";
 #else
 		ss << "MovePicker          : Disable\n";
-#endif
-#ifndef BACKGROUND_SEARCH_DISABLE
-		ss << "Background Search   : Enable\n";
-#else
-		ss << "Background Search   : Disable\n";
 #endif
 		return ss.str();
 	}

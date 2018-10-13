@@ -15,7 +15,7 @@ using namespace Evaluate;
 const string Minishogi::START_SFEN = "rbsgk/4p/5/P4/KGSBR b - 1";
 
 void Minishogi::Initialize() {
-	InitializeSFEN(START_SFEN);
+	Initialize(START_SFEN);
 }
 
 bool Minishogi::Initialize(const Minishogi &m) {
@@ -42,7 +42,7 @@ bool Minishogi::Initialize(const Minishogi &m) {
 	return CheckLegal();
 }
 
-bool Minishogi::Initialize(string str) {
+bool Minishogi::InitializeByBoard(string str) {
 	istringstream ss(str);
 	string token;
 	Square sq = SQUARE_ZERO;
@@ -122,7 +122,7 @@ bool Minishogi::Initialize(string str) {
 	return CheckLegal();
 }
 
-bool Minishogi::InitializeSFEN(std::string sfen) {
+bool Minishogi::Initialize(std::string sfen) {
 	istringstream ss(sfen);
 	string buf;
 	Square sq = SQUARE_ZERO;
@@ -582,9 +582,9 @@ void Minishogi::CalcAllPos() {
 #ifdef KPPT_DISABLE
 	return;
 #endif
-	const auto kk = evaluater.kk;
-	const auto kkp = evaluater.kkp;
-	const auto kpp = evaluater.kpp;
+	const auto kk = GlobalEvaluater.kk;
+	const auto kkp = GlobalEvaluater.kkp;
+	const auto kpp = GlobalEvaluater.kpp;
 
 	Square sq_wk = BitScan(bitboard[W_KING]);
 	Square sq_bk = BitScan(bitboard[B_KING]), sq_bki = rotate_board_sq(sq_bk);
@@ -616,9 +616,9 @@ void Minishogi::CalcDiffPos() {
 		return;
 	}
 
-	const auto kk = evaluater.kk;
-	const auto kkp = evaluater.kkp;
-	const auto kpp = evaluater.kkp;
+	const auto kk = GlobalEvaluater.kk;
+	const auto kkp = GlobalEvaluater.kkp;
+	const auto kpp = GlobalEvaluater.kkp;
 
 	Piece pc = (Piece)board[to_sq(moveHist[ply - 1])];
 	Piece capture = captureHist[ply - 1];
@@ -1063,20 +1063,17 @@ bool Minishogi::SaveBoard(string filename) const {
 }
 
 bool Minishogi::LoadBoard(string filename, streamoff &offset) {
-	fstream file("board//" + filename, ios::in);
+	fstream file(filename, ios::in);
 	if (file) {
-		string boardStr, buf;
+		string buf;
 		file.seekg(offset, ios::beg);
 		do {
-			for (int i = 0; i < 8; i++) {
-				if (!getline(file, buf)) {
-					file.close();
-					return false;
-				}
-				boardStr += buf + "\n";
+			if (!getline(file, buf)) {
+				file.close();
+				return false;
 			}
 			offset = file.tellg();
-		} while (!Initialize(boardStr));
+		} while (!Initialize(buf));
 		file.close();
 		return true;
 	}
@@ -1243,7 +1240,7 @@ std::ostream& operator<<(std::ostream& os, const Minishogi& pos) {
 	}
 	ss << COLOR_WORD[BLACK] << " : ";
 	for (int i = 0; i < 5; i++)
-		os << pos.board[i + SQ_B_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);
+		ss << pos.board[i + SQ_B_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);
 	ss << "\n" << COLOR_WORD[WHITE] << " : ";
 	for (int i = 0; i < 5; i++)
 		ss << pos.board[i + SQ_W_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);

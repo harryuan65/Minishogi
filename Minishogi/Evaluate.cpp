@@ -9,14 +9,14 @@
 using namespace std;
 
 namespace Evaluate {
-	Evaluater evaluater;
+	Evaluater GlobalEvaluater;
 
 	bool Evaluater::Load(string path) {
 		ifstream ifKK (path + "/" + KK_FILENAME, ios::binary);
 		ifstream ifKKP(path + "/" + KKP_FILENAME, ios::binary);
 		ifstream ifKPP(path + "/" + KPP_FILENAME, ios::binary);
 		if (!ifKK || !ifKKP || !ifKPP) {
-			cout << "Error : Evaluater load failed from \"" << path << "\"." << endl;
+			cout << "Error : Evaluater load from \"" << path << "\" Failed" << endl;
 			Clean();
 			return false;
 		}
@@ -25,7 +25,7 @@ namespace Evaluate {
 		ifKKP.read(reinterpret_cast<char*>(kkp), sizeof(kkp));
 		ifKPP.read(reinterpret_cast<char*>(kpp), sizeof(kpp));
 					
-		cout << "Evaluater load successed from \"" << path << "\"." << endl;
+		cout << "Evaluater load from \"" << path << "\" Successed" << endl;
 		return true;
 	}
 
@@ -39,18 +39,18 @@ namespace Evaluate {
 		if (!ofKK.write(reinterpret_cast<char*>(kk), sizeof(kk)) ||
 			!ofKKP.write(reinterpret_cast<char*>(kkp), sizeof(kkp)) ||
 			!ofKPP.write(reinterpret_cast<char*>(kpp), sizeof(kpp))) {
-			cout << "Error : Evaluater save failed to \"" << path << "\"." << endl;
+			cout << "Error : Evaluater save to \"" << path << "\" Failed" << endl;
 			return false;
 		}
 		else {
-			cout << "Evaluater save successed to \"" << path << "\"." << endl;
+			cout << "Evaluater save to \"" << path << "\" Successed" << endl;
 			return true;
 		}
 	}
 
 	void Evaluater::Clean() {
 		memset(this, 0, sizeof(Evaluater));
-		cout << "Evaluater Clean." << endl;
+		cout << "Evaluater Clean" << endl;
 	}
 
 	void Evaluater::Blend(Evaluater &e, float ratio) {
@@ -89,5 +89,3 @@ namespace Evaluate {
 		pin = VALUE_NONE;
 	}
 }
-
-void Evaluate::Load();

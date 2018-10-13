@@ -50,9 +50,7 @@ namespace Evaluate {
 		void Clean();
 	};
 
-	extern Evaluater evaluater;
-
-	void Load();
+	extern Evaluater GlobalEvaluater;
 }
 
 #endif

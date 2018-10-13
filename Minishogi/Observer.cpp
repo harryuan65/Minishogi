@@ -33,10 +33,10 @@ namespace Observer {
 				log.file.open("log/" + GetTimeStamp() + "_io_log.txt", ifstream::out);
 				cin.rdbuf(&log.in);
 				cout.rdbuf(&log.out);
-				cout << "start logger at \"log/" + GetTimeStamp() + "_io_log.txt\"" << endl;
+				cout << "start logger \"log/" + GetTimeStamp() + "_io_log.txt\"" << endl;
 			}
 			else if (!b && log.file.is_open()) {
-				cout << "end logger at \"log/" + GetTimeStamp() + "_io_log.txt\"" << endl;
+				cout << "end logger \"log/" + GetTimeStamp() + "_io_log.txt\"" << endl;
 				cout.rdbuf(log.out.buf);
 				cin.rdbuf(log.in.buf);
 				log.file.close();
@@ -58,9 +58,7 @@ namespace Observer {
 	// 整局結果
 	uint64_t game_data[DataType::COUNT];
 
-	uint64_t startZobristHash;
 	Winner winner;
-	double gamePlayTime;
 	TimePoint start_time;
 
 	// 全部結果
@@ -73,8 +71,4 @@ namespace Observer {
 	std::vector<uint64_t> initKey;
 	std::vector<uint32_t> kifuHash1;
 	std::vector<uint32_t> kifuHash2;
-
-	// 設定
-	int limitTime = 0;
-	bool isSaveRecord = true;
 }
