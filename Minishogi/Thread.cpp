@@ -93,7 +93,7 @@ void Thread::InitSearch() {
 	ss = stack + 4;
 	memset(ss - 4, 0, 7 * sizeof(Stack));
 	for (int i = 1; i <= 4 && i <= ply; i++) {
-		(ss - i)->currentMove = pos.GetMove(ply - i);
+		(ss - i)->currentMove = pos.GetHistMove(ply - i + 1);
 		pos.UndoMove();
 	}
 	for (int i = 4; i >= 1; i--) {
@@ -206,6 +206,7 @@ void Thread::StartSearching(const Minishogi &rootPos, const LimitsType& limits) 
 void Thread::StartWorking() {
 	isStop = true;
 	lock_guard<Mutex> lk(searchMutex);
+
 	isSearching = true;
 	searchCV.notify_one(); // Wake up the thread in idle_loop()
 }

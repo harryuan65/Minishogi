@@ -108,15 +108,6 @@ Move algebraic2move(string str, Minishogi &pos) {
 	return MOVE_NULL;
 }
 
-string fen2sfen(string fen) {
-	string board, hand, turn;
-	istringstream iss(fen);
-	getline(iss, board, '[');
-	getline(iss, hand, ']');
-	iss >> turn;
-	return board + " " + (turn == "w" ? "b" : "w") + " " + hand + " 1";
-}
-
 namespace EvaluateLearn {
 	double LAMBDA = 0.5;
 	double GAMMA = 0.93;
@@ -453,6 +444,8 @@ namespace EvaluateLearn {
 			for (auto &p : fs::directory_iterator(kifu_path)) {
 				if (CheckStop())
 					break;
+				if (fs::is_directory(p))
+					continue;
 
 				ifstream ifile(fs::absolute(p));
 				string line, token;
@@ -523,7 +516,7 @@ namespace EvaluateLearn {
 								if (!isTeacher[pos.GetTurn()] ||
 									(v >= eval_limit && winner == pos.GetTurn()) ||
 									(v <= -eval_limit && winner != pos.GetTurn()) ||
-									// Shokidoko 條款
+									// Shokidoko條款 排除0 400 -400
 									v == VALUE_ZERO ||
 									(v > SHOKIDOKO_SKIP_MIN && v < SHOKIDOKO_SKIP_MAX) ||
 									(v > -SHOKIDOKO_SKIP_MAX && v < -SHOKIDOKO_SKIP_MIN))
@@ -649,7 +642,6 @@ namespace EvaluateLearn {
 		
 		delete GlobalThread;
 		EvaluateLearn::InitGrad();
-		USI::Limits.ponder = false;
 		GlobalThread = th;
 		cout << "Kifu Learn Setting : eta " << Weight::eta 
 			<< " lambda " << LAMBDA

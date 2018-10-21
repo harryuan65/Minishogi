@@ -64,10 +64,6 @@ public:
     bool IsLegalOption(const std::string name) { return this->find(name) != std::end(*this); }
 };
 
-struct SignalsType {
-    std::atomic_bool stop, stop_on_ponderhit;
-};
-
 struct LimitsType {
     LimitsType() { std::memset(this, 0, sizeof(LimitsType)); }
     //bool useTimeManagement() const { return !(move_time | depth | nodes | infinite); }
@@ -115,6 +111,7 @@ namespace USI {
 	void position(Minishogi& pos, std::istringstream& up);
 	void go(const Minishogi& pos, std::istringstream& ss_cmd);
 	void timetest(std::istringstream& is);
+	void perft(Minishogi &pos, int depth);
 	void setoption(std::istringstream& ss_cmd);
 
     std::string value(Value s);

@@ -22,7 +22,7 @@
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #107"
+#define AI_NAME "Nyanpass #108"
 
 namespace Observer {
 

@@ -420,4 +420,19 @@ constexpr BonaPiece mirror_bonapiece(BonaPiece bp) {
 constexpr bool is_sniper(Piece c) {
 	return (c & 0x7) == BISHOP || (c & 0x7) == ROOK;
 }
+
+static std::string fen2sfen(std::string fen) {
+	std::string board, hand, turn;
+	std::istringstream iss(fen);
+	getline(iss, board, '[');
+	getline(iss, hand, ']');
+	iss >> turn;
+	return board + " " + (turn == "w" ? "b" : "w") + " " + hand + " 1";
+}
+
+static inline std::string get_extension(std::string file) {
+	return file.substr(file.find_last_of(".") + 1);
+}
+
+
 #endif

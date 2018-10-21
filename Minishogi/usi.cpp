@@ -17,34 +17,6 @@ namespace USI {
 	LimitsType Limits;
 }
 
-struct TimeTestThread : public Thread {
-	string position_path = "board/timetest.sfen";
-
-	TimeTestThread(int ttBit) : Thread(ttBit) {}
-
-	virtual void Run() {
-		streamoff readBoardOffset = 0;
-		Observer::GameStart();
-		while (pos.LoadBoard(position_path, readBoardOffset)) {
-			RootMove rm;
-			cout << "Position : " << Observer::game_data[Observer::searchNum] << endl;
-			cout << pos << endl;
-			cout << "Evaluate : " << pos.GetEvaluate() << endl;
-
-			Clean();
-			Observer::StartSearching();
-			IDAS(rm, USI::Options["Depth"]);
-			Observer::EndSearching();
-
-			Observer::PrintSearchReport(cout);
-			cout << endl;
-		}
-
-		Observer::GameOver(0, 0, 0);
-		Observer::PrintGameReport(cout);
-	}
-};
-
 void USI::position(Minishogi &pos, istringstream &is) {
     string token, sfen;
 	Move m;
@@ -93,21 +65,6 @@ void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
 	GlobalThread->StartSearching(pos, limits);
 }
 
-void USI::timetest(istringstream& ss_cmd) {
-	TimeTestThread *th = new TimeTestThread(USI::Options["HashEntry"]);
-	string token;
-
-	while (ss_cmd >> token) {
-		if (token == "position_path") ss_cmd >> th->position_path;
-	}
-
-	delete GlobalThread;
-	EvaluateLearn::InitGrad();
-	USI::Limits.ponder = false;
-	GlobalThread = th;
-	GlobalThread->StartWorking();
-}
-
 void USI::setoption(istringstream& ss_cmd) {
     string token, name, value;
 
@@ -143,6 +100,7 @@ void USI::loop(int argc, char** argv) {
     Minishogi pos(nullptr);
 	ExtMove moveList[SINGLE_GENE_MAX_ACTIONS];
     string cmd, token;
+	pos.Initialize();
 
     for (int i = 1; i < argc; i++)
         cmd += string(argv[i]) + " ";
@@ -204,7 +162,7 @@ void USI::loop(int argc, char** argv) {
 		else if (token == "save_kppt") { GlobalEvaluater.Save(KPPT_DIRPATH + "/" + Observer::GetTimeStamp()); }
 		else if (token == "kifulearn") { EvaluateLearn::StartKifuLearn(ss_cmd); }
 		else if (token == "timetest") { timetest(ss_cmd); }
-		else if (token == "perft") {}
+		else if (token == "perft") { perft(pos, 5); }
         else if (token == "harry") {
             if (!Limits.ponder)
 				GlobalThread->Stop();
@@ -222,6 +180,10 @@ void USI::loop(int argc, char** argv) {
 		else if (token == "an_domove") { 
 			ss_cmd >> token;
 			pos.DoMove(algebraic2move(token, pos));
+			sync_cout << pos << sync_endl;
+		}
+		else if (token == "undo") {
+			pos.UndoMove();
 			sync_cout << pos << sync_endl;
 		}
 		else if (token == "fen2sfen") {

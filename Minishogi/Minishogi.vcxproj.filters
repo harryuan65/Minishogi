@@ -51,6 +51,9 @@
     <ClCompile Include="usi.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
+    <ClCompile Include="Test.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Observer.h">

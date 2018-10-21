@@ -18,13 +18,13 @@ namespace Evaluate {
 	typedef std::array<int16_t, 2> ValueKpp;
 
 	template <typename Tl, typename Tr>
-	inline std::array<Tl, 2> operator += (std::array<Tl, 2>& lhs, const std::array<Tr, 2>& rhs)	{
+	inline std::array<Tl, 2> operator+=(std::array<Tl, 2>& lhs, const std::array<Tr, 2>& rhs) {
 		lhs[0] += rhs[0];
 		lhs[1] += rhs[1];
 		return lhs;
 	}
 	template <typename Tl, typename Tr>
-	inline std::array<Tl, 2> operator -= (std::array<Tl, 2>& lhs, const std::array<Tr, 2>& rhs)	{
+	inline std::array<Tl, 2> operator-=(std::array<Tl, 2>& lhs, const std::array<Tr, 2>& rhs) {
 		lhs[0] -= rhs[0];
 		lhs[1] -= rhs[1];
 		return lhs;
@@ -48,9 +48,21 @@ namespace Evaluate {
 
 		Value Sum(const Color c) const;
 		void Clean();
+
+		inline bool IsNotCalc();
+		inline void SetNonCalc();
 	};
 
 	extern Evaluater GlobalEvaluater;
+}
+
+inline bool Evaluate::EvalSum::IsNotCalc() {
+	return pin == VALUE_NONE || pos[2][0] == VALUE_NONE;
+}
+
+inline void Evaluate::EvalSum::SetNonCalc() {
+	pin = VALUE_NONE;
+	pos[2][0] = VALUE_NONE;
 }
 
 #endif

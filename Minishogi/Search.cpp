@@ -295,7 +295,7 @@ namespace {
 		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, nullptr);
 		bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 		int captureCount = 0, quietCount = 0;
-
+		
 		while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 			bool isCapture = pos.GetChessOn(to_sq(move)) != NO_PIECE;
 			int R = 0;
@@ -341,7 +341,7 @@ namespace {
 				R = 1;
 			}
 #endif
-
+				
 #ifndef PVS_DISABLE
 			// Principal Variation Search
 			if (depth > 3 && ss->moveCount > 1) {
@@ -518,17 +518,10 @@ namespace {
 		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
 		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, to_sq((ss - 1)->currentMove));
 
-		if (depth < -20) {
-			cout << pos.Sfen() << endl;
-		}
 		while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
 			ss->currentMove = move;
 			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 			Observer::data[Observer::quiesNode]++;
-			/*if (depth < -20) {
-				cout << pos << endl;
-				cout << move << " "<<pos.IsCheckAfter(move)<< endl;
-			}*/
 
 			pos.DoMove(move);
 			Value value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);

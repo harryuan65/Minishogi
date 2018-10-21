@@ -27,17 +27,8 @@ bool Minishogi::Initialize(const Minishogi &m) {
 	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
 		SetBonaPiece(i, m.pieceList[WHITE][i], m.pieceList[BLACK][i]);
 
-	for (int i = 0; i <= ply; i++) {
-		moveHist[i] = m.moveHist[i];
-		captureHist[i] = m.captureHist[i];
-		bonaPieceDiffHist[i][0] = m.bonaPieceDiffHist[i][0];
-		bonaPieceDiffHist[i][1] = m.bonaPieceDiffHist[i][1];
-	}
-	for (int i = 0; i <= ply; i++) {
-		evalHist[i] = m.evalHist[i];
-		keyHist[i] = m.keyHist[i];
-		key2Hist[i] = m.key2Hist[i];
-		checker_bb[i] = m.checker_bb[i];
+	for (int i = 0; i < m.ply; i++) {
+		stateHist[i] = m.stateHist[i];
 	}
 	return CheckLegal();
 }
@@ -46,6 +37,7 @@ bool Minishogi::InitializeByBoard(string str) {
 	istringstream ss(str);
 	string token;
 	Square sq = SQUARE_ZERO;
+	StateInfo *st = &stateHist[0];
 
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, PIECE_NB * sizeof(Bitboard));
@@ -63,9 +55,6 @@ bool Minishogi::InitializeByBoard(string str) {
 		return false;
 	}
 	ply = 0;
-	evalHist[0].meterial = VALUE_ZERO;
-	keyHist[0] = 0;
-	key2Hist[0] = 0;
 
 	for (int i = 0; i < 5; i++) {
 		getline(ss, token);
@@ -78,9 +67,9 @@ bool Minishogi::InitializeByBoard(string str) {
 				SetBonaPiece(sq, pc);
 				bitboard[pc] |= 1 << sq;
 				occupied[color_of(pc)] |= 1 << sq;
-				evalHist[0].meterial += PIECE_SCORE[pc];
-				keyHist[0] ^= Zobrist::table[sq][pc];
-				key2Hist[0] ^= Zobrist::table2[sq][pc];
+				st->eval.meterial += PIECE_SCORE[pc];
+				st->key ^= Zobrist::table[sq][pc];
+				st->key2 ^= Zobrist::table2[sq][pc];
 			}
 			else {
 				cerr << "Error : Load Board Failed. There is a unrecognized symbol in BOARD section.\n";
@@ -96,13 +85,13 @@ bool Minishogi::InitializeByBoard(string str) {
 			if (handNum == 1 || handNum == 2) {
 				board[sq] = handNum;
 				SetBonaPiece(sq, Piece(1));
-				evalHist[0].meterial += HAND_SCORE[sq] * handNum;
-				keyHist[0] ^= Zobrist::table[sq][1];
-				key2Hist[0] ^= Zobrist::table2[sq][1];
+				st->eval.meterial += HAND_SCORE[sq] * handNum;
+				st->key ^= Zobrist::table[sq][1];
+				st->key2 ^= Zobrist::table2[sq][1];
 				if (handNum == 2) {
 					SetBonaPiece(sq, Piece(2));
-					keyHist[0] ^= Zobrist::table[sq][2];
-					key2Hist[0] ^= Zobrist::table2[sq][2];
+					st->key ^= Zobrist::table[sq][2];
+					st->key2 ^= Zobrist::table2[sq][2];
 				}
 			}
 			else if (handNum != 0) {
@@ -115,8 +104,8 @@ bool Minishogi::InitializeByBoard(string str) {
 #ifndef ENEMY_ISO_TT
 	if (turn == BLACK)	keyHist[0] ^= 1;
 #endif
+	st->checker_bb = GetChecker();
 
-	CalcAllChecker();
 	CalcAllPin();
 	CalcAllPos();
 	return CheckLegal();
@@ -129,6 +118,7 @@ bool Minishogi::Initialize(std::string sfen) {
 	Piece pc;
 	int handNum = 1;
 	bool isPromote = false;
+	StateInfo *st = &stateHist[0];
 
 	memset(occupied, 0, COLOR_NB * sizeof(Bitboard));
 	memset(bitboard, 0, PIECE_NB * sizeof(Bitboard));
@@ -136,9 +126,6 @@ bool Minishogi::Initialize(std::string sfen) {
 	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
 		pieceList[WHITE][i] = BONA_PIECE_NB;
 	ply = 0;
-	evalHist[0].meterial = VALUE_ZERO;
-	keyHist[0] = 0;
-	key2Hist[0] = 0;
 
 	ss >> buf;
 	for (int i = 0; i < buf.size(); i++) {
@@ -156,9 +143,9 @@ bool Minishogi::Initialize(std::string sfen) {
 			SetBonaPiece(sq, pc);
 			bitboard[pc] |= 1 << sq;
 			occupied[color_of(pc)] |= 1 << sq;
-			evalHist[0].meterial += PIECE_SCORE[pc];
-			keyHist[0] ^= Zobrist::table[sq][pc];
-			key2Hist[0] ^= Zobrist::table2[sq][pc];
+			st->eval.meterial += PIECE_SCORE[pc];
+			st->key ^= Zobrist::table[sq][pc];
+			st->key2 ^= Zobrist::table2[sq][pc];
 			isPromote = false;
 			++sq;
 		}
@@ -179,13 +166,13 @@ bool Minishogi::Initialize(std::string sfen) {
 			sq += BOARD_NB;
 			board[sq] = handNum;
 			SetBonaPiece(sq, (Piece)1);
-			evalHist[0].meterial += HAND_SCORE[sq] * handNum;
-			keyHist[0] ^= Zobrist::table[sq][1];
-			key2Hist[0] ^= Zobrist::table2[sq][1];
+			st->eval.meterial += HAND_SCORE[sq] * handNum;
+			st->key ^= Zobrist::table[sq][1];
+			st->key2 ^= Zobrist::table2[sq][1];
 			if (handNum == 2) {
 				SetBonaPiece(sq, (Piece)2);
-				keyHist[0] ^= Zobrist::table[sq][2];
-				key2Hist[0] ^= Zobrist::table2[sq][2];
+				st->key ^= Zobrist::table[sq][2];
+				st->key2 ^= Zobrist::table2[sq][2];
 			}
 			handNum = 1;
 		}
@@ -193,8 +180,8 @@ bool Minishogi::Initialize(std::string sfen) {
 #ifndef ENEMY_ISO_TT
 	if (turn == BLACK)	keyHist[0] ^= 1;
 #endif
+	st->checker_bb = GetChecker();
 
-	CalcAllChecker();
 	CalcAllPin();
 	CalcAllPos();
 	return CheckLegal();
@@ -202,17 +189,12 @@ bool Minishogi::Initialize(std::string sfen) {
 
 bool Minishogi::CheckLegal() const {
 	int pieceCount = 0;
-	// TODO :　occupied bitboard
-	/*for (Piece p = W_PAWN; p < PIECE_NB; ++p) {
-		Bitboard bb = bitboard[p];
-		BitScan(bb);
-	}*/
 
 	for (Square sq = SQUARE_ZERO; sq < BOARD_NB; ++sq) {
 		// 檢查盤面上的棋子在範圍內
 		if (board[sq] < 0 || PIECE_NB <= board[sq] || (board[sq] != 0 && PIECE_SCORE[board[sq]] == 0)) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error :　Load Board Failed. board[" << sq << "] is " << board[sq] << sync_endl;
+			sync_cout << "Error :　board[" << sq << "] is " << board[sq] << sync_endl;
 			return false;
 		}
 		else if (board[sq] > 0) {
@@ -224,7 +206,7 @@ bool Minishogi::CheckLegal() const {
 		// 檢查手牌上的數量在範圍內
 		if (board[sq] < 0 || 3 <= board[sq]) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error :　Load Board Failed. board[" << sq << "] is " << board[sq] << sync_endl;
+			sync_cout << "Error :　board[" << sq << "] is " << board[sq] << sync_endl;
 			return false;
 		}
 		else {
@@ -235,7 +217,7 @@ bool Minishogi::CheckLegal() const {
 	// 檢查盤面+手牌的數量
 	if (pieceCount != BONA_PIECE_INDEX_NB) {
 		cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-		sync_cout << "Error :　Load Board Failed. Piece Count is " << pieceCount << sync_endl;
+		sync_cout << "Error :　Piece Count is " << pieceCount << sync_endl;
 		return false;
 	}
 
@@ -244,27 +226,27 @@ bool Minishogi::CheckLegal() const {
 		// 檢查pieceList[WHITE]範圍 檢查與bonaIndexList是否相對應
 		if (pieceList[WHITE][bpi] < BONA_PIECE_ZERO || BONA_PIECE_NB <= pieceList[WHITE][bpi] || bonaIndexList[pieceList[WHITE][bpi]] != bpi) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+			sync_cout << "Error : pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
 				<< " bonaIndexList[" << pieceList[WHITE][bpi] << "] is " << bonaIndexList[pieceList[WHITE][bpi]] << sync_endl;
 			return false;
 		}
 		// 檢查pieceList[BLACK]範圍
 		if (pieceList[BLACK][bpi] < BONA_PIECE_ZERO || BONA_PIECE_NB <= pieceList[BLACK][bpi]) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error : Load Board Failed. pieceList[BLACK][" << bpi << "] is " << pieceList[BLACK][bpi] << sync_endl;
+			sync_cout << "Error :pieceList[BLACK][" << bpi << "] is " << pieceList[BLACK][bpi] << sync_endl;
 			return false;
 		}
 		// 檢查pieceList[WHITE]是否真的在盤面上的位置
 		if (pieceList[WHITE][bpi] < F_HAND && board[pieceList[WHITE][bpi] % BOARD_NB] != pieceList[WHITE][bpi] / BOARD_NB) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+			sync_cout << "Error : pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
 				<< " board[" << pieceList[WHITE][bpi] % BOARD_NB << "] is " << board[pieceList[WHITE][bpi] % BOARD_NB] << sync_endl;
 			return false;
 		}
 		// 檢查pieceList[WHITE]是否真的在手牌上的位置
 		if (pieceList[WHITE][bpi] >= F_HAND && board[(pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB] < pieceList[WHITE][bpi] % 2) {
 			cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
-			sync_cout << "Error : Load Board Failed. pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
+			sync_cout << "Error : pieceList[WHITE][" << bpi << "] is " << pieceList[WHITE][bpi]
 				<< " board[" << (pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB << "] is " << board[(pieceList[WHITE][bpi] - F_HAND) / 2 + BOARD_NB] << sync_endl;
 			return false;
 		}
@@ -310,18 +292,19 @@ void Minishogi::DoMove(Move m) {
 	ply++;
 	assert(ply < MAX_PLY);
 
+	StateInfo *st = &stateHist[ply];
 	Square from = from_sq(m);
 	Square to = to_sq(m);
 	bool isPro = is_promote(m);
 	Piece pc = GetChessOn(from);
-	Piece captured = captureHist[ply - 1] = GetChessOn(to);
-	BonaPieceDiff* bonaPieceDiff = bonaPieceDiffHist[ply - 1];
+	Piece captured = st->capture = GetChessOn(to);
+	BonaPieceDiff* bonaPieceDiff = st->bonaPieceDiff;
 	Bitboard dstboard = 1 << to;
-
-	evalHist[ply] = evalHist[ply - 1];
-	keyHist[ply] = keyHist[ply - 1];
+	
+	st->eval = stateHist[ply - 1].eval;
+	st->key = stateHist[ply - 1].key;
 #ifdef ENEMY_ISO_TT
-	key2Hist[ply] = key2Hist[ply - 1];
+	st->key2 = stateHist[ply - 1].key2;
 #endif
 
 	assert(from < SQUARE_NB);
@@ -340,11 +323,11 @@ void Minishogi::DoMove(Move m) {
 			DoBonaPiece(bonaPieceDiff[1], to, captured, toHand, board[toHand]);
 #endif
 
-			evalHist[ply].meterial += HAND_SCORE[toHand] - PIECE_SCORE[captured];
-			keyHist[ply] ^= Zobrist::table[to][captured]
+			st->eval.meterial += HAND_SCORE[toHand] - PIECE_SCORE[captured];
+			st->key ^= Zobrist::table[to][captured]
 						 ^ Zobrist::table[toHand][board[toHand]];
 #ifdef ENEMY_ISO_TT
-			key2Hist[ply] ^= Zobrist::table2[to][captured]
+			st->key2 ^= Zobrist::table2[to][captured]
 					      ^ Zobrist::table2[toHand][board[toHand]];
 #endif
 		}
@@ -352,12 +335,12 @@ void Minishogi::DoMove(Move m) {
 		occupied[turn] ^= (1 << from) | dstboard; // 更新該方場上狀況
 		bitboard[pc] ^= 1 << from;                // 移除該方手牌原有位置
 
-		keyHist[ply] ^= Zobrist::table[from][pc];
+		st->key ^= Zobrist::table[from][pc];
 #ifdef ENEMY_ISO_TT
-		key2Hist[ply] ^= Zobrist::table2[from][pc];
+		st->key2 ^= Zobrist::table2[from][pc];
 #endif
 		if (isPro) { // 升變
-			evalHist[ply].meterial += PIECE_SCORE[promote(pc)] - PIECE_SCORE[pc];
+			st->eval.meterial += PIECE_SCORE[promote(pc)] - PIECE_SCORE[pc];
 			pc = promote(pc);
 		}
 		bitboard[pc] ^= dstboard; // 更新該方手牌至目的位置
@@ -367,10 +350,10 @@ void Minishogi::DoMove(Move m) {
 		board[from] = NO_PIECE;   // 原本清空
 	}
 	else { // 打入
-		evalHist[ply].meterial += PIECE_SCORE[pc] - HAND_SCORE[from];
-		keyHist[ply] ^= Zobrist::table[from][board[from]];
+		st->eval.meterial += PIECE_SCORE[pc] - HAND_SCORE[from];
+		st->key ^= Zobrist::table[from][board[from]];
 #ifdef ENEMY_ISO_TT
-		key2Hist[ply] ^= Zobrist::table2[from][board[from]];
+		st->key2 ^= Zobrist::table2[from][board[from]];
 #endif
 
 		occupied[turn] ^= dstboard;    // 打入場上的位置
@@ -386,27 +369,26 @@ void Minishogi::DoMove(Move m) {
 	assert(captured < PIECE_NB);
 
 	turn = ~turn;
-	keyHist[ply] ^= Zobrist::table[to][pc];
+	st->key ^= Zobrist::table[to][pc];
 #ifdef ENEMY_ISO_TT
-	key2Hist[ply] ^= Zobrist::table2[to][pc];
+	st->key2 ^= Zobrist::table2[to][pc];
 #else
 	keyHist[ply] ^= 1;
 #endif
-	moveHist[ply - 1] = m;
-
-	evalHist[ply].pin = VALUE_NONE;
-	CalcAllChecker();
+	st->move = m;
+	st->eval.SetNonCalc();
+	st->checker_bb = GetChecker();
 }
 
 void Minishogi::UndoMove() {
 	assert(ply > 0);
 
-	Move m = moveHist[ply - 1];
+	Move m = stateHist[ply].move;
 	Square from = from_sq(m);
 	Square to = to_sq(m);
 	Piece pc = GetChessOn(to);
-	Piece captured = captureHist[ply - 1];
-	BonaPieceDiff* bonaPieceDiff = bonaPieceDiffHist[ply - 1];
+	Piece captured = stateHist[ply].capture;
+	BonaPieceDiff* bonaPieceDiff = stateHist[ply].bonaPieceDiff;
 	Bitboard dstboard = 1 << to;
 
 	turn = ~turn;
@@ -447,17 +429,19 @@ void Minishogi::UndoMove() {
 
 void Minishogi::DoNullMove() {
 	ply++;
+
 	turn = ~turn;
-	moveHist[ply - 1] = MOVE_NULL;
-	captureHist[ply - 1] = NO_PIECE;
-	evalHist[ply] = evalHist[ply - 1];
-	keyHist[ply] = keyHist[ply - 1];
+	StateInfo *st = &stateHist[ply];
+	st->move = MOVE_NULL;
+	st->capture = NO_PIECE;
+	st->eval = stateHist[ply - 1].eval;
+	st->key = stateHist[ply - 1].key;
 #ifdef ENEMY_ISO_TT
-	key2Hist[ply] = key2Hist[ply - 1];
+	st->key2 = stateHist[ply - 1].key2;
 #else
-	keyHist[ply] ^= 1;
+	st->key ^= 1;
 #endif
-	checker_bb[ply] = checker_bb[ply - 1];
+	st->checker_bb = stateHist[ply - 1].checker_bb;
 }
 
 void Minishogi::UndoNullMove() {
@@ -466,8 +450,8 @@ void Minishogi::UndoNullMove() {
 }
 
 /// 移動後 會不會造成對方處於被將狀態
-void Minishogi::CalcAllChecker() {
-	checker_bb[ply] = 0;
+Bitboard Minishogi::GetChecker() {
+	Bitboard checker = 0;
 
 	// get the position of my king
 	const Bitboard kingboard = bitboard[KING | (turn << 4)];
@@ -490,7 +474,7 @@ void Minishogi::CalcAllChecker() {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & rank) | (1 << attsrc);
+			checker |= (attack_path & rank) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
 
@@ -507,7 +491,7 @@ void Minishogi::CalcAllChecker() {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & file) | (1 << attsrc);
+			checker |= (attack_path & file) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
 
@@ -524,7 +508,7 @@ void Minishogi::CalcAllChecker() {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & slope1) | (1 << attsrc);
+			checker |= (attack_path & slope1) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
 
@@ -541,9 +525,10 @@ void Minishogi::CalcAllChecker() {
 		int attsrc = BitScan(attackboard);
 		attack_path = Movable(attsrc);
 		if (attack_path & kingboard)
-			checker_bb[ply] |= (attack_path & slope2) | (1 << attsrc);
+			checker |= (attack_path & slope2) | (1 << attsrc);
 		attackboard ^= 1 << attsrc;
 	}
+	return checker;
 }
 
 void Minishogi::CalcAllPin() {
@@ -575,103 +560,99 @@ void Minishogi::CalcAllPin() {
 			pin += PIN_SCORE[board[BitScan(pinner)]];
 		}
 	}
-	evalHist[ply].pin = pin;
+	stateHist[ply].eval.pin = pin;
 }
+
+#define KK  (GlobalEvaluater.kk)
+#define KKP (GlobalEvaluater.kkp)
+#define KPP (GlobalEvaluater.kpp)
 
 void Minishogi::CalcAllPos() {
 #ifdef KPPT_DISABLE
 	return;
 #endif
-	const auto kk = GlobalEvaluater.kk;
-	const auto kkp = GlobalEvaluater.kkp;
-	const auto kpp = GlobalEvaluater.kpp;
-
 	Square sq_wk = BitScan(bitboard[W_KING]);
 	Square sq_bk = BitScan(bitboard[B_KING]), sq_bki = rotate_board_sq(sq_bk);
-	EvalSum sum = evalHist[ply];
+	EvalSum sum = stateHist[ply].eval;
 
 	sum.pos[0][0] = 0;
 	sum.pos[0][1] = 0;
 	sum.pos[1][0] = 0;
 	sum.pos[1][1] = 0;
-	sum.pos[2] = kk[sq_wk][sq_bk];
+	sum.pos[2] = KK[sq_wk][sq_bk];
 	for (int i = 0; i < BPI_KING; i++) {
 		int w0 = pieceList[WHITE][i];
 		int b0 = pieceList[BLACK][i];
-		sum.pos[0] += kkp[sq_wk][sq_bk][w0];
+		sum.pos[2] += KKP[sq_wk][sq_bk][w0];
 		for (int j = 0; j < i; j++) {
-			sum.pos[0] += kpp[sq_wk ][w0][pieceList[WHITE][j]];
-			sum.pos[1] += kpp[sq_bki][b0][pieceList[BLACK][j]];
+			sum.pos[0] += KPP[sq_wk ][w0][pieceList[WHITE][j]];
+			sum.pos[1] += KPP[sq_bki][b0][pieceList[BLACK][j]];
 		}
 	}
-	evalHist[ply] = sum;
+	stateHist[ply].eval = sum;
 }
 
 void Minishogi::CalcDiffPos() {
 #ifdef KPPT_DISABLE
 	return;
 #endif
-	if (ply == 0 || evalHist[ply - 1].pin == VALUE_NONE) {
+	if (ply == 0 || stateHist[ply - 1].eval.IsNotCalc()) {
 		CalcAllPos();
 		return;
 	}
-
-	const auto kk = GlobalEvaluater.kk;
-	const auto kkp = GlobalEvaluater.kkp;
-	const auto kpp = GlobalEvaluater.kkp;
-
-	Piece pc = (Piece)board[to_sq(moveHist[ply - 1])];
-	Piece capture = captureHist[ply - 1];
-	BonaPieceDiff* bpd = bonaPieceDiffHist[ply - 1];
+	Piece pc = (Piece)board[to_sq(stateHist[ply].move)];
+	Piece capture = stateHist[ply].capture;
+	BonaPieceDiff* bpd = stateHist[ply].bonaPieceDiff;
 	Square sq_wk = BitScan(bitboard[W_KING]);
 	Square sq_bk = BitScan(bitboard[B_KING]), sq_bki = SQ_E1 - sq_bk;
-	EvalSum sum = evalHist[ply - 1];
+	EvalSum sum = stateHist[ply].eval;
 	int i, j;
 
+	sum.pos = stateHist[ply - 1].eval.pos;
 	if (pc == W_KING) {
 		sum.pos[0][0] = 0;
 		sum.pos[0][1] = 0;
-		sum.pos[2] = kk[sq_wk][sq_bk];
+		sum.pos[2] = KK[sq_wk][sq_bk];
 		for (i = 0; i < BPI_KING; i++) {
 			int w0 = pieceList[WHITE][i];
-			sum.pos[2] += kkp[sq_wk][sq_bk][w0];
+			sum.pos[2] += KKP[sq_wk][sq_bk][w0];
 			for (j = 0; j < i; j++) {
-				sum.pos[0] += kpp[sq_wk][w0][pieceList[WHITE][j]];
+				sum.pos[0] += KPP[sq_wk][w0][pieceList[WHITE][j]];
 			}
 		}
 		if (capture) {
 			BonaPieceIndex capturerIndex = bonaIndexList[bpd[1].nowBonaW];
 			for (i = 0; i < capturerIndex; ++i) {
-				sum.pos[1] -= kpp[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
-				sum.pos[1] += kpp[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
+				sum.pos[1] -= KPP[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
+				sum.pos[1] += KPP[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
 			}
 			for (++i; i < BPI_KING; ++i) {
-				sum.pos[1] -= kpp[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
-				sum.pos[1] += kpp[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
+				sum.pos[1] -= KPP[sq_bki][bpd[1].preBonaB][pieceList[BLACK][i]];
+				sum.pos[1] += KPP[sq_bki][bpd[1].nowBonaB][pieceList[BLACK][i]];
 			}
 		}
 	}
 	else if (pc == B_KING) {
 		sum.pos[1][0] = 0;
 		sum.pos[1][1] = 0;
-		sum.pos[2] = kk[sq_wk][sq_bk];
+		sum.pos[2] = KK[sq_wk][sq_bk];
 		for (int i = 0; i < BPI_KING; i++) {
 			int w0 = pieceList[WHITE][i];
 			int w1 = pieceList[BLACK][i];
-			sum.pos[2] += kkp[sq_wk][sq_bk][w0];
+			sum.pos[2] += KKP[sq_wk][sq_bk][w0];
 			for (int j = 0; j < i; j++) {
-				sum.pos[1] += kpp[sq_bki][w1][pieceList[WHITE][j]];
+				sum.pos[1] += KPP[sq_bki][w1][pieceList[WHITE][j]];
 			}
 		}
 		if (capture) {
 			BonaPieceIndex capturerIndex = bonaIndexList[bpd[1].nowBonaW];
 			for (i = 0; i < capturerIndex; ++i) {
-				sum.pos[0] -= kpp[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
-				sum.pos[0] += kpp[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
+				sum.pos[0] -= KPP[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
+				sum.pos[0] += KPP[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
 			}
 			for (++i; i < BPI_KING; ++i) {
-				sum.pos[0] -= kpp[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
-				sum.pos[0] += kpp[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
+				sum.pos[0] -= KPP[sq_wk][bpd[1].preBonaW][pieceList[WHITE][i]];
+				sum.pos[0] += KPP[sq_wk][bpd[1].nowBonaW][pieceList[WHITE][i]];
 			}
 		}
 	}
@@ -679,15 +660,15 @@ void Minishogi::CalcDiffPos() {
 #define ADD_BWKPP(BPD) { \
 		assert(pieceList[WHITE][i] < BONA_PIECE_NB); \
 		assert(pieceList[BLACK][i] < BONA_PIECE_NB); \
-        sum.pos[0] -= kpp[sq_wk ][BPD.preBonaW][pieceList[WHITE][i]]; \
-        sum.pos[1] -= kpp[sq_bki][BPD.nowBonaW][pieceList[BLACK][i]]; \
-        sum.pos[0] += kpp[sq_wk ][BPD.preBonaB][pieceList[WHITE][i]]; \
-        sum.pos[1] += kpp[sq_bki][BPD.nowBonaB][pieceList[BLACK][i]]; \
+        sum.pos[0] -= KPP[sq_wk ][BPD.preBonaW][pieceList[WHITE][i]]; \
+        sum.pos[1] -= KPP[sq_bki][BPD.preBonaB][pieceList[BLACK][i]]; \
+        sum.pos[0] += KPP[sq_wk ][BPD.nowBonaW][pieceList[WHITE][i]]; \
+        sum.pos[1] += KPP[sq_bki][BPD.nowBonaB][pieceList[BLACK][i]]; \
 }
 		if (!capture) {
 			BonaPieceIndex moverIndex = bonaIndexList[bpd[0].nowBonaW];
-			sum.pos[2] -= kkp[sq_wk][sq_bk][bpd[0].preBonaW];
-			sum.pos[2] += kkp[sq_wk][sq_bk][bpd[0].nowBonaW];
+			sum.pos[2] -= KKP[sq_wk][sq_bk][bpd[0].preBonaW];
+			sum.pos[2] += KKP[sq_wk][sq_bk][bpd[0].nowBonaW];
 
 			for (i = 0; i < moverIndex; ++i)
 				ADD_BWKPP(bpd[0]);
@@ -697,10 +678,12 @@ void Minishogi::CalcDiffPos() {
 		else {
 			BonaPieceIndex moverIndex = bonaIndexList[bpd[0].nowBonaW];
 			BonaPieceIndex capturerIndex = bonaIndexList[bpd[1].nowBonaW];
-			sum.pos[2] -= kkp[sq_wk][sq_bk][bpd[0].preBonaW];
-			sum.pos[2] += kkp[sq_wk][sq_bk][bpd[0].nowBonaW];
-			sum.pos[2] -= kkp[sq_wk][sq_bk][bpd[1].preBonaB];
-			sum.pos[2] += kkp[sq_wk][sq_bk][bpd[1].nowBonaB];
+			if (moverIndex > capturerIndex)
+				swap(moverIndex, capturerIndex);
+			sum.pos[2] -= KKP[sq_wk][sq_bk][bpd[0].preBonaW];
+			sum.pos[2] += KKP[sq_wk][sq_bk][bpd[0].nowBonaW];
+			sum.pos[2] -= KKP[sq_wk][sq_bk][bpd[1].preBonaW];
+			sum.pos[2] += KKP[sq_wk][sq_bk][bpd[1].nowBonaW];
 
 			for (i = 0; i < moverIndex; ++i) {
 				ADD_BWKPP(bpd[0]);
@@ -715,17 +698,13 @@ void Minishogi::CalcDiffPos() {
 				ADD_BWKPP(bpd[1]);
 			}
 
-			sum.pos[0] -= kpp[sq_wk ][bpd[0].preBonaW][bpd[1].preBonaW];
-			sum.pos[1] -= kpp[sq_bki][bpd[0].preBonaB][bpd[1].preBonaB];
-			sum.pos[0] += kpp[sq_wk ][bpd[0].nowBonaW][bpd[1].nowBonaW];
-			sum.pos[1] += kpp[sq_bki][bpd[0].nowBonaB][bpd[1].nowBonaB];
+			sum.pos[0] -= KPP[sq_wk ][bpd[0].preBonaW][bpd[1].preBonaW];
+			sum.pos[1] -= KPP[sq_bki][bpd[0].preBonaB][bpd[1].preBonaB];
+			sum.pos[0] += KPP[sq_wk ][bpd[0].nowBonaW][bpd[1].nowBonaW];
+			sum.pos[1] += KPP[sq_bki][bpd[0].nowBonaB][bpd[1].nowBonaB];
 		}
 	}
-
-	// Debug : CalcDiffPos() == CalcAllPos()
-	/*Value v = GetEvaluate();
-	CalcAllPos();
-	assert(v == GetEvaluate());*/
+	stateHist[ply].eval = sum;
 }
 
 bool Minishogi::PseudoLegal(Move m) const {
@@ -761,7 +740,7 @@ bool Minishogi::PseudoLegal(Move m) const {
 ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
 	// AttackGene moveList order by attacker
 	static const int AttackerOrder[] = { PAWN, SILVER, GOLD, PRO_PAWN, PRO_SILVER, BISHOP, ROOK, PRO_BISHOP, PRO_ROOK, KING };
-	Bitboard srcboard, dstboard, opboard = occupied[~turn], attackboard = checker_bb[ply];
+	Bitboard srcboard, dstboard, opboard = occupied[~turn], attackboard = stateHist[ply].checker_bb;
 	Square src, dst;
 	int turnBit = turn << 4;
 
@@ -795,7 +774,7 @@ ExtMove* Minishogi::AttackGenerator(ExtMove *moveList) const {
 ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
 	// MoveGene moveList order by mover 
 	static const int MoverOrder[] = { PRO_ROOK, PRO_BISHOP, ROOK, BISHOP, PRO_SILVER, PRO_PAWN, GOLD, SILVER, PAWN, KING };
-	Bitboard srcboard, dstboard, blankboard = BlankOccupied(occupied), attackboard = checker_bb[ply];
+	Bitboard srcboard, dstboard, blankboard = BlankOccupied(occupied), attackboard = stateHist[ply].checker_bb;
 	Square src, dst;
 	int turnBit = turn << 4;
 
@@ -830,13 +809,13 @@ ExtMove* Minishogi::HandGenerator(ExtMove *moveList) {
 		return moveList;
 
 	Bitboard srcboard = BlankOccupied(occupied), dstboard, nifu = 0;
-	Bitboard checker = checker_bb[ply] & occupied[~turn];
+	Bitboard checker = stateHist[ply].checker_bb & occupied[~turn];
 	if (checker) {                    
 		if (checker & (checker - 1)) // if there are more than one checkers
 			return moveList;         // no need to generate
 
 		// if there is only one checker, only the path from checker to my king can be blocked
-		srcboard &= checker_bb[ply]; 
+		srcboard &= stateHist[ply].checker_bb;
 	}
 
 	++src;
@@ -1063,6 +1042,7 @@ bool Minishogi::SaveBoard(string filename) const {
 }
 
 bool Minishogi::LoadBoard(string filename, streamoff &offset) {
+	string ext = get_extension(filename);
 	fstream file(filename, ios::in);
 	if (file) {
 		string buf;
@@ -1073,6 +1053,8 @@ bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 				return false;
 			}
 			offset = file.tellg();
+			if (ext == "fen")
+				buf = fen2sfen(buf);
 		} while (!Initialize(buf));
 		file.close();
 		return true;
@@ -1086,7 +1068,7 @@ void Minishogi::PrintKifu(ostream &os) const {
 	os << "Initboard : " << setw(18) << hex << GetKey(0) << dec << "\n";
 	for (int i = 0; i < ply; i++) {
 		os << setw(2) << i << " : " << COLOR_WORD[i % 2];
-		os << moveHist[i] << setw(18) << hex << GetKey(i + 1) << dec << "\n";
+		//os << moveHist[i] << setw(18) << hex << GetKey(i + 1) << dec << "\n";
 	}
 }
 
@@ -1171,7 +1153,7 @@ bool Minishogi::IsCheckAfter(const Move m) {
 /// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後才能判斷 在此不考慮被連將
 bool Minishogi::IsSennichite() const {
 	for (int i = ply - 4; i >= 0; i -= 2) {
-		if (keyHist[i] == keyHist[ply]) {
+		if (stateHist[i].key == stateHist[ply].key) {
 			return true;
 		}
 	}
@@ -1245,5 +1227,6 @@ std::ostream& operator<<(std::ostream& os, const Minishogi& pos) {
 	for (int i = 0; i < 5; i++)
 		ss << pos.board[i + SQ_W_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);
 	os << ss.str();
+
 	return os;
 }

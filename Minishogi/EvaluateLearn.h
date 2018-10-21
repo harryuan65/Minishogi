@@ -7,7 +7,6 @@
 #include "Minishogi.h"
 
 Move algebraic2move(std::string str, Minishogi &pos);
-std::string fen2sfen(std::string fen);
 
 namespace EvaluateLearn {
 	const std::string KIFULEARN_DIRPATH = "C:/Users/nyanpass.CJC/Documents/Minishogi/Training Kifu";
