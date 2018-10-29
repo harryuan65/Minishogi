@@ -284,9 +284,11 @@ namespace {
 					alpha = nullValue;
 			}
 			// Debug : null move zugzwangs
-			/*else {
+#ifndef NDEBUG
+			else {
 				nullValue = VALUE_NONE;
-			}*/
+			}
+#endif
 		}
 #endif
 

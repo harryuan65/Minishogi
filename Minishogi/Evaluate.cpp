@@ -74,10 +74,14 @@ namespace Evaluate {
 	}
 
 	Value EvalSum::Sum(const Color c) const {
-		if (meterial == VALUE_NONE || pin == VALUE_NONE)
+		if (IsNotCalc())
 			return VALUE_NONE;
 		// [0](先手KPP) + [1](後手KPP) + [2](KK+KKP) 
-		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + meterial + pin;
+#ifdef KPPT_ONLY
+		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE;
+#else
+		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + material + pin;
+#endif
 		const Value scoreTurn = (Value)(pos[0][1] + pos[1][1] + pos[2][1]) / FV_SCALE;
 
 		return (c == WHITE ? scoreBoard : -scoreBoard) + scoreTurn;
@@ -85,7 +89,7 @@ namespace Evaluate {
 
 	void EvalSum::Clean() {
 		memset(this, 0, sizeof(EvalSum));
-		meterial = VALUE_NONE;
+		material = VALUE_NONE;
 		pin = VALUE_NONE;
 	}
 }

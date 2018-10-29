@@ -9,7 +9,7 @@
 Move algebraic2move(std::string str, Minishogi &pos);
 
 namespace EvaluateLearn {
-	const std::string KIFULEARN_DIRPATH = "C:/Users/nyanpass.CJC/Documents/Minishogi/Training Kifu";
+	const std::string KIFULEARN_DIRPATH = "D:/Nyanpass Project/Training Kifu";
 
 	typedef float LearnFloatType;
 	typedef std::array<LearnFloatType, 2> WeightValue;

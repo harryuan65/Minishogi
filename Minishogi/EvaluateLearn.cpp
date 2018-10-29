@@ -557,7 +557,7 @@ namespace EvaluateLearn {
 
 			cout << "Learn Start." << endl;
 			pos.Initialize();
-			while (!IsStop()) {
+			while (boardCount && !IsStop()) {
 				for (auto &k : kifu) {
 					if (CheckStop())
 						break;
@@ -612,7 +612,8 @@ namespace EvaluateLearn {
 					}
 				}
 			}
-			Evaluate::GlobalEvaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
+			if (epoch)
+				Evaluate::GlobalEvaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
 			cout << "Update Grad Count : " << updateGradCount << endl;
 			cout << "Learn end" << endl;
 		}

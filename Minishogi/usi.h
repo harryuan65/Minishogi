@@ -108,10 +108,11 @@ namespace USI {
     extern LimitsType Limits;
 
     void loop(int argc, char** argv);
-	void position(Minishogi& pos, std::istringstream& up);
+	void position(Minishogi& pos, std::istringstream& ss_cmd);
 	void go(const Minishogi& pos, std::istringstream& ss_cmd);
-	void timetest(std::istringstream& is);
+	void timetest(std::istringstream& ss_cmd);
 	void perft(Minishogi &pos, int depth);
+	void make_opening(std::istringstream& ss_cmd);
 	void setoption(std::istringstream& ss_cmd);
 
     std::string value(Value s);

@@ -16,11 +16,11 @@ namespace fs = std::experimental::filesystem;
 vector<string> GetEvalFilesPath() {
     vector<string> filenames;
 
-	filenames.push_back("none");
-
 	for (auto &p : fs::directory_iterator(KPPT_DIRPATH))
 		if (fs::is_directory(p))
 			filenames.push_back(KPPT_DIRPATH + fs::path(p).filename().string());
+
+	filenames.push_back("none");
 
     return filenames;
 }

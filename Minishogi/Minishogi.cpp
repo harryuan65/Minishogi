@@ -21,15 +21,15 @@ void Minishogi::Initialize() {
 bool Minishogi::Initialize(const Minishogi &m) {
 	turn = m.turn;
 	ply = m.ply;
-	for (int i = 0; i < COLOR_NB; i++) occupied[i] = m.occupied[i];
-	for (int i = 0; i < PIECE_NB; i++) bitboard[i] = m.bitboard[i];
-	for (int i = 0; i < SQUARE_NB; i++) board[i] = m.board[i];
+
+	copy(m.occupied, m.occupied + COLOR_NB, occupied);
+	copy(m.bitboard, m.bitboard + PIECE_NB, bitboard);
+	copy(m.board, m.board + SQUARE_NB, board);
 	for (BonaPieceIndex i = BPI_PAWN; i < BONA_PIECE_INDEX_NB; ++i)
 		SetBonaPiece(i, m.pieceList[WHITE][i], m.pieceList[BLACK][i]);
+	copy(m.stateHist, m.stateHist + m.ply + 1, stateHist);
 
-	for (int i = 0; i < m.ply; i++) {
-		stateHist[i] = m.stateHist[i];
-	}
+	assert(m.GetKey() == GetKey());
 	return CheckLegal();
 }
 
@@ -67,7 +67,7 @@ bool Minishogi::InitializeByBoard(string str) {
 				SetBonaPiece(sq, pc);
 				bitboard[pc] |= 1 << sq;
 				occupied[color_of(pc)] |= 1 << sq;
-				st->eval.meterial += PIECE_SCORE[pc];
+				st->eval.material += PIECE_SCORE[pc];
 				st->key ^= Zobrist::table[sq][pc];
 				st->key2 ^= Zobrist::table2[sq][pc];
 			}
@@ -85,7 +85,7 @@ bool Minishogi::InitializeByBoard(string str) {
 			if (handNum == 1 || handNum == 2) {
 				board[sq] = handNum;
 				SetBonaPiece(sq, Piece(1));
-				st->eval.meterial += HAND_SCORE[sq] * handNum;
+				st->eval.material += HAND_SCORE[sq] * handNum;
 				st->key ^= Zobrist::table[sq][1];
 				st->key2 ^= Zobrist::table2[sq][1];
 				if (handNum == 2) {
@@ -143,7 +143,7 @@ bool Minishogi::Initialize(std::string sfen) {
 			SetBonaPiece(sq, pc);
 			bitboard[pc] |= 1 << sq;
 			occupied[color_of(pc)] |= 1 << sq;
-			st->eval.meterial += PIECE_SCORE[pc];
+			st->eval.material += PIECE_SCORE[pc];
 			st->key ^= Zobrist::table[sq][pc];
 			st->key2 ^= Zobrist::table2[sq][pc];
 			isPromote = false;
@@ -166,7 +166,7 @@ bool Minishogi::Initialize(std::string sfen) {
 			sq += BOARD_NB;
 			board[sq] = handNum;
 			SetBonaPiece(sq, (Piece)1);
-			st->eval.meterial += HAND_SCORE[sq] * handNum;
+			st->eval.material += HAND_SCORE[sq] * handNum;
 			st->key ^= Zobrist::table[sq][1];
 			st->key2 ^= Zobrist::table2[sq][1];
 			if (handNum == 2) {
@@ -323,7 +323,7 @@ void Minishogi::DoMove(Move m) {
 			DoBonaPiece(bonaPieceDiff[1], to, captured, toHand, board[toHand]);
 #endif
 
-			st->eval.meterial += HAND_SCORE[toHand] - PIECE_SCORE[captured];
+			st->eval.material += HAND_SCORE[toHand] - PIECE_SCORE[captured];
 			st->key ^= Zobrist::table[to][captured]
 						 ^ Zobrist::table[toHand][board[toHand]];
 #ifdef ENEMY_ISO_TT
@@ -340,7 +340,7 @@ void Minishogi::DoMove(Move m) {
 		st->key2 ^= Zobrist::table2[from][pc];
 #endif
 		if (isPro) { // 升變
-			st->eval.meterial += PIECE_SCORE[promote(pc)] - PIECE_SCORE[pc];
+			st->eval.material += PIECE_SCORE[promote(pc)] - PIECE_SCORE[pc];
 			pc = promote(pc);
 		}
 		bitboard[pc] ^= dstboard; // 更新該方手牌至目的位置
@@ -350,7 +350,7 @@ void Minishogi::DoMove(Move m) {
 		board[from] = NO_PIECE;   // 原本清空
 	}
 	else { // 打入
-		st->eval.meterial += PIECE_SCORE[pc] - HAND_SCORE[from];
+		st->eval.material += PIECE_SCORE[pc] - HAND_SCORE[from];
 		st->key ^= Zobrist::table[from][board[from]];
 #ifdef ENEMY_ISO_TT
 		st->key2 ^= Zobrist::table2[from][board[from]];

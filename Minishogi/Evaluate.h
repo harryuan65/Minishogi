@@ -43,20 +43,20 @@ namespace Evaluate {
 	
 	struct EvalSum {
 		std::array<std::array<int32_t, 2>, 3> pos;
-		Value meterial;
+		Value material;
 		Value pin;
 
 		Value Sum(const Color c) const;
 		void Clean();
 
-		inline bool IsNotCalc();
+		inline bool IsNotCalc() const;
 		inline void SetNonCalc();
 	};
 
 	extern Evaluater GlobalEvaluater;
 }
 
-inline bool Evaluate::EvalSum::IsNotCalc() {
+inline bool Evaluate::EvalSum::IsNotCalc() const {
 	return pin == VALUE_NONE || pos[2][0] == VALUE_NONE;
 }
 

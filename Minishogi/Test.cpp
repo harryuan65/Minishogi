@@ -34,13 +34,12 @@ struct TimeTestThread : public Thread {
 	}
 
 	void Test_pgn() {
-		//vector<TimeTestResult> result;
 		vector<pair<Move, Value>> kifu;
-		ifstream ifile(path);
 		string line, token;
 		char c;
 		float f;
 
+		ifstream ifile(path);
 		if (!ifile)
 			return;
 
@@ -86,13 +85,13 @@ struct TimeTestThread : public Thread {
 		}
 		ifile.close();
 
-		int moveCorrect = 0, errorCnt = 0;
+		int i = 0, moveCorrect = 0, errorCnt = 0;
 		double sumError = 0.0;
 		pos.Initialize();
 		stringstream ss;
-		ss << "kifu move my move my eval kifu eval search eval elapsed" << endl;
+		ss << " Kifu Move    My Move    My Eval  Kifu Eval SearchEval Error Eval    Elapsed" << endl;
 		for (auto &r : kifu) {
-			if (Observer::game_data[Observer::searchNum] >= test_num)
+			if (Observer::game_data[Observer::searchNum] >= test_num || CheckStop())
 				break;
 
 			if (r.first == MOVE_NONE) {
@@ -105,28 +104,35 @@ struct TimeTestThread : public Thread {
 			if (r.second != VALUE_NONE) {
 				RootMove rm;
 
+				cout << "#" << i++ << endl;
+				cout << "position sfen " << pos.Sfen() << endl;
 				InitSearch();
 				Observer::StartSearching();
 				IDAS(rm, USI::Options["Depth"]);
 				Observer::EndSearching();
 
-				ss << "     " << r.first
-					<< "    " << rm.pv[0]
-					<< setw(8) << pos.GetEvaluate()
-					<< setw(10) << r.second
-					<< setw(12) << rm.value
-					<< setw(8) << (float)Observer::data[Observer::searchTime] / 1000 << endl;
 				moveCorrect += r.first == rm.pv[0];
-				if (r.second != VALUE_ZERO &&
+
+				ss << setw(6) << r.first << (is_promote(r.first) ? "" : " ")
+					<< setw(7) << rm.pv[0] << (is_promote(rm.pv[0]) ? "" : " ")
+					<< setw(11) << pos.GetEvaluate()
+					<< setw(11) << r.second
+					<< setw(11) << rm.value;
+				if (rm.value != VALUE_NONE &&
+					r.second != VALUE_ZERO &&
 					r.second != VALUE_NONE &&
 					r.second < SHOKIDOKO_SKIP_MIN &&
 					r.second > -SHOKIDOKO_SKIP_MIN) {
 					errorCnt++;
 					sumError += int(r.second - rm.value)*int(r.second - rm.value);
+					ss << setw(11) << abs(r.second - rm.value);
 				}
+				else
+					ss << setw(11) << " ";
+				ss << setiosflags(std::ios::fixed) << setprecision(3) << setw(11) << (float)Observer::data[Observer::searchTime] / 1000 << endl;
 			}
 			else
-				ss << "     " << r.first << setw(16) << r.second << endl;
+				ss << setw(7) << r.first << setw(33) << r.second << endl;
 			    
 			pos.DoMove(r.first);
 		}
@@ -161,7 +167,11 @@ void USI::timetest(istringstream& ss_cmd) {
 	string token;
 
 	while (ss_cmd >> token) {
-		if (token == "path")          ss_cmd >> th->path;
+		if (token == "path") {
+			getline(ss_cmd, token, '\"');
+			getline(ss_cmd, token, '\"');
+			th->path = token;
+		}
 		else if (token == "test_num") ss_cmd >> th->test_num;
 	}
 
@@ -221,4 +231,87 @@ void USI::perft(Minishogi &pos, int depth) {
 		cout << endl;
 	}
 	cout << "perft finished" << endl;
+}
+
+void USI::make_opening(istringstream& ss_cmd) {
+	string path = "D:/Nyanpass Project/Training Kifu/20181023-1.pgn";
+	int game_per_file = 50, sample_rate = 20;
+	string token;
+
+	while (ss_cmd >> token) {
+		if (token == "path") {
+			getline(ss_cmd, token, '\"');
+			getline(ss_cmd, token, '\"');
+			ss_cmd >> path;
+		}
+		else if (token == "game_per_file") ss_cmd >> game_per_file;
+		else if (token == "sample_rate")   ss_cmd >> sample_rate;
+	}
+
+	int start = 0, len = 0;
+	string line;
+	float f;
+	char c;
+	int ply = 0;
+	int openingCnt = 0;
+	int nextSamplePly = sample_rate;
+
+	ofstream ofile("opening-0.pgn");
+	ifstream ifile(path);
+	if (!ifile) {
+		cout << "Error : Can't find target" << endl;
+		return;
+	}
+
+	while (getline(ifile, line)) {
+		istringstream iss(line);
+		iss >> token;
+		if (token[0] == '{' || token == "[Annotator") {
+			if (token[0] == '{')
+				for (int j = 0; j < 7; j++)
+					getline(ifile, line);
+			while (true) {
+				if (ply % 2 == 0 && token != "1.") {
+					ifile >> token;             // 1.
+					if (token[0] == '{')
+						break;
+				}
+				ifile >> token;                 // Gc2
+				if (token[0] == '{')
+					break;
+
+				ifile >> noskipws >> c >> skipws;
+				if (ifile.peek() == '{') {
+					ifile >> c;                 // {
+					getline(ifile, token, '/'); // +0.68/
+					istringstream ss(token);
+					ss >> f;
+					getline(ifile, token, '}'); // 18 5:51}
+				}
+				if (++ply >= nextSamplePly) {
+					len = (int)ifile.tellg() - start;
+					ifile.seekg(start);
+					for (int i = 0; i < len; i++) {
+						ifile >> noskipws >> c >> skipws;
+						ofile << c;
+						if (c == '\n')
+							i++;
+					}
+					ofile << "\n\n";
+					nextSamplePly += sample_rate;
+					if (++openingCnt % game_per_file == 0) {
+						ofile.close();
+						ofile.open("opening-" + to_string(openingCnt / game_per_file) + ".pgn");;
+					}
+				}
+			}
+			getline(ifile, token);
+			ply = 0;
+			nextSamplePly = sample_rate;
+			start = ifile.tellg();
+		}
+	}
+	ifile.close();
+	ofile.close();
+	cout << "make opening finished" << endl;
 }

@@ -17,23 +17,23 @@ namespace USI {
 	LimitsType Limits;
 }
 
-void USI::position(Minishogi &pos, istringstream &is) {
+void USI::position(Minishogi &pos, istringstream &ss_cmd) {
     string token, sfen;
 	Move m;
 
-    is >> token;
+	ss_cmd >> token;
     if (token == "startpos") {     
         sfen = Minishogi::START_SFEN;
-        is >> token;
+		ss_cmd >> token;
     }
     else if (token == "sfen")
-        while (is >> token && token != "moves")
+        while (ss_cmd >> token && token != "moves")
             sfen += token + " ";
     else
         return;
 
     pos.Initialize(sfen);
-    while ((is >> token) && (m = usi2move(token, pos.GetTurn()))) {
+    while ((ss_cmd >> token) && (m = usi2move(token, pos.GetTurn()))) {
         pos.DoMove(m);
 		pos.GetEvaluate();
     }
@@ -92,6 +92,7 @@ void USI::setoption(istringstream& ss_cmd) {
 
 void USI::loop(int argc, char** argv) {
 	Observer::startLogger(true);
+
 	Zobrist::Initialize();
 	Evaluate::GlobalEvaluater.Load(USI::Options["EvalDir"]);
 	GlobalThread = new Thread();
@@ -199,6 +200,9 @@ void USI::loop(int argc, char** argv) {
 				if (c == '+' || c == '-')
 					win[(t = !t) ^ (c == '+')]++;
 			sync_cout << win[0] << " : " << win[1] << sync_endl;
+		}
+		else if (token == "make_opening") {
+			make_opening(ss_cmd);
 		}
         else { sync_cout << "unknown command : " << cmd << sync_endl; }
 
