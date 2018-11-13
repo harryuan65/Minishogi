@@ -16,16 +16,22 @@ struct BonaPieceDiff {
 	BonaPiece nowBonaB;
 };
 
+enum SennichiteType {
+	NO_SENNICHITE, SENNICHITE_WIN, SENNICHITE_LOSE, SENNICHITE_CHECK
+};
+
 struct StateInfo {
 	// Need to copy before move
 	Evaluate::EvalSum eval;
 	Key key;
 	Key key2;
-	Bitboard checker_bb;
+	int continueCheck[2];
+	int nullMovePly;
 
 	// No need to copy before move
 	Move move;
 	Piece capture;
+	Bitboard checker_bb;
 	// 移動與吃子的BonaPiece變化
 	// 0 MoverDiff 1 CaptureDiff
 	BonaPieceDiff bonaPieceDiff[2];
@@ -49,13 +55,9 @@ public:
 	void UndoNullMove();
 	bool PseudoLegal(Move m) const;
 
-	ExtMove* AttackGenerator(ExtMove *moveList) const;
+	ExtMove* AttackGenerator(ExtMove *moveList, Bitboard dstBB = BitboardMask) const;
 	ExtMove* MoveGenerator(ExtMove *moveList) const;
 	ExtMove* HandGenerator(ExtMove *moveList);
-	Bitboard Movable(int srcIndex, Bitboard occupied = 0) const;
-	Bitboard RookMovable(int srcIndex, Bitboard occupied = 0) const;
-	Bitboard BishopMovable(int srcIndex, Bitboard occupied = 0) const;
-	Bitboard attackers_to(int dstIndex, Bitboard occupied = 0) const;
 	bool SEE(Move m, Value threshold = VALUE_ZERO) const;
 
 	void PrintChessBoard() const;
@@ -63,22 +65,36 @@ public:
 	bool LoadBoard(std::string filename, std::streamoff &offset);
 	void PrintKifu(std::ostream &os) const;
 
-	// Slow, just for debug
+	/// Slow, just for debug
+
+	// Position結構是否正確
 	bool CheckLegal() const;
+	// 是否有合法步可動
 	bool IsGameOver();
+	// 完整判斷是否為合法步
 	bool IsLegelAction(Move m);
+	// 產生所有移動 不排除千日手和自殺步
+	Move* GetTotalMoves(Move* moveList);
+	// 產生所有移動 並排除千日手和自殺步
 	Move* GetLegalMoves(Move* moveList);
 
-	// Fast, use in search
-	bool IsChecking();
+	/// Fast, use in search
+
+	// 現在是否將軍對方
+	bool IsChecking(); /// 可以更快 但沒有速度要求
+	// 移動完有沒有將軍對方
+	bool IsCheckingAfter(Move m);
+	// 現在是否被將軍
 	bool IsInChecked() const;
+	// 移動完有沒有被將軍
 	bool IsInCheckedAfter(Move m) const;
+	// 移動完有沒有被將軍
 	bool IsInCheckedAfter(Square srcIndex, Square dstIndex) const;
-	bool IsCheckAfter(const Move m);
-	bool IsSennichite() const;
+	// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後再判斷
+	SennichiteType SennichiteType(int checkMaxPly) const;
 
 	Thread* GetThread() const;
-	Color GetTurn() const;
+	Turn GetTurn() const;
 	int GetPly() const;
 	Value GetEvaluate();
 	Key GetKey() const;
@@ -89,8 +105,8 @@ public:
 	Piece GetPrevCapture() const;
 	int GetBoard(Square sq) const;
 	Bitboard GetBitboard(Piece c) const;
-	Bitboard GetOccupied(Color c) const;
-	const BonaPiece* GetPieceList(Color c) const;
+	Bitboard GetOccupied(Turn t) const;
+	const BonaPiece* GetPieceList(Turn t) const;
 	uint32_t GetKifuHash() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const Minishogi& pos);
@@ -107,7 +123,7 @@ private:
 	void UndoBonaPiece(const BonaPieceDiff &bpd);
 
 	Thread *thisThread;
-	Color turn;
+	Turn turn;
 	int ply;
 
 	// 同方在盤面上棋子的bitboard
@@ -135,7 +151,6 @@ inline void Minishogi::DoMove(std::string m) {
 	DoMove(usi2move(m, turn));
 }
 
-/// 現在是否將軍對方
 inline bool Minishogi::IsChecking() {
 	turn = ~turn;
 	bool isCheck = GetChecker();
@@ -143,7 +158,6 @@ inline bool Minishogi::IsChecking() {
 	return isCheck;
 }
 
-/// 現在是否被將軍
 inline bool Minishogi::IsInChecked() const {
 	return stateHist[ply].checker_bb;
 }
@@ -157,7 +171,7 @@ inline Thread* Minishogi::GetThread() const {
 	return thisThread;
 }
 
-inline Color Minishogi::GetTurn() const {
+inline Turn Minishogi::GetTurn() const {
 	return turn; 
 }
 
@@ -217,12 +231,12 @@ inline Bitboard Minishogi::GetBitboard(Piece c) const {
 	return bitboard[c];
 }
 
-inline Bitboard Minishogi::GetOccupied(Color c) const {
-	return occupied[c];
+inline Bitboard Minishogi::GetOccupied(Turn t) const {
+	return occupied[t];
 }
 
-inline const BonaPiece* Minishogi::GetPieceList(Color c) const {
-	return pieceList[c];
+inline const BonaPiece* Minishogi::GetPieceList(Turn t) const {
+	return pieceList[t];
 }
 
 inline uint32_t Minishogi::GetKifuHash() const {

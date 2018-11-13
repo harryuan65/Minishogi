@@ -14,6 +14,7 @@ Thread *GlobalThread;
 Thread::Thread(int ttBit) : pos(this), stdThread(&Thread::IdleLoop, this) {
 	tt.Initialize(ttBit);
 	selDepth = 0;
+	maxCheckPly = Options["MaxCheckPly"];
 
 	counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);

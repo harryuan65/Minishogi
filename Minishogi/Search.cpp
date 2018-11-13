@@ -105,7 +105,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			break;
 	}
 	if (isWin) { // Debug Usage
-		sync_cout << "info depth 0 score " << USI::value(VALUE_MATE) << "\nbestmove win" << sync_endl;
+		sync_cout << "info depth 0 score " << USI::value(VALUE_MATE) << sync_endl;
 	}
 
 	if (!Limits.ponder || isStop) {
@@ -178,6 +178,12 @@ void Thread::PreIDAS() {
 
 namespace {
 	Value NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Key rootKey, Value alpha, Value beta, int depth, bool isResearch) {
+		/*switch (pos.SennichiteType()) {
+		case SENNICHITE_WIN: return mate_in(ss->ply);
+		case SENNICHITE_LOSE: return mated_in(ss->ply);
+		case SENNICHITE_CHECK: return mate_in(ss->ply);
+		}*/
+
 		if (depth < 1)
 #ifndef QUIES_DISABLE
 			return QuietSearch(pvNode, pos, ss, rootKey, alpha, beta, 0);
@@ -284,11 +290,9 @@ namespace {
 					alpha = nullValue;
 			}
 			// Debug : null move zugzwangs
-#ifndef NDEBUG
-			else {
+			/*else {
 				nullValue = VALUE_NONE;
-			}
-#endif
+			}*/
 		}
 #endif
 
@@ -298,7 +302,7 @@ namespace {
 		bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 		int captureCount = 0, quietCount = 0;
 		
-		while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
+		while ((move = mp.GetNextMove()) != MOVE_NULL) {
 			bool isCapture = pos.GetChessOn(to_sq(move)) != NO_PIECE;
 			int R = 0;
 
@@ -308,67 +312,74 @@ namespace {
 			Observer::data[Observer::researchNode] += isResearch;
 
 			pos.DoMove(move);
-			// 千日手判斷
-			if ((pos.GetTurn() == BLACK || pos.IsInChecked()) && pos.IsSennichite()) {
-				pos.UndoMove();
-				continue;
-			}
 			ss->moveCount++;
-			if (pvNode)
-				(ss + 1)->pv[0] = MOVE_NULL;
+			switch (pos.SennichiteType(thisThread->maxCheckPly)) {
+			case SENNICHITE_WIN: 
+				value = -mate_in(ss->ply + 1);
+				break;
+			case SENNICHITE_LOSE:
+				value = -mated_in(ss->ply + 1);
+				break;
+			case SENNICHITE_CHECK: 
+				value = -mate_in(ss->ply + 1);
+				break;
+			case NO_SENNICHITE:
+				if (pvNode)
+					(ss + 1)->pv[0] = MOVE_NULL;
 
-			// Late Move Reduction
+				// Late Move Reduction
 #ifndef LMR_DISABLE
-		/*if (!pvNode &&
-			 depth >= 3 &&
-			 bestValue > VALUE_MATED_IN_MAX_PLY &&
-			 ss->moveCount >= 25 &&
-			!(ss - 1)->lmr_flag &&
-			!isCapture &&
-			!pos.IsInChecked() &&
-			!pos.IsCheckAfter(move)) {
-			ss->lmr_flag = true;
-			R = 1;
-		}*/
-			if (!pvNode &&
-				depth >= 3 &&
-				bestValue > VALUE_MATED_IN_MAX_PLY &&
-				ss->moveCount >= 5 &&
-			  !(ss - 1)->lmr_flag &&
-			   !isCapture &&
-				from_sq(move) < BOARD_NB &&
-			   !isInChecked &&
-			   !pos.IsInChecked()) {
-				ss->lmr_flag = true;
-				R = 1;
-			}
+				/*if (!pvNode &&
+					 depth >= 3 &&
+					 bestValue > VALUE_MATED_IN_MAX_PLY &&
+					 ss->moveCount >= 25 &&
+					!(ss - 1)->lmr_flag &&
+					!isCapture &&
+					!pos.IsInChecked() &&
+					!pos.IsCheckingAfter(move)) {
+					ss->lmr_flag = true;
+					R = 1;
+				}*/
+				if (!pvNode &&
+					depth >= 3 &&
+					bestValue > VALUE_MATED_IN_MAX_PLY &&
+					ss->moveCount >= 5 &&
+				  !(ss - 1)->lmr_flag &&
+				   !isCapture &&
+					from_sq(move) < BOARD_NB &&
+				   !isInChecked &&
+				   !pos.IsInChecked()) {
+					ss->lmr_flag = true;
+					R = 1;
+				}
 #endif
 				
 #ifndef PVS_DISABLE
-			// Principal Variation Search
-			if (depth > 3 && ss->moveCount > 1) {
-				value = -NegaScout(false, pos, ss + 1, rootKey, -(alpha + 1), -alpha, depth - R - 1, isResearch);
-				if (alpha < value && value < beta) {
-					value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -value + 1, depth - 1, true);
-					// Debug : research Value < null window Value
-					/*Value value2 = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -value + 1, depth - 1, true);
-					if (value2 < value) {
-						sync_cout << "v1 " << setw(6) << value
-								  << " v2 " << setw(6) << value2
-								  << " a " << setw(6) << alpha
-								  << " b " << setw(6) << beta
-								  << " " << pos.GetKey() << sync_endl;
-						pos.PrintChessBoard();
+				// Principal Variation Search
+				if (depth > 3 && ss->moveCount > 1) {
+					value = -NegaScout(false, pos, ss + 1, rootKey, -(alpha + 1), -alpha, depth - R - 1, isResearch);
+					if (alpha < value && value < beta) {
+						value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -value + 1, depth - 1, true);
+						// Debug : research Value < null window Value
+						/*Value value2 = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -value + 1, depth - 1, true);
+						if (value2 < value) {
+							sync_cout << "v1 " << setw(6) << value
+									  << " v2 " << setw(6) << value2
+									  << " a " << setw(6) << alpha
+									  << " b " << setw(6) << beta
+									  << " " << pos.GetKey() << sync_endl;
+							pos.PrintChessBoard();
+						}
+						value = value2;*/
 					}
-					value = value2;*/
 				}
-			}
-			else {
-				value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1, isResearch);
-			}
+				else {
+					value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1, isResearch);
+				}
 #else
-			value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
+				value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 #endif
+			}
 			pos.UndoMove();
 
 			if (value > bestValue) {
@@ -412,15 +423,15 @@ namespace {
 		/*if (value < beta && nullValue != VALUE_NONE && nullValue > value)
 			Observer::data[Observer::zugzwangsNum]++;*/
 
-			// Debug : LMR test
-			/*if (!pvNode &&
-				depth >= 3 &&
-				bestValue > VALUE_MATED_IN_MAX_PLY &&
-				ss->moveCount > 5 &&
-				!(ss - 1)->nmp_flag &&
-				!isChecked) {
-				Observer::data[Observer::lmrTestNum]++;
-			}*/
+		// Debug : LMR test
+		/*if (!pvNode &&
+			depth >= 3 &&
+			bestValue > VALUE_MATED_IN_MAX_PLY &&
+			ss->moveCount > 5 &&
+			!(ss - 1)->nmp_flag &&
+			!isChecked) {
+			Observer::data[Observer::lmrTestNum]++;
+		}*/
 
 		Observer::data[Observer::scoutSearchBranch] += ss->moveCount;
 		if (ss->moveCount) {
@@ -461,7 +472,6 @@ namespace {
 		Move ttMove, move, bestMove;
 		TTentry *tte;
 		bool ttHit, ttMoveLegal;
-		//int ttDepth = isInChecked || depth >= 0 ? 0 : -1;
 
 		if (thisThread->CheckStop(rootKey))
 			return VALUE_ZERO;
@@ -520,13 +530,26 @@ namespace {
 		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
 		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, to_sq((ss - 1)->currentMove));
 
-		while ((move = mp.GetNextMove(false)) != MOVE_NULL) {
+		while ((move = mp.GetNextMove()) != MOVE_NULL) {
 			ss->currentMove = move;
 			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
 			Observer::data[Observer::quiesNode]++;
 
+			Value value;
 			pos.DoMove(move);
-			Value value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);
+			switch (pos.SennichiteType(thisThread->maxCheckPly)) {
+			case SENNICHITE_WIN:
+				value = -mate_in(ss->ply + 1);
+				break;
+			case SENNICHITE_LOSE:
+				value = -mated_in(ss->ply + 1);
+				break;
+			case SENNICHITE_CHECK:
+				value = -mate_in(ss->ply + 1);
+				break;
+			default:
+				value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);
+			}
 			pos.UndoMove();
 
 			if (value > bestValue) {
@@ -534,6 +557,7 @@ namespace {
 				if (value > alpha) {
 					if (pvNode)
 						UpdatePv(ss->pv, move, (ss + 1)->pv);
+
 					if (pvNode && value < beta) {
 						alpha = value;
 						bestMove = move;
@@ -575,7 +599,7 @@ namespace {
 
 	// UpdateQuietHeuristic() updates move sorting heuristics when a new quiet best move is found
 	void UpdateQuietHeuristic(const Minishogi& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus) {
-		Color us = pos.GetTurn();
+		Turn us = pos.GetTurn();
 		pos.GetThread()->mainHistory[us][from_sq(move)][to_sq(move)] << bonus;
 		UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(move)), to_sq(move), bonus);
 

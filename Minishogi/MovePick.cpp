@@ -9,10 +9,12 @@ namespace {
 
 	enum Stages {
 		MAIN_TT, CAPTURE_INIT, GOOD_CAPTURE, REFUTATION, QUIET_INIT, QUIET, BAD_CAPTURE,
-		EVASION_TT, EVASION_INIT, EVASION,
-		PROBCUT_TT, PROBCUT_INIT, PROBCUT,
-		QSEARCH_TT, QCAPTURE_INIT, QCAPTURE, QCHECK_INIT, QCHECK,
-		NONSORT_INIT, NONSORT
+		EVASION_TT             , EVASION_INIT    , EVASION,
+		PROBCUT_TT             , PROBCUT_INIT    , PROBCUT,
+		QSEARCH_WITH_CHECKS_TT , QCAPTURES_1_INIT, QCAPTURES_1, QCHECKS,
+		QSEARCH_NO_CHECKS_TT   , QCAPTURES_2_INIT, QCAPTURES_2,
+		QSEARCH_RECAPTURES_INIT, QRECAPTURES,
+		NONSORT_INIT           , NONSORT
 	};
 
 	// Helper filter used with select()
@@ -21,16 +23,15 @@ namespace {
 	// partial_insertion_sort() sorts moves in descending order up to and including
 	// a given limit. The order of moves smaller than the limit is left unspecified.
 	void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
-
-		for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p)
-			if (p->value >= limit)
-			{
+		for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p) {
+			if (p->score >= limit) {
 				ExtMove tmp = *p, *q;
 				*p = *++sortedEnd;
 				for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
 					*q = *(q - 1);
 				*q = tmp;
 			}
+		}
 	}
 
 }
@@ -47,7 +48,6 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 	const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
 	: pos(p), depth(d), mainHistory(mh), captureHistory(cph), contHistory(ch)
 	/*,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } }*/ {
-
 	assert(d > 0);
 
 #ifndef MOVEPICK_DISABLE
@@ -64,14 +64,21 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh,
 	const CapturePieceToHistory* cph, const PieceToHistory** ch, Square rs)
 	: pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), recaptureSquare(rs), depth(d) {
-
 	assert(d <= 0);
 
 //#ifndef MOVEPICK_DISABLE
-	stage = pos.IsInChecked() ? EVASION_TT : QSEARCH_TT;
-	ttMove = ttm
-		&& pos.PseudoLegal(ttm)
-		&& (depth > DEPTH_QS_RECAPTURES || to_sq(ttm) == recaptureSquare) ? ttm : MOVE_NULL;
+	if (pos.IsInChecked())
+		stage = EVASION_TT;
+	else if (d > -2)
+		stage = QSEARCH_WITH_CHECKS_TT;
+	else if (d > -10)
+		stage = QSEARCH_NO_CHECKS_TT;
+	else {
+		stage = QSEARCH_RECAPTURES_INIT;
+		return;
+	}
+
+	ttMove = ttm && pos.PseudoLegal(ttm) ? ttm : MOVE_NULL;
 	stage += (ttMove == MOVE_NULL);
 /*#else
 	stage = NONSORT_INIT;
@@ -84,7 +91,6 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 /*
 MovePicker::MovePicker(const Minishogi& p, Move ttm, Value th, const CapturePieceToHistory* cph)
 : pos(p), captureHistory(cph), threshold(th) {
-
 assert(!pos.checkers());
 
 stage = PROBCUT_TT;
@@ -100,30 +106,29 @@ stage += (ttMove == MOVE_NULL);
 /// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
 /// captures with a good history. Quiets moves are ordered using the histories.
 void MovePicker::score(GenType type) {
-
 	for (auto& m : *this) {
 		const Square from = from_sq(m), to = to_sq(m);
 		const Piece from_pc = pos.GetChessOn(from), to_pc = pos.GetChessOn(to);
 
 		if (type == CAPTURES) {
-			m.value = PIECE_SCORE[type_of(to_pc)]
+			m.score = PIECE_SCORE[type_of(to_pc)]
 				+ ((*captureHistory)[from_pc][to][type_of(to_pc)] >> 4);
 		}
 		else if (type == QUIETS) {
-			m.value = (*mainHistory)[pos.GetTurn()][from][to]
+			m.score = (*mainHistory)[pos.GetTurn()][from][to]
 				+ (*contHistory[0])[from_pc][to]
 				+ (*contHistory[1])[from_pc][to]
 				+ (*contHistory[3])[from_pc][to];
 		}
 		else { // Type == EVASIONS 
 			if (to_pc) {
-				m.value = PIECE_SCORE[type_of(to_pc)] - Value(type_of(from_pc));
+				m.score = PIECE_SCORE[type_of(to_pc)] - Value(type_of(from_pc));
 			}
 			else {
-				m.value = (*mainHistory)[pos.GetTurn()][from][to] - (1 << 28);
+				m.score = (*mainHistory)[pos.GetTurn()][from][to] - (1 << 28);
 			}
 			if (type_of(pos.GetChessOn(from_sq(move))) == KING) {
-				m.value -= (1 << 10);
+				m.score -= (1 << 10);
 			}
 		}
 	}
@@ -139,8 +144,10 @@ Move MovePicker::select(Pred filter) {
 
 		move = *cur++;
 
-		if (move != ttMove && filter() && (from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move))
-			&& type_of(pos.GetChessOn(to_sq(move))) != KING)
+		if (move != ttMove && 
+			filter() && 
+			(from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move)) &&
+			type_of(pos.GetChessOn(to_sq(move))) != KING)
 			return move;
 	}
 	return move = MOVE_NULL;
@@ -149,27 +156,27 @@ Move MovePicker::select(Pred filter) {
 /// MovePicker::next_move() is the most important method of the MovePicker class. It
 /// returns a new pseudo legal move every time it is called until there are no more
 /// moves left, picking the move with the highest score from a list of generated moves.
-Move MovePicker::GetNextMove(bool skipQuiets) {
-
+Move MovePicker::GetNextMove() {
 top:
 	switch (stage) {
-
 	case MAIN_TT:
 	case EVASION_TT:
-	case QSEARCH_TT:
+	case QSEARCH_WITH_CHECKS_TT:
+	case QSEARCH_NO_CHECKS_TT:
 	case PROBCUT_TT:
-		++stage;
-		//assert(pos.IsLegelAction(ttMove)); 仍然會發生
+		stage++;
 		return ttMove;
 
 	case CAPTURE_INIT:
 	case PROBCUT_INIT:
-	case QCAPTURE_INIT:
+	case QCAPTURES_1_INIT:
+	case QCAPTURES_2_INIT:
 		cur = endBadCaptures = moves;
 		endMoves = pos.AttackGenerator(cur);
 
 		score(CAPTURES);
-		++stage;
+
+		stage++;
 		goto top;
 
 	case GOOD_CAPTURE:
@@ -177,7 +184,6 @@ top:
 			return pos.SEE(move) ? true : (*endBadCaptures++ = move, false); 
 		}))
 			return move;
-
 #ifndef REFUTATION_DISABLE
 		// Prepare the pointers to loop over the refutations array
 		cur = std::begin(refutations);
@@ -189,8 +195,7 @@ top:
 			--endMoves;
 #endif
 
-		++stage;
-		/* fallthrough */
+		stage++;
 
 	case REFUTATION:
 #ifndef REFUTATION_DISABLE
@@ -199,8 +204,8 @@ top:
 		}))
 			return move;
 #endif
-		++stage;
-		/* fallthrough */
+
+		stage++;
 
 	case QUIET_INIT:
 		cur = endBadCaptures;
@@ -209,25 +214,24 @@ top:
 
 		score(QUIETS);
 		partial_insertion_sort(cur, endMoves, -4000 * depth);
-		++stage;
-		/* fallthrough */
+
+		stage++;
 
 	case QUIET:
-		if (!skipQuiets && select<Next>([&]() {
+		if (select<Next>(
 #ifdef REFUTATION_DISABLE
-			return true;
+			Any
 #else
-			return move != refutations[0] && move != refutations[1] && move != refutations[2];
+			[&]() {return move != refutations[0] && move != refutations[1] && move != refutations[2]; }
 #endif
-		}))
+		))
 			return move;
 
 		// Prepare the pointers to loop over the bad captures
 		cur = moves;
 		endMoves = endBadCaptures;
 
-		++stage;
-		/* fallthrough */
+		stage++;
 
 	case BAD_CAPTURE:
 		return select<Next>(Any);
@@ -240,8 +244,7 @@ top:
 
 		score(EVASIONS);
 
-		++stage;
-		/* fallthrough */
+		stage++;
 
 	case EVASION:
 		return select<Best>(Any);
@@ -249,33 +252,41 @@ top:
 	case PROBCUT:
 		return select<Best>([&]() { return pos.SEE(move, threshold); });
 
-	case QCAPTURE:
-		if (select<Best>([&](){ 
-			return depth > DEPTH_QS_RECAPTURES || to_sq(move) == recaptureSquare;
-		}))
+	case QCAPTURES_1:
+	case QCAPTURES_2:
+		if (select<Best>(Any))
 			return move;
 
-		// If we did not find any move and we do not try checks, we have finished
-		if (depth < DEPTH_QS_RECAPTURES)
-			return MOVE_NULL;
+		if (stage == QCAPTURES_2)
+			break;
 
-		++stage;
-
-	case QCHECK_INIT:
 		cur = moves;
 		endMoves = pos.HandGenerator(cur);
 		endMoves = pos.MoveGenerator(endMoves);
-		++stage;
 
-	case QCHECK:
-		return select<Next>([&]() { return pos.IsCheckAfter(move) && pos.SEE(move); });
+		stage++;
+	case QCHECKS:
+		return select<Next>([&]() { return pos.IsCheckingAfter(move); });
+
+	case QSEARCH_RECAPTURES_INIT:
+		cur = moves;
+		endMoves = pos.AttackGenerator(cur, 1 << recaptureSquare);
+
+		score(CAPTURES);
+
+		stage++;
+
+	case QRECAPTURES:
+		return select<Best>(Any);
 
 	case NONSORT_INIT:
 		cur = moves;
 		endMoves = pos.AttackGenerator(cur);
 		endMoves = pos.MoveGenerator(endMoves);
 		endMoves = pos.HandGenerator(endMoves);
+
 		stage++;
+
 	case NONSORT:
 		return select<Next>(Any);
 	}

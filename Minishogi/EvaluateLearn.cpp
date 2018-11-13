@@ -15,6 +15,7 @@
 #include "Minishogi.h"
 #include "Evaluate.h"
 #include "EvaluateLearn.h"
+#include "usi.h"
 using namespace std;
 using namespace Evaluate;
 namespace fs = std::experimental::filesystem;
@@ -78,8 +79,8 @@ Move algebraic2move(string str, Minishogi &pos) {
 	}
 
 	// Find Suitable Move
-	Move moveList[TOTAL_GENE_MAX_ACTIONS], *end = pos.GetLegalMoves(moveList);
-	for (Move *start = moveList; start < end; start++) {
+	Move moveList[TOTAL_GENE_MAX_MOVES], *end = pos.GetTotalMoves(moveList);
+	for (auto *start = moveList; start < end; start++) {
 		if (srcPiece != NO_PIECE && pos.GetChessOn(from_sq(*start)) != srcPiece)
 			continue;
 		if (srcFile != -1 && from_sq(*start) % 5 != srcFile)
@@ -93,6 +94,8 @@ Move algebraic2move(string str, Minishogi &pos) {
 		if (isDrop != is_drop(from_sq(*start)))
 			continue;
 		if (isPromote != is_promote(*start))
+			continue;
+		if (pos.IsInCheckedAfter(*start))
 			continue;
 		return *start;
 	}
@@ -109,9 +112,9 @@ Move algebraic2move(string str, Minishogi &pos) {
 }
 
 namespace EvaluateLearn {
-	double LAMBDA = 0.5;
-	double GAMMA = 0.93;
-	LearnFloatType Weight::eta = 64.0f;
+	double lambda = LAMBDA;
+	double gamma = GAMMA;
+	LearnFloatType Weight::eta = WEIGHT_ETA;
 	int Weight::skip_count = 10;
 
 	Weight(*kk_w)[BOARD_NB][BOARD_NB];
@@ -236,11 +239,11 @@ namespace EvaluateLearn {
 		double p = winest(searchValue);
 		double q = winest(quietValue);
 		double w = winner ? 1.0 : 0.0;
-		double o = LAMBDA * (w - p) * progress;
+		double o = lambda * (w - p) * progress;
 		return q - (p + o);
 	}
 
-	void AddGrad(const Minishogi &m, Color rootTurn, double delta_grad) {
+	void AddGrad(const Minishogi &m, Turn rootTurn, double delta_grad) {
 		const BonaPiece* list_fw = m.GetPieceList(WHITE);
 		const BonaPiece* list_fb = m.GetPieceList(BLACK);
 		Square sq_wk = BitScan(m.GetBitboard(W_KING));
@@ -323,7 +326,7 @@ namespace EvaluateLearn {
 		for (int cycle = 0; cycle < cycleNum; cycle++, readBoardOffset = 0) {
 			for (int b = 0; rootPos.LoadBoard(CUSTOM_BOARD_FILE, readBoardOffset); b++) {
 				int ply = 0;
-				Color winner;
+				Turn winner;
 				moves[0] = MOVE_NULL;
 				values[0] = VALUE_NONE;
 
@@ -352,9 +355,9 @@ namespace EvaluateLearn {
 				// Learning
 				pthread = new Thread(rootPos, 1);
 				const Minishogi &pos = pthread->GetMinishogi();
-				double progress = pow(GAMMA, ply); RootMove quietRM;
-				for (int i = 0; i < ply; pthread->DoMove(moves[i++]), progress /= GAMMA) {
-					Color rootTurn = pos.GetTurn();
+				double progress = pow(gamma, ply); RootMove quietRM;
+				for (int i = 0; i < ply; pthread->DoMove(moves[i++]), progress /= gamma) {
+					Turn rootTurn = pos.GetTurn();
 					bool isWin = winner == rootTurn;
 					Value searchValue = values[i];
 					int j;
@@ -409,8 +412,8 @@ namespace EvaluateLearn {
 		EvaluateLearn::InitGrad();
 		Zobrist::Initialize();
 		cout << Observer::GetTimeStamp() << " Set Depth " << USI::Options["Depth"] << ",Cycle " << cycleNum
-			<< ",LEARN_PATCH_SIZE " << LEARN_PATCH_SIZE << ",EVAL_LIMIT " << EVAL_LIMIT << ",LAMBDA " << LAMBDA
-			<< ",GAMMA " << GAMMA << ",eta " << Weight::eta << ",skip_count " << Weight::skip_count << "\n";
+			<< ",LEARN_PATCH_SIZE " << LEARN_PATCH_SIZE << ",EVAL_LIMIT " << EVAL_LIMIT << ",lambda " << lambda
+			<< ",gamma " << gamma << ",eta " << Weight::eta << ",skip_count " << Weight::skip_count << "\n";
 		cout << Observer::GetTimeStamp() << " Learning StartGameLoop.\n";
 
 		Learning();
@@ -428,12 +431,13 @@ namespace EvaluateLearn {
 	struct KifuLearn : public Thread {
 	public:
 		const Value SHOKIDOKO_SKIP_MIN = Value(399 * PIECE_SCORE[PAWN]);
-		const Value SHOKIDOKO_SKIP_MAX = Value(401 * PIECE_SCORE[PAWN]);
+		const Value SHOKIDOKO_SKIP_MAX = Value(400 * PIECE_SCORE[PAWN]);
+
 		vector<string> teacher;
-		string kifu_path = KIFULEARN_DIRPATH;
-		int eval_limit = 3000;
+		string kifu_path = KIFULEARN_KIFU_PATH;
+		int eval_limit   = KIFULEARN_EVAL_LIMIT;
 		int update_patch = 1000000;
-		int save_patch = 100000000;
+		int save_patch   = 100000000;
 		bool skip_opening_eval = false;
 
 		virtual void Run() {
@@ -449,7 +453,7 @@ namespace EvaluateLearn {
 
 				ifstream ifile(fs::absolute(p));
 				string line, token;
-				Color winner;
+				Turn winner;
 				bool isTeacher[2] = { false };
 				char c;
 				float f;
@@ -473,7 +477,7 @@ namespace EvaluateLearn {
 					}
 					else if (token == "[Result") {
 						iss >> token;
-						winner = Color(token[1] == '0');
+						winner = Turn(token[1] == '0');
 					}
 					/*else if (token == "[Round") {
 						iss >> token;
@@ -510,16 +514,15 @@ namespace EvaluateLearn {
 								getline(ifile, token, '/'); // +0.68/
 								istringstream ss(token);
 								ss >> f;
-								v = Value(int(f * PIECE_SCORE[PAWN]));
+								v = (Value)int(f * (int)VALUE_PAWN);
 								getline(ifile, token, '}'); // 18 5:51}
 
 								if (!isTeacher[pos.GetTurn()] ||
 									(v >= eval_limit && winner == pos.GetTurn()) ||
 									(v <= -eval_limit && winner != pos.GetTurn()) ||
-									// Shokidoko條款 排除0 400 -400
+									// Shokidoko條款 排除0 399~400 -399~-400
 									v == VALUE_ZERO ||
-									(v > SHOKIDOKO_SKIP_MIN && v < SHOKIDOKO_SKIP_MAX) ||
-									(v > -SHOKIDOKO_SKIP_MAX && v < -SHOKIDOKO_SKIP_MIN))
+									(SHOKIDOKO_SKIP_MIN <= abs(v) && abs(v) <= SHOKIDOKO_SKIP_MAX))
 									v = VALUE_NONE;
 								else
 									kifu.back().second = v;
@@ -532,15 +535,6 @@ namespace EvaluateLearn {
 							pos.DoMove(kifu.back().first);
 						}
 						kifu.push_back(make_pair(MOVE_NONE, VALUE_NONE));
-						/*for (int i = 0; i < kifu.size(); i++)
-							cout << kifu[i].first << " " << kifu[i].second << endl;*/
-#if 0
-						cout << kifus.back().sfen << " "
-							<< kifus.back().isTeacher[0] << " "
-							<< kifus.back().isTeacher[1] << " "
-							<< kifus.back().winner << " "
-							<< kifus.back().moves.size() << endl;
-#endif
 					}
 				}
 			}
@@ -554,6 +548,7 @@ namespace EvaluateLearn {
 			uint64_t updateGradCount = 0, epoch = 0;
 			double sumError = 0.0, minSumError = 1.0;
 			int convFailCount = 0;
+			maxCheckPly = 1024;
 
 			cout << "Learn Start." << endl;
 			pos.Initialize();
@@ -573,7 +568,7 @@ namespace EvaluateLearn {
 					}
 
 					RootMove quietRM;
-					Color rootTurn = pos.GetTurn();
+					Turn rootTurn = pos.GetTurn();
 
 					InitSearch();
 					Search(quietRM, 0);
@@ -616,6 +611,7 @@ namespace EvaluateLearn {
 				Evaluate::GlobalEvaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
 			cout << "Update Grad Count : " << updateGradCount << endl;
 			cout << "Learn end" << endl;
+			maxCheckPly = USI::Options["MaxCheckPly"];
 		}
 	};
 
@@ -625,11 +621,10 @@ namespace EvaluateLearn {
 
 		while (ss_cmd >> token) {
 			if (token == "kifu_path")              ss_cmd >> th->kifu_path;
+			else if (token == "lambda")            ss_cmd >> lambda;
+			else if (token == "gamma")             ss_cmd >> gamma;
 			else if (token == "eta")               ss_cmd >> Weight::eta;
-			else if (token == "lambda")            ss_cmd >> LAMBDA;
 			else if (token == "eval_limit")        ss_cmd >> th->eval_limit;
-			else if (token == "update_patch")      ss_cmd >> th->update_patch;
-			else if (token == "save_patch")        ss_cmd >> th->save_patch;
 			else if (token == "skip_opening_eval") th->skip_opening_eval = true;
 			else if (token == "teacher") {
 				getline(ss_cmd, token, '\"');
@@ -645,9 +640,8 @@ namespace EvaluateLearn {
 		EvaluateLearn::InitGrad();
 		GlobalThread = th;
 		cout << "Kifu Learn Setting : eta " << Weight::eta 
-			<< " lambda " << LAMBDA
-			<< " eval_limit " << th->eval_limit
-			<< " update_patch " << th->update_patch << endl;
+			<< " lambda " << lambda
+			<< " eval_limit " << th->eval_limit << endl;
 		GlobalThread->StartWorking();
 	}
 }

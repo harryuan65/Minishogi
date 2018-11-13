@@ -1,4 +1,5 @@
 #include <string>
+#include <windows.h>
 
 #include "Observer.h"
 #include "usi.h"
@@ -7,6 +8,7 @@ using namespace std;
 
 struct TimeTestThread : public Thread {
 	const Value SHOKIDOKO_SKIP_MIN = Value(399 * PIECE_SCORE[PAWN]);
+
 	string path = "board/timetest.sfen";
 	int test_num = 50;
 
@@ -69,7 +71,7 @@ struct TimeTestThread : public Thread {
 						getline(ifile, token, '/'); // +0.68/
 						istringstream ss(token);
 						ss >> f;
-						kifu.back().second = Value(int(f * PIECE_SCORE[PAWN]));
+						kifu.back().second = (Value)int(f * (int)PIECE_SCORE[PAWN]);
 						getline(ifile, token, '}'); // 18 5:51}
 					}
 					else {
@@ -189,9 +191,32 @@ struct PerftResult {
 	uint64_t checks;
 	uint64_t checkmates;
 
+	//uint64_t drops;
+
 	PerftResult() { memset(this, 0, sizeof(PerftResult)); }
 };
 
+/* perft 7
+	START_POS (with sennichite)
+Depth      Nodes   Captures Promotions     Checks Checkmates
+	1         14          1          0          1          0
+	2        181         19          0         12          0
+	3       2512        291         28        169          0
+	4      35401       4462        364       2548          1
+	5     531949      68763       9532      40221        294
+	6    8258848    1129440     152940     672343       4049
+	7  132212131   18407122    3285268   11052933     140048
+
+	START_POS (without sennichite)
+Depth      Nodes   Captures Promotions     Checks Checkmates
+	1         14          1          0          1          0
+	2        181         19          0         12          0
+	3       2512        291         28        169          0
+	4      35401       4462        364       2548          1
+	5     533203      68763       9532      40221        294
+	6    8276188    1131064     152940     673542       4030
+	7  132680617   18435252    3287520   11069694     140048
+*/
 void perft(Minishogi &pos, Move m, int depth, PerftResult &r) {
 	if (depth == 0) {
 		r.nodes++;
@@ -206,7 +231,7 @@ void perft(Minishogi &pos, Move m, int depth, PerftResult &r) {
 		}
 	}
 	else {
-		Move moveList[TOTAL_GENE_MAX_ACTIONS], *end;
+		Move moveList[TOTAL_GENE_MAX_MOVES], *end;
 		end = pos.GetLegalMoves(moveList);
 		for (Move* m = moveList; m < end; m++) {
 			pos.DoMove(*m);
@@ -216,9 +241,14 @@ void perft(Minishogi &pos, Move m, int depth, PerftResult &r) {
 	}
 }
 
-void USI::perft(Minishogi &pos, int depth) {
+void USI::perft(Minishogi &pos, std::istringstream& ss_cmd) {
+	int depth = 5;
+	string token;
+
+	ss_cmd >> depth;
+
 	cout << "Depth      Nodes   Captures Promotions     Checks Checkmates" << endl;
-	for (int i = 0; i <= depth; i++) {
+	for (int i = 1; i <= depth; i++) {
 		PerftResult r;
 		perft(pos, MOVE_NULL, i, r);
 
@@ -234,15 +264,21 @@ void USI::perft(Minishogi &pos, int depth) {
 }
 
 void USI::make_opening(istringstream& ss_cmd) {
-	string path = "D:/Nyanpass Project/Training Kifu/20181023-1.pgn";
+	string src_path = "D:/Nyanpass Project/Training Kifu/20181023-1.pgn";
+	string dst_path = "position/";
 	int game_per_file = 50, sample_rate = 20;
 	string token;
 
 	while (ss_cmd >> token) {
-		if (token == "path") {
+		if (token == "src_path") {
 			getline(ss_cmd, token, '\"');
 			getline(ss_cmd, token, '\"');
-			ss_cmd >> path;
+			ss_cmd >> src_path;
+		}
+		else if (token == "dst_path") {
+			getline(ss_cmd, token, '\"');
+			getline(ss_cmd, token, '\"');
+			ss_cmd >> dst_path;
 		}
 		else if (token == "game_per_file") ss_cmd >> game_per_file;
 		else if (token == "sample_rate")   ss_cmd >> sample_rate;
@@ -256,10 +292,15 @@ void USI::make_opening(istringstream& ss_cmd) {
 	int openingCnt = 0;
 	int nextSamplePly = sample_rate;
 
-	ofstream ofile("opening-0.pgn");
-	ifstream ifile(path);
+	CreateDirectory(dst_path.c_str(), NULL);
+	ifstream ifile(src_path);
+	ofstream ofile(dst_path + "opening-1.pgn");
 	if (!ifile) {
-		cout << "Error : Can't find target" << endl;
+		cout << "Error : Can't find source file" << endl;
+		return;
+	}
+	if (!ofile) {
+		cout << "Error : Can't open destination file" << endl;
 		return;
 	}
 
@@ -301,7 +342,7 @@ void USI::make_opening(istringstream& ss_cmd) {
 					nextSamplePly += sample_rate;
 					if (++openingCnt % game_per_file == 0) {
 						ofile.close();
-						ofile.open("opening-" + to_string(openingCnt / game_per_file) + ".pgn");;
+						ofile.open(dst_path + "opening-" + to_string(openingCnt / game_per_file + 1) + ".pgn");;
 					}
 				}
 			}

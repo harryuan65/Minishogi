@@ -10,7 +10,7 @@
 #include "usi.h"
 
 //#define KPPT_DISABLE
-//#define KPPT_ONLY
+#define PIN_DISABLE
 //#define ITERATIVE_DEEPENING_DISABLE
 //#define ASPIRE_WINDOW_DISABLE
 //#define PVS_DISABLE
@@ -23,7 +23,7 @@
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #109"
+#define AI_NAME "Nyanpass #110"
 
 namespace Observer {
 
@@ -214,10 +214,10 @@ namespace Observer {
 #endif
 #ifdef KPPT_DISABLE
 		ss << "Evaluater           : Material, Pinner\n";
-#elif defined KPPT_ONLY
-		ss << "Evaluater           : KPPT(" << (std::string)USI::Options["EvalDir"] << ") only\n";
+#elif defined PIN_DISABLE
+		ss << "Evaluater           : KPPT(" << (std::string)USI::Options["EvalDir"] << "), Material\n";
 #else
-		ss << "Evaluater           : KPPT(" << (std::string)USI::Options["EvalDir"] << "), Material, Pinner\n";
+		ss << "Evaluater           : KPPT(" << (std::string)USI::Options["EvalDir"] << "), Material, Pin\n";
 #endif
 #ifdef TRANSPOSITION_DISABLE
 		ss << "Transposition Table : Enable\n";

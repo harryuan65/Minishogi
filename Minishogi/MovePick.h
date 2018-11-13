@@ -17,7 +17,7 @@ class StatsEntry {
 	T entry;
 
 public:
-	T * get() { return &entry; }
+	T* get() { return &entry; }
 	void operator=(const T& v) { entry = v; }
 	operator TT() const { return entry; }
 
@@ -81,7 +81,7 @@ enum GenType {
 
 class Minishogi;
 
-class MovePicker{
+class MovePicker {
 
 	enum PickType { Next, Best };
 
@@ -91,7 +91,7 @@ public:
 	//MovePicker(Minishogi&, Move, Value, const CapturePieceToHistory*);
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Square);
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Move, Move*);
-	Move GetNextMove(bool skipQuiets = false);
+	Move GetNextMove();
 	int GetStage() { return stage; }
 
 private:
@@ -111,7 +111,7 @@ private:
 	Value threshold;
 	int depth;
 	int stage;
-	ExtMove moves[MAX_MOVES];
+	ExtMove moves[TOTAL_GENE_MAX_MOVES];
 };
 
 #endif

@@ -84,6 +84,7 @@ public:
 	CounterMoveHistory counterMoves;
 	Transposition tt;
 	int selDepth;
+	int maxCheckPly;
 
 	Thread(int ttBit = 1);
 	~Thread();

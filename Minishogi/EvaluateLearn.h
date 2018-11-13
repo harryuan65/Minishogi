@@ -6,10 +6,16 @@
 
 #include "Minishogi.h"
 
+
 Move algebraic2move(std::string str, Minishogi &pos);
 
 namespace EvaluateLearn {
-	const std::string KIFULEARN_DIRPATH = "D:/Nyanpass Project/Training Kifu";
+	// Default Parameter
+	const float LAMBDA               = 0.5f;
+	const float GAMMA                = 0.93f;
+	const float WEIGHT_ETA           = 64.0f;
+	const int KIFULEARN_EVAL_LIMIT   = 3000;
+	const char KIFULEARN_KIFU_PATH[] = "D:/Nyanpass Project/Training Kifu";
 
 	typedef float LearnFloatType;
 	typedef std::array<LearnFloatType, 2> WeightValue;
@@ -27,7 +33,7 @@ namespace EvaluateLearn {
 	void InitGrad();
 	double CalcGrad(Value searchValue, Value quietValue);
 	double CalcGrad(Value searchValue, Value quietValue, bool winner, double progress);
-	void AddGrad(const Minishogi &m, Color turn, double delta_grad);
+	void AddGrad(const Minishogi &m, Turn turn, double delta_grad);
 	void UpdateKPPT(uint64_t epoch);
 
 	void StartKifuLearn(std::istringstream& is);

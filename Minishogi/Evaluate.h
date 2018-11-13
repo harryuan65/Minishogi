@@ -46,7 +46,7 @@ namespace Evaluate {
 		Value material;
 		Value pin;
 
-		Value Sum(const Color c) const;
+		Value Sum(const Turn c) const;
 		void Clean();
 
 		inline bool IsNotCalc() const;

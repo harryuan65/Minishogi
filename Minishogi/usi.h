@@ -111,13 +111,13 @@ namespace USI {
 	void position(Minishogi& pos, std::istringstream& ss_cmd);
 	void go(const Minishogi& pos, std::istringstream& ss_cmd);
 	void timetest(std::istringstream& ss_cmd);
-	void perft(Minishogi &pos, int depth);
+	void perft(Minishogi &pos, std::istringstream& ss_cmd);
 	void make_opening(std::istringstream& ss_cmd);
 	void setoption(std::istringstream& ss_cmd);
 
     std::string value(Value s);
     std::string pv(const RootMove &rm, const Thread &th, Value alpha, Value beta);
-	std::string move_list(ExtMove *begin, ExtMove *end, Minishogi &pos);
+	std::string move_list(Move *begin, Move *end, Minishogi &pos);
 }
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om);

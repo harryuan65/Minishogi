@@ -7,7 +7,7 @@ typedef unsigned __int32 Bitboard;
 /*    Piece Move Area    */
 const Bitboard Movement[][BOARD_NB] = {
 	/* 0 */{ 0 },
-	/* 1 PAWN */
+	/* 1 W_PAWN */
 	{
 		0x0000000,     0x0000000,     0x0000000,     0x0000000,    0x0000000,
 		0x0000001,     0x0000002,     0x0000004,     0x0000008,    0x0000010,
@@ -15,7 +15,7 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0000400,     0x0000800,     0x0001000,     0x0002000,    0x0004000,
 		0x0008000,     0x0010000,     0x0020000,     0x0040000,    0x0080000
 	},
-	/* 2 SILVER */
+	/* 2 W_SILVER */
 	{
 		0x0000040,     0x00000a0,     0x0000140,     0x0000280,    0x0000100,
 		0x0000803,     0x0001407,     0x000280e,     0x000501c,    0x0002018,
@@ -23,7 +23,7 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0200c00,     0x0501c00,     0x0a03800,     0x1407000,    0x0806000,
 		0x0018000,     0x0038000,     0x0070000,     0x00e0000,    0x00c0000
 	},
-	/* 3 GOLD */
+	/* 3 W_GOLD */
 	{
 		0x0000022,     0x0000045,     0x000008a,     0x0000114,    0x0000208,
 		0x0000443,     0x00008a7,     0x000114e,     0x000229c,    0x0004118,
@@ -31,9 +31,9 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0110c00,     0x0229c00,     0x0453800,     0x08a7000,    0x1046000,
 		0x0218000,     0x0538000,     0x0a70000,     0x14e0000,    0x08c0000
 	},
-	/*4*/{ 0 },
-	/*5*/{ 0 },
-	/* 6 KING */
+	/* 4 */{ 0 },
+	/* 5 */{ 0 },
+	/* 6 W_KING */
 	{
 		0x0000062,     0x00000e5,     0x00001ca,     0x0000394,     0x0000308,
 		0x0000c43,     0x0001ca7,     0x000394e,     0x000729c,     0x0006118,
@@ -41,17 +41,17 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0310c00,     0x0729c00,     0x0e53800,     0x1ca7000,     0x1846000,
 		0x0218000,     0x0538000,     0x0a70000,     0x14e0000,     0x08c0000
 	},
-	/*7*/{ 0 },
-	/*8*/{ 0 },
-	/*9*/{ 0 },
-	/*10*/{ 0 },
-	/*11*/{ 0 },
-	/*12*/{ 0 },
-	/*13*/{ 0 },
-	/*14*/{ 0 },
-	/*15*/{ 0 },
-	/*16*/{ 0 },
-	/* 17 ¶ÂPAWN */
+	/* 7 */{ 0 },
+	/* 8 */{ 0 },
+	/* 9 */{ 0 },
+	/* 10 */{ 0 },
+	/* 11 */{ 0 },
+	/* 12 */{ 0 },
+	/* 13 */{ 0 },
+	/* 14 */{ 0 },
+	/* 15 */{ 0 },
+	/* 16 */{ 0 },
+	/* 17 B_PAWN */
 	{
 		0x0000020,     0x0000040,     0x0000080,     0x0000100,     0x0000200,
 		0x0000400,     0x0000800,     0x0001000,     0x0002000,     0x0004000,
@@ -59,7 +59,7 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0100000,     0x0200000,     0x0400000,     0x0800000,    0x1000000,
 		0x0000000,     0x0000000,     0x0000000,     0x0000000,    0x0000000
 	},
-	/* 18 ¶ÂSILVER */
+	/* 18 B_SILVER */
 	{
 		0x0000060,     0x00000e0,     0x00001c0,     0x0000380,     0x0000300,
 		0x0000c02,     0x0001c05,     0x000380a,     0x0007014,     0x0006008,
@@ -67,7 +67,7 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0300800,     0x0701400,     0x0e02800,     0x1c05000,    0x1802000,
 		0x0010000,     0x0028000,     0x0050000,     0x00a0000,    0x0040000
 	},
-	/* 19 ¶ÂGOLD */
+	/* 19 B_GOLD */
 	{
 		0x0000062,     0x00000e5,     0x00001ca,     0x0000394,     0x0000308,
 		0x0000c41,     0x0001ca2,     0x0003944,     0x0007288,     0x0006110,
@@ -75,9 +75,9 @@ const Bitboard Movement[][BOARD_NB] = {
 		0x0310400,     0x0728800,     0x0e51000,     0x1ca2000,    0x1844000,
 		0x0208000,     0x0510000,     0x0a20000,     0x1440000,    0x0880000
 	},
-	/*20*/{ 0 },
-	/*21*/{ 0 },
-	/* 22 ¶Â KING */
+	/* 20 */{ 0 },
+	/* 21 */{ 0 },
+	/* 22 B_KING */
 	{
 		0x0000062,     0x00000e5,     0x00001ca,     0x0000394,     0x0000308,
 		0x0000c43,     0x0001ca7,     0x000394e,     0x000729c,     0x0006118,
@@ -157,7 +157,7 @@ const Bitboard Slope2Lower[] = {
 };
 
 
-/*    Bitboard Mask    */
+// Bitboard Mask
 const Bitboard BitboardMask = 0x1ffffff;
 const Bitboard HighestPosMask = 0x1000000;
 const Bitboard LowestPosMask = 0x0000001;
@@ -165,11 +165,7 @@ const Bitboard EnemyCampMask[] = { 0x000001f, 0x1f00000 };
 
 inline Bitboard RowMask(int pos) { return RowUpper[pos] | RowLower[pos]; }
 inline Bitboard ColMask(int pos) { return ColUpper[pos] | ColLower[pos]; }
-#define more_than_one(x) (x & (x - 1))
-
-inline Bitboard BlankOccupied(const Bitboard* occupied) {
-	return ~(occupied[WHITE] | occupied[BLACK]) & BitboardMask;
-}
+inline Bitboard BlankOccupied(Bitboard occupied) { return ~occupied & BitboardMask; }
 
 const Bitboard RookMask[] = {
 	0x010843e,    0x021085d,    0x042109b,    0x0842117,    0x108420f,
@@ -187,7 +183,7 @@ const Bitboard BishopMask[] = {
 	0x0011110,    0x002a200,    0x0054400,    0x00a0820,    0x0041041
 };
 
-/*    Debrujin    */
+// Debrujin
 const unsigned int debrujin32 = 0x7ca26eb;
 
 const int index32[] = {
@@ -211,6 +207,9 @@ inline Square BitScanRev(Bitboard bitboard) {
 	bitboard |= bitboard >> 16;
     return (Square)index32[(bitboard * debrujin32) >> 27];
 }
+
+// pin value
+#define more_than_one(x) (x & (x - 1))
 
 const Bitboard BetweenBB[][BOARD_NB] = {
 	{ 0, 0, 2, 6, 14, 0, 0, 0, 0, 0, 32, 0, 64, 0, 0, 1056, 0, 0, 4160, 0, 33824, 0, 0, 0, 266304 },
@@ -239,5 +238,77 @@ const Bitboard BetweenBB[][BOARD_NB] = {
 	{ 0, 0, 0, 270592, 0, 133120, 0, 0, 270336, 0, 0, 131072, 0, 262144, 0, 0, 0, 0, 0, 0, 6291456, 4194304, 0, 0, 0 },
 	{ 266304, 0, 0, 0, 541184, 0, 266240, 0, 0, 540672, 0, 0, 262144, 0, 524288, 0, 0, 0, 0, 0, 14680064, 12582912, 8388608, 0, 0 }
 };
+
+// Moveable
+inline Bitboard RookMovable(Square srcIndex, Bitboard occupied) {
+	// upper (find LSB) ; lower (find MSB)
+	Bitboard rank, file, upper, lower;
+
+	// row "-"
+	upper = (occupied & RowUpper[srcIndex]) | HighestPosMask;
+	lower = (occupied & RowLower[srcIndex]) | LowestPosMask;
+
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+
+	rank = (upper - lower) & RowMask(srcIndex);
+
+	// column "|"
+	upper = (occupied & ColUpper[srcIndex]) | HighestPosMask;
+	lower = (occupied & ColLower[srcIndex]) | LowestPosMask;
+
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+
+	file = (upper - lower) & ColMask(srcIndex);
+
+	return rank | file;
+}
+
+inline Bitboard BishopMovable(Square srcIndex, Bitboard occupied) {
+	// upper (find LSB) ; lower (find MSB)
+	Bitboard slope1, slope2, upper, lower;
+
+	// slope1 "/"
+	upper = (occupied & Slope1Upper[srcIndex]) | HighestPosMask;
+	lower = (occupied & Slope1Lower[srcIndex]) | LowestPosMask;
+
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+
+	slope1 = (upper - lower) & (Slope1Upper[srcIndex] | Slope1Lower[srcIndex]);
+
+	// slope2 "\"
+	upper = (occupied & Slope2Upper[srcIndex]) | HighestPosMask;
+	lower = (occupied & Slope2Lower[srcIndex]) | LowestPosMask;
+
+	upper = (upper & (~upper + 1)) << 1;
+	lower = 1 << BitScanRev(lower);
+
+	slope2 = (upper - lower) & (Slope2Upper[srcIndex] | Slope2Lower[srcIndex]);
+
+	return slope1 | slope2;
+}
+
+inline Bitboard Movable(Square srcIndex, Piece srcPiece, Bitboard occupied) {
+	if ((srcPiece & 7) == BISHOP) {
+		if (is_promote(srcPiece))
+			return BishopMovable(srcIndex, occupied) | Movement[KING][srcIndex];
+		return BishopMovable(srcIndex, occupied);
+	}
+	else if ((srcPiece & 7) == ROOK) {
+		if (is_promote(srcPiece))
+			return RookMovable(srcIndex, occupied) | Movement[KING][srcIndex];
+		return RookMovable(srcIndex, occupied);
+	}
+	else if (is_promote(srcPiece)) {
+		return Movement[GOLD | (srcPiece & BLACKCHESS)][srcIndex];
+	}
+	return Movement[srcPiece][srcIndex];
+}
+
+inline Bitboard AttackersTo(Square dstIndex, Bitboard occupied) {
+	return RookMovable(dstIndex, occupied) | BishopMovable(dstIndex, occupied);
+}
 
 #endif

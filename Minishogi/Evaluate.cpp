@@ -73,12 +73,12 @@ namespace Evaluate {
 						kpp[k][p1][p2][i] = (float)kpp[k][p1][p2][i] * ratio + (float)e.kpp[k][p1][p2][i] * ratio2;
 	}
 
-	Value EvalSum::Sum(const Color c) const {
+	Value EvalSum::Sum(const Turn c) const {
 		if (IsNotCalc())
 			return VALUE_NONE;
 		// [0](先手KPP) + [1](後手KPP) + [2](KK+KKP) 
-#ifdef KPPT_ONLY
-		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE;
+#ifdef PIN_DISABLE
+		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + material;
 #else
 		const Value scoreBoard = (Value)(pos[0][0] - pos[1][0] + pos[2][0]) / FV_SCALE + material + pin;
 #endif

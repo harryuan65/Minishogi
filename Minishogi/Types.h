@@ -1,6 +1,5 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
-#include <assert.h>
 #include <mutex>
 #include <sstream>
 
@@ -23,13 +22,8 @@ inline TimePoint now() {
 		(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-constexpr int SINGLE_GENE_MAX_ACTIONS = 112;
-constexpr int TOTAL_GENE_MAX_ACTIONS = 162;  // AtkGene 21, MoveGene 29, HandGene 112
-constexpr int DEPTH_QS_CHECKS = 0;
-constexpr int DEPTH_QS_RECAPTURES = -5;
-constexpr int DEPTH_QUIET_MAX = -5;
-constexpr int DEPTH_NULL = -6;
-constexpr int MAX_MOVES = 256;
+constexpr int SINGLE_GENE_MAX_MOVES = 112;
+constexpr int TOTAL_GENE_MAX_MOVES = 162;  // AtkGene 21, MoveGene 29, HandGene 112
 constexpr int MAX_SEARCH_DEPTH = 30;
 constexpr int MAX_PLY = 256;
 const std::string PIECE_2_CHAR = ".PSGBRK..PS.BR...psgbrk..ps.br";
@@ -38,14 +32,39 @@ const std::string PIECE_WORD = "  步銀金角飛王    ㄈ全  馬龍      步銀金角飛玉  
 const std::string NONCOLOR_PIECE_WORD = " ． △步△銀△金△角△飛△王        △ㄈ△全    △馬△龍            ▼步▼銀▼金▼角▼飛▼玉        ▼ㄈ▼全    ▼馬▼龍";
 const std::string COLOR_WORD[] = { "△", "▼" };
 
-enum Color : int {
+enum Turn : int {
 	WHITE,
 	BLACK,
 	COLOR_NB = 2
 };
 
 enum Value : int {
-	VALUE_ZERO      = 0,
+	VALUE_ZERO			= 0,
+	VALUE_PAWN			= 107,
+	VALUE_SILVER		= 810,
+	VALUE_GOLD			= 907,
+	VALUE_BISHOP		= 1291,
+	VALUE_ROOK			= 1670,
+	VALUE_PRO_PAWN		= 895,
+	VALUE_PRO_SILVER	= 933,
+	VALUE_PRO_BISHOP	= 1985,
+	VALUE_PRO_ROOK		= 2408,
+	VALUE_HAND_PAWN		= 152,
+	VALUE_HAND_SILVER	= 1110,
+	VALUE_HAND_GOLD		= 1260,
+	VALUE_HAND_BISHOP	= 1464,
+	VALUE_HAND_ROOK		= 1998,
+
+	PIN_PAWN		= 2,
+	PIN_SILVER		= -204,
+	PIN_GOLD		= -377,
+	PIN_BISHOP		= -375,
+	PIN_ROOK		= -500,
+	PIN_PRO_PAWN	= 0,
+	PIN_PRO_SILVER	= 0,
+	PIN_PRO_BISHOP	= -525,
+	PIN_PRO_ROOK	= -650,
+
 	VALUE_KNOWN_WIN = 10000,
 	VALUE_MATE      = 30000,
 	VALUE_INFINITE  = 31001,
@@ -140,57 +159,9 @@ enum BonaPieceIndex : int {
 	BONA_PIECE_INDEX_NB = 12
 };
 
-constexpr Square EatToHand[] = {
-	SQ_NONE, SQ_G5, SQ_G4,   SQ_G3, SQ_G2, SQ_G1, SQ_NONE, SQ_NONE,
-	SQ_NONE, SQ_G5, SQ_G4, SQ_NONE, SQ_G2, SQ_G1, SQ_NONE, SQ_NONE,
-	SQ_NONE, SQ_F5, SQ_F4,   SQ_F3, SQ_F2, SQ_F1, SQ_NONE, SQ_NONE,
-	SQ_NONE, SQ_F5, SQ_F4, SQ_NONE, SQ_F2, SQ_F1
-};
-
-constexpr Piece HandToChess[] = {
-	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
-	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
-	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
-	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
-	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
-	  W_PAWN, W_SILVER,   W_GOLD, W_BISHOP,   W_ROOK,
-	  B_PAWN, B_SILVER,   B_GOLD, B_BISHOP,   B_ROOK
-};
-
-constexpr bool Promotable[] = {
-	false,  true,  true, false,  true,  true, false, false,
-	false, false, false, false, false, false, false, false,
-	false,  true,  true, false,  true,  true, false, false,
-	false, false, false, false, false, false
-};
-
-constexpr int PIECE_SCORE[] = {
-	0,  107,  810,  907,  1291,  1670,  VALUE_MATE, 0,
-	0,  895,  933,    0,  1985,  2408,           0, 0,
-	0, -107, -810, -907, -1291, -1670, -VALUE_MATE, 0,
-	0, -895, -933,    0, -1985, -2408
-};
-
-constexpr int HAND_SCORE[] = {
-	0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0,
-	 152,  1110,  1260,  1464,  1998,
-	-152, -1110, -1260, -1464, -1998
-};
-
-constexpr int PIN_SCORE[] = {
-	0,    2, -204, -377,  -375,  -500,    0,    0,
-	0,    0,    0,    0,  -525,  -650,    0,    0,
-	0,   -2,  204,  377,   375,   500,    0,    0,
-	0,    0,    0,    0,   525,   650
-};
-
 struct ExtMove {
 	Move move;
-	int value;
+	int score;
 
 	operator Move() const { return move; }
 	void operator=(const Move m) { move = m; }
@@ -199,7 +170,7 @@ struct ExtMove {
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {
-	return f.value < s.value;
+	return f.score < s.score;
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                \
@@ -226,7 +197,7 @@ static std::istream& operator>>(std::istream &is, T &d) { is >> d; return is; }
 
 ENABLE_FULL_OPERATORS_ON(Value)
 
-ENABLE_INCR_OPERATORS_ON(Color)
+ENABLE_INCR_OPERATORS_ON(Turn)
 ENABLE_BASE_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(Piece)
@@ -251,8 +222,8 @@ constexpr Value mated_in(int ply) {
 	return -VALUE_MATE + ply;
 }
 
-constexpr Color operator~(Color c) {
-	return Color(c ^ BLACK);
+constexpr Turn operator~(Turn c) {
+	return Turn(c ^ BLACK);
 }
 
 constexpr bool is_drop(Square sq) {
@@ -329,7 +300,7 @@ const static int toU32(Move m) {
 	return is;
 }*/
 
-static Move usi2move(std::string str, Color turn) {
+static Move usi2move(std::string str, Turn turn) {
 	Move m;
 	if (str == "resign")
 		m = MOVE_NULL;
@@ -387,9 +358,8 @@ constexpr Piece type_of(int p) {
     return Piece(p & 0xF);
 }
 
-constexpr Color color_of(Piece p) {
-	assert(p != NO_PIECE);
-	return Color(p >= BLACKCHESS);
+constexpr Turn color_of(Piece p) {
+	return Turn(p >= BLACKCHESS);
 }
 
 constexpr bool is_promote(Piece c) {
@@ -434,5 +404,52 @@ static inline std::string get_extension(std::string file) {
 	return file.substr(file.find_last_of(".") + 1);
 }
 
+constexpr Square EatToHand[] = {
+	SQ_NONE, SQ_G5, SQ_G4,   SQ_G3, SQ_G2, SQ_G1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_G5, SQ_G4, SQ_NONE, SQ_G2, SQ_G1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_F5, SQ_F4,   SQ_F3, SQ_F2, SQ_F1, SQ_NONE, SQ_NONE,
+	SQ_NONE, SQ_F5, SQ_F4, SQ_NONE, SQ_F2, SQ_F1
+};
+
+constexpr Piece HandToChess[] = {
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
+	  W_PAWN, W_SILVER,   W_GOLD, W_BISHOP,   W_ROOK,
+	  B_PAWN, B_SILVER,   B_GOLD, B_BISHOP,   B_ROOK
+};
+
+constexpr bool Promotable[] = {
+	false,  true,  true, false,  true,  true, false, false,
+	false, false, false, false, false, false, false, false,
+	false,  true,  true, false,  true,  true, false, false,
+	false, false, false, false, false, false
+};
+
+constexpr Value PIECE_SCORE[] = {
+	VALUE_ZERO, VALUE_PAWN,  VALUE_SILVER, VALUE_GOLD, VALUE_BISHOP, VALUE_ROOK, VALUE_MATE, VALUE_ZERO,
+	VALUE_ZERO, VALUE_PRO_PAWN, VALUE_PRO_SILVER, VALUE_ZERO, VALUE_PRO_BISHOP, VALUE_PRO_ROOK, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, -VALUE_PAWN, -VALUE_SILVER, -VALUE_GOLD, -VALUE_BISHOP, -VALUE_ROOK, -VALUE_MATE, VALUE_ZERO,
+	VALUE_ZERO, -VALUE_PRO_PAWN, -VALUE_PRO_SILVER, VALUE_ZERO, -VALUE_PRO_BISHOP, -VALUE_PRO_ROOK
+};
+
+constexpr Value HAND_SCORE[] = {
+	VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+	VALUE_HAND_PAWN, VALUE_HAND_SILVER, VALUE_HAND_GOLD, VALUE_HAND_BISHOP, VALUE_HAND_ROOK,
+	-VALUE_HAND_PAWN, -VALUE_HAND_SILVER, -VALUE_HAND_GOLD, -VALUE_HAND_BISHOP, -VALUE_HAND_ROOK
+};
+
+constexpr Value PIN_SCORE[] = {
+	VALUE_ZERO, PIN_PAWN, PIN_SILVER, PIN_GOLD, PIN_BISHOP, PIN_ROOK, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, PIN_PRO_PAWN, PIN_PRO_SILVER, VALUE_ZERO, PIN_PRO_BISHOP, PIN_PRO_ROOK, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, -PIN_PAWN, -PIN_SILVER, -PIN_GOLD, -PIN_BISHOP, -PIN_ROOK, VALUE_ZERO, VALUE_ZERO,
+	VALUE_ZERO, -PIN_PRO_PAWN, -PIN_PRO_SILVER, VALUE_ZERO, -PIN_PRO_BISHOP, -PIN_PRO_ROOK
+};
 
 #endif

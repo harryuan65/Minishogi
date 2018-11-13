@@ -56,6 +56,7 @@ void OptionsMap::Initialize() {
     (*this)["ResignValue"]     = Option(-VALUE_MATE, -VALUE_MATE, VALUE_MATE);
 	(*this)["EvalDir"]         = Option(filenames, GetEvalConfig(filenames), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
 	(*this)["EvalStandardize"] = Option(true);
+	(*this)["MaxCheckPly"]     = Option(16, 0, 1024);
 }
 
 ostream& operator<<(ostream& os, const OptionsMap& om) {
