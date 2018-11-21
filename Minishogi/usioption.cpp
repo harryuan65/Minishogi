@@ -20,28 +20,25 @@ vector<string> GetEvalFilesPath() {
 		if (fs::is_directory(p))
 			filenames.push_back(KPPT_DIRPATH + fs::path(p).filename().string());
 
-	filenames.push_back("none");
+	if (filenames.empty())
+		filenames.push_back("none");
+
+	string confPath = KPPT_DIRPATH + "config.txt";
+	ifstream ifs(confPath);
+
+	if (!ifs) {
+		cout << "info string " << confPath << " not found." << endl;
+		return filenames;
+	}
+
+	string str;
+	getline(ifs, str);
+	string kpptPath = KPPT_DIRPATH + str;
+
+	if (find(filenames.begin(), filenames.end(), kpptPath) != filenames.end())
+		iter_swap(filenames.end() - 1, find(filenames.begin(), filenames.end(), kpptPath));
 
     return filenames;
-}
-
-string GetEvalConfig(vector<string> filenames) {
-	string confPath = KPPT_DIRPATH + "config.txt";
-    ifstream ifs(confPath);
-
-    if (!ifs) {
-        cout << "info string " << confPath << " not found." << endl;
-		filenames.front();
-    }
-
-    string str;
-    getline(ifs, str);
-    string kkptPath = KPPT_DIRPATH + str;
-
-    if (find(filenames.begin(), filenames.end(), kkptPath) != filenames.end())
-        return kkptPath;
-    else
-        return filenames.front();
 }
 
 void OptionsMap::Initialize() {
@@ -54,7 +51,7 @@ void OptionsMap::Initialize() {
 	(*this)["FullMovePonder"]  = Option(false);
     (*this)["NetworkDelay"]    = Option(0, 0, 60000);
     (*this)["ResignValue"]     = Option(-VALUE_MATE, -VALUE_MATE, VALUE_MATE);
-	(*this)["EvalDir"]         = Option(filenames, GetEvalConfig(filenames), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
+	(*this)["EvalDir"]         = Option(filenames, filenames.back(), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
 	(*this)["EvalStandardize"] = Option(true);
 	(*this)["MaxCheckPly"]     = Option(16, 0, 1024);
 }

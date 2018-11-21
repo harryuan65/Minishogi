@@ -3,6 +3,8 @@
 #include <mutex>
 #include <sstream>
 
+#include "Observer.h"
+
 enum SyncCout { IO_LOCK, IO_UNLOCK };
 inline std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 	static std::mutex m;
@@ -25,6 +27,7 @@ inline TimePoint now() {
 constexpr int SINGLE_GENE_MAX_MOVES = 112;
 constexpr int TOTAL_GENE_MAX_MOVES = 162;  // AtkGene 21, MoveGene 29, HandGene 112
 constexpr int MAX_SEARCH_DEPTH = 30;
+constexpr int DEPTH_NONE = -256;
 constexpr int MAX_PLY = 256;
 const std::string PIECE_2_CHAR = ".PSGBRK..PS.BR...psgbrk..ps.br";
 const std::string HAND_2_CHAR = "PSGBRpsgbr";
@@ -55,20 +58,20 @@ enum Value : int {
 	VALUE_HAND_BISHOP	= 1464,
 	VALUE_HAND_ROOK		= 1998,
 
-	PIN_PAWN		= 2,
-	PIN_SILVER		= -204,
-	PIN_GOLD		= -377,
-	PIN_BISHOP		= -375,
-	PIN_ROOK		= -500,
-	PIN_PRO_PAWN	= 0,
-	PIN_PRO_SILVER	= 0,
-	PIN_PRO_BISHOP	= -525,
-	PIN_PRO_ROOK	= -650,
+	PIN_PAWN			= 2,
+	PIN_SILVER			= -204,
+	PIN_GOLD			= -377,
+	PIN_BISHOP			= -375,
+	PIN_ROOK			= -500,
+	PIN_PRO_PAWN		= -365,
+	PIN_PRO_SILVER		= -403,
+	PIN_PRO_BISHOP		= -525,
+	PIN_PRO_ROOK		= -650,
 
-	VALUE_KNOWN_WIN = 10000,
-	VALUE_MATE      = 30000,
-	VALUE_INFINITE  = 31001,
-	VALUE_NONE      = 32002,
+	VALUE_KNOWN_WIN		= 10000,
+	VALUE_MATE			= 30000,
+	VALUE_INFINITE		= 31001,
+	VALUE_NONE			= 32002,
 	VALUE_MATE_IN_MAX_PLY  = (int) VALUE_MATE - 2 * MAX_SEARCH_DEPTH,
 	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_SEARCH_DEPTH
 };
@@ -411,7 +414,7 @@ constexpr Square EatToHand[] = {
 	SQ_NONE, SQ_F5, SQ_F4, SQ_NONE, SQ_F2, SQ_F1
 };
 
-constexpr Piece HandToChess[] = {
+constexpr Piece HandToPiece[] = {
 	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
 	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,
 	NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE, NO_PIECE,

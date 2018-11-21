@@ -4,6 +4,7 @@
 #include "Observer.h"
 #include "Minishogi.h"
 #include "Movepick.h"
+using namespace std;
 
 namespace {
 
@@ -108,7 +109,7 @@ stage += (ttMove == MOVE_NULL);
 void MovePicker::score(GenType type) {
 	for (auto& m : *this) {
 		const Square from = from_sq(m), to = to_sq(m);
-		const Piece from_pc = pos.GetChessOn(from), to_pc = pos.GetChessOn(to);
+		const Piece from_pc = pos.GetPiece(m), to_pc = pos.GetCapture(m);
 
 		if (type == CAPTURES) {
 			m.score = PIECE_SCORE[type_of(to_pc)]
@@ -127,7 +128,7 @@ void MovePicker::score(GenType type) {
 			else {
 				m.score = (*mainHistory)[pos.GetTurn()][from][to] - (1 << 28);
 			}
-			if (type_of(pos.GetChessOn(from_sq(move))) == KING) {
+			if (type_of(from_pc) == KING) {
 				m.score -= (1 << 10);
 			}
 		}
@@ -144,10 +145,9 @@ Move MovePicker::select(Pred filter) {
 
 		move = *cur++;
 
-		if (move != ttMove && 
-			filter() && 
-			(from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move)) &&
-			type_of(pos.GetChessOn(to_sq(move))) != KING)
+		if (move != ttMove &&
+			filter() &&
+			(from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move)))
 			return move;
 	}
 	return move = MOVE_NULL;

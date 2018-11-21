@@ -32,7 +32,7 @@ void Transposition::Clean() {
 	}
 }
 
-/*TTentry* Transposition::Probe(Key key, bool &ttHit) {
+TTentry* Transposition::Probe(Key key, bool &ttHit) {
 #ifdef TRANSPOSITION_DISABLE
 	ttHit = false;
 	return &transpositTable[0];
@@ -46,9 +46,9 @@ void Transposition::Clean() {
 	}
 	ttHit = true;
 	return &transpositTable[index];
-}*/
+}
 
-TTentry* Transposition::Probe(Key key, int turn, bool &ttHit) {
+/*TTentry* Transposition::Probe(Key key, int turn, bool &ttHit) {
 #ifdef TRANSPOSITION_DISABLE
 	ttHit = false;
 	return &transpositTable[0];
@@ -63,7 +63,7 @@ TTentry* Transposition::Probe(Key key, int turn, bool &ttHit) {
 	ttHit = true;
 	//Observer::data[Observer::DataType::ttIsoNum] += (transpositTable[index].turn != turn);
 	return &transpositTable[index];
-}
+}*/
 
 int Transposition::HashFull() const {
 	int cnt = 0;

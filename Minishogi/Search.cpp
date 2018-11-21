@@ -21,8 +21,8 @@ namespace {
 	void UpdateQuietHeuristic(const Minishogi &minishogi, Stack* ss, Move move, Move *quietMove, int quietCnt, int bouns);
 	void UpdateContinousHeuristic(Stack* ss, Piece pc, Square to, int bonus);
 
-	Value value_to_tt(Value v, int ply);
-	Value value_from_tt(Value v, int ply);
+	Value value_to_tt(int16_t v, Turn turn, int ply);
+	Value value_from_tt(int16_t v, Turn turn, int ply);
 	int stat_bonus(int d);
 }
 
@@ -57,7 +57,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			rootDepth = rm.depth + 1;
 		}
 	}
-
+	
 	// Iterative Deepening
 	for (; rootDepth <= depth && !IsStop() && !isWin; rootDepth++) {
 		bool isResearch = false;
@@ -178,12 +178,6 @@ void Thread::PreIDAS() {
 
 namespace {
 	Value NegaScout(bool pvNode, Minishogi &pos, Stack *ss, Key rootKey, Value alpha, Value beta, int depth, bool isResearch) {
-		/*switch (pos.SennichiteType()) {
-		case SENNICHITE_WIN: return mate_in(ss->ply);
-		case SENNICHITE_LOSE: return mated_in(ss->ply);
-		case SENNICHITE_CHECK: return mate_in(ss->ply);
-		}*/
-
 		if (depth < 1)
 #ifndef QUIES_DISABLE
 			return QuietSearch(pvNode, pos, ss, rootKey, alpha, beta, 0);
@@ -215,8 +209,8 @@ namespace {
 		prevSq = to_sq((ss - 1)->currentMove);
 
 		// Transposition table lookup
-		tte = thisThread->tt.Probe(pos.GetKey(), pos.GetTurn(), ttHit);
-		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NONE;
+		tte = thisThread->tt.Probe(pos.GetKey(), ttHit);
+		ttValue = ttHit ? value_from_tt(tte->value, pos.GetTurn(), ss->ply) : VALUE_NONE;
 		ttMove = ttHit ? tte->move : MOVE_NULL;
 
 		// At non-PV nodes we check for an early TT cutoff
@@ -228,15 +222,15 @@ namespace {
 		   (ttValue >= beta ? (tte->bound & TTentry::FAILHIGH) : (tte->bound & TTentry::UNKNOWN)) &&
 			pos.PseudoLegal(ttMove)) {
 			if (ttValue >= beta) {
-				if (!pos.GetChessOn(to_sq(ttMove)))
+				if (!pos.GetCapture(ttMove))
 					UpdateQuietHeuristic(pos, ss, ttMove, nullptr, 0, stat_bonus(depth));
 				if ((ss - 1)->moveCount == 1 && pos.GetPrevCapture() != NO_PIECE)
-					UpdateContinousHeuristic(ss - 1, pos.GetChessOn(prevSq), prevSq, -stat_bonus(depth + 1));
+					UpdateContinousHeuristic(ss - 1, pos.GetBoard(prevSq), prevSq, -stat_bonus(depth + 1));
 			}
-			else if (!pos.GetChessOn(to_sq(ttMove))) {
+			else if (!pos.GetCapture(ttMove)) {
 				int penalty = -stat_bonus(depth);
 				thisThread->mainHistory[pos.GetTurn()][from_sq(ttMove)][to_sq(ttMove)] << penalty;
-				UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(ttMove)), to_sq(ttMove), penalty);
+				UpdateContinousHeuristic(ss, pos.GetPiece(ttMove), to_sq(ttMove), penalty);
 			}
 			return ttValue;
 		}
@@ -303,36 +297,40 @@ namespace {
 		int captureCount = 0, quietCount = 0;
 		
 		while ((move = mp.GetNextMove()) != MOVE_NULL) {
-			bool isCapture = pos.GetChessOn(to_sq(move)) != NO_PIECE;
+			bool isCapture = pos.GetCapture(move) != NO_PIECE;
 			int R = 0;
 
 			ss->currentMove = move;
-			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
+			ss->contHistory = &thisThread->contHistory[pos.GetPiece(move)][to_sq(move)];
 			Observer::data[Observer::mainNode]++;
 			Observer::data[Observer::researchNode] += isResearch;
 
 			pos.DoMove(move);
 			ss->moveCount++;
-			switch (pos.SennichiteType(thisThread->maxCheckPly)) {
-			case SENNICHITE_WIN: 
-				value = -mate_in(ss->ply + 1);
-				break;
-			case SENNICHITE_LOSE:
-				value = -mated_in(ss->ply + 1);
-				break;
-			case SENNICHITE_CHECK: 
-				value = -mate_in(ss->ply + 1);
-				break;
-			case NO_SENNICHITE:
-				if (pvNode)
-					(ss + 1)->pv[0] = MOVE_NULL;
+			if (pos.IsUchifuzume()) {
+				value = mated_in(ss->ply);
+			}
+			else {
+				switch (pos.SennichiteType(thisThread->maxCheckPly)) {
+				case SENNICHITE_WIN:
+					value = mate_in(ss->ply + 1);
+					break;
+				case SENNICHITE_LOSE:
+					value = mated_in(ss->ply + 1);
+					break;
+				case SENNICHITE_CHECK:
+					value = mated_in(ss->ply + 1);
+					break;
+				case NO_SENNICHITE:
+					if (pvNode)
+						(ss + 1)->pv[0] = MOVE_NULL;
 
-				// Late Move Reduction
+					// Late Move Reduction
 #ifndef LMR_DISABLE
 				/*if (!pvNode &&
-					 depth >= 3 &&
-					 bestValue > VALUE_MATED_IN_MAX_PLY &&
-					 ss->moveCount >= 25 &&
+						depth >= 3 &&
+						bestValue > VALUE_MATED_IN_MAX_PLY &&
+						ss->moveCount >= 25 &&
 					!(ss - 1)->lmr_flag &&
 					!isCapture &&
 					!pos.IsInChecked() &&
@@ -340,45 +338,46 @@ namespace {
 					ss->lmr_flag = true;
 					R = 1;
 				}*/
-				if (!pvNode &&
-					depth >= 3 &&
-					bestValue > VALUE_MATED_IN_MAX_PLY &&
-					ss->moveCount >= 5 &&
-				  !(ss - 1)->lmr_flag &&
-				   !isCapture &&
-					from_sq(move) < BOARD_NB &&
-				   !isInChecked &&
-				   !pos.IsInChecked()) {
-					ss->lmr_flag = true;
-					R = 1;
-				}
-#endif
-				
-#ifndef PVS_DISABLE
-				// Principal Variation Search
-				if (depth > 3 && ss->moveCount > 1) {
-					value = -NegaScout(false, pos, ss + 1, rootKey, -(alpha + 1), -alpha, depth - R - 1, isResearch);
-					if (alpha < value && value < beta) {
-						value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -value + 1, depth - 1, true);
-						// Debug : research Value < null window Value
-						/*Value value2 = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -value + 1, depth - 1, true);
-						if (value2 < value) {
-							sync_cout << "v1 " << setw(6) << value
-									  << " v2 " << setw(6) << value2
-									  << " a " << setw(6) << alpha
-									  << " b " << setw(6) << beta
-									  << " " << pos.GetKey() << sync_endl;
-							pos.PrintChessBoard();
-						}
-						value = value2;*/
+					if (!pvNode &&
+						depth >= 3 &&
+						bestValue > VALUE_MATED_IN_MAX_PLY &&
+						ss->moveCount >= 5 &&
+						!(ss - 1)->lmr_flag &&
+						!isCapture &&
+						from_sq(move) < BOARD_NB &&
+						!isInChecked &&
+						!pos.IsInChecked()) {
+						ss->lmr_flag = true;
+						R = 1;
 					}
-				}
-				else {
-					value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1, isResearch);
-				}
-#else
-				value = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -alpha, depth - 1, isResearch);
 #endif
+
+#ifndef PVS_DISABLE
+					// Principal Variation Search
+					if (depth > 3 && ss->moveCount > 1) {
+						value = -NegaScout(false, pos, ss + 1, rootKey, -(alpha + 1), -alpha, depth - R - 1, isResearch);
+						if (alpha < value && value < beta) {
+							value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -value + 1, depth - 1, true);
+							// Debug : research Value < null window Value
+							/*Value value2 = -NegaScout(pvNode, pos, ss + 1, rootMove, -beta, -value + 1, depth - 1, true);
+							if (value2 < value) {
+								sync_cout << "v1 " << setw(6) << value
+											<< " v2 " << setw(6) << value2
+											<< " a " << setw(6) << alpha
+											<< " b " << setw(6) << beta
+											<< " " << pos.GetKey() << sync_endl;
+								pos.PrintChessBoard();
+							}
+							value = value2;*/
+						}
+					}
+					else {
+						value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1, isResearch);
+					}
+#else
+					value = -NegaScout(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1, isResearch);
+#endif
+				}
 			}
 			pos.UndoMove();
 
@@ -411,10 +410,10 @@ namespace {
 			}
 
 			if (move != bestMove) {
-				if (pos.GetChessOn(to_sq(move)) && captureCount < 32)
+				if (pos.GetCapture(move) && captureCount < 32)
 					capturesSearched[captureCount++] = move;
 
-				else if (!pos.GetChessOn(to_sq(move)) && quietCount < 64)
+				else if (!pos.GetCapture(move) && quietCount < 64)
 					quietsSearched[quietCount++] = move;
 			}
 		}
@@ -442,22 +441,22 @@ namespace {
 		}
 		else if (bestMove) {
 			// Quiet best move: update move sorting heuristics
-			if (!pos.GetChessOn(to_sq(bestMove)))
+			if (!pos.GetCapture(bestMove))
 				UpdateQuietHeuristic(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
 			else
 				UpdateAttackHeuristic(pos, bestMove, capturesSearched, captureCount, stat_bonus(depth));
 
 			// Extra penalty for a quiet TT move in previous ply when it gets refuted
 			if ((ss - 1)->moveCount == 1 && !pos.GetPrevCapture())
-				UpdateContinousHeuristic(ss - 1, pos.GetChessOn(prevSq), prevSq, -stat_bonus(depth + 1));
+				UpdateContinousHeuristic(ss - 1, pos.GetBoard(prevSq), prevSq, -stat_bonus(depth + 1));
 		}
 		// Bonus for prior countermove that caused the fail low
 		else if ((depth >= 3 || pvNode) &&
 			!pos.GetPrevCapture() &&
 			IsDoMove((ss - 1)->currentMove)) {
-			UpdateContinousHeuristic(ss - 1, pos.GetChessOn(prevSq), prevSq, stat_bonus(depth));
+			UpdateContinousHeuristic(ss - 1, pos.GetBoard(prevSq), prevSq, stat_bonus(depth));
 		}
-		tte->save(pos.GetKey(), depth, value_to_tt(bestValue, ss->ply), bestMove,
+		tte->save(pos.GetKey(), depth, value_to_tt(bestValue, pos.GetTurn(), ss->ply), bestMove,
 			bestValue >= beta ? TTentry::FAILHIGH : (pvNode && bestMove) ? TTentry::EXACT : TTentry::UNKNOWN);
 
 		assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -488,8 +487,8 @@ namespace {
 		ss->currentMove = bestMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
 
-		tte = thisThread->tt.Probe(key, pos.GetTurn(), ttHit);
-		ttValue = ttHit ? value_from_tt((Value)tte->value, ss->ply) : VALUE_NONE;
+		tte = thisThread->tt.Probe(key, ttHit);
+		ttValue = ttHit ? value_from_tt(tte->value, pos.GetTurn(), ss->ply) : VALUE_NONE;
 		ttMove = ttHit ? tte->move : MOVE_NULL;
 		ttMoveLegal = ttHit ? pos.PseudoLegal(ttMove) : true;
 
@@ -519,7 +518,7 @@ namespace {
 			// Stand pat. Return immediately if static value is at least beta
 			if (bestValue >= beta) {
 				//if (!ttHit)
-				//	tte->save(key, DEPTH_NULL, value_to_tt(bestValue, ss->ply), MOVE_NULL, TTentry::FAILHIGH);
+				//	tte->save(key, DEPTH_NONE, value_to_tt(bestValue, pos.GetTurn(), ss->ply), MOVE_NULL, TTentry::FAILHIGH);
 				return bestValue;
 			}
 
@@ -532,23 +531,28 @@ namespace {
 
 		while ((move = mp.GetNextMove()) != MOVE_NULL) {
 			ss->currentMove = move;
-			ss->contHistory = &thisThread->contHistory[pos.GetChessOn(from_sq(move))][to_sq(move)];
+			ss->contHistory = &thisThread->contHistory[pos.GetPiece(move)][to_sq(move)];
 			Observer::data[Observer::quiesNode]++;
 
 			Value value;
 			pos.DoMove(move);
-			switch (pos.SennichiteType(thisThread->maxCheckPly)) {
-			case SENNICHITE_WIN:
-				value = -mate_in(ss->ply + 1);
-				break;
-			case SENNICHITE_LOSE:
-				value = -mated_in(ss->ply + 1);
-				break;
-			case SENNICHITE_CHECK:
-				value = -mate_in(ss->ply + 1);
-				break;
-			default:
-				value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);
+			if (pos.IsUchifuzume()) {
+				value = mated_in(ss->ply);
+			}
+			else {
+				switch (pos.SennichiteType(thisThread->maxCheckPly)) {
+				case SENNICHITE_WIN:
+					value = mate_in(ss->ply + 1);
+					break;
+				case SENNICHITE_LOSE:
+					value = mated_in(ss->ply + 1);
+					break;
+				case SENNICHITE_CHECK:
+					value = mated_in(ss->ply + 1);
+					break;
+				default:
+					value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);
+				}
 			}
 			pos.UndoMove();
 
@@ -563,7 +567,7 @@ namespace {
 						bestMove = move;
 					}
 					else {
-						tte->save(key, depth, value_to_tt(bestValue, ss->ply), move, TTentry::FAILHIGH);
+						tte->save(key, depth, value_to_tt(bestValue, pos.GetTurn(), ss->ply), move, TTentry::FAILHIGH);
 						return value;
 					}
 				}
@@ -572,7 +576,7 @@ namespace {
 		if (isInChecked && bestValue == -VALUE_INFINITE)
 			return mated_in(ss->ply);
 
-		tte->save(key, depth, value_to_tt(bestValue, ss->ply), bestMove, pvNode && bestValue > oldAlpha ? TTentry::EXACT : TTentry::UNKNOWN);
+		tte->save(key, depth, value_to_tt(bestValue, pos.GetTurn(), ss->ply), bestMove, pvNode && bestValue > oldAlpha ? TTentry::EXACT : TTentry::UNKNOWN);
 		assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 		return bestValue;
 	}
@@ -585,14 +589,14 @@ namespace {
 
 	// UpdateAttackHeuristic() updates move sorting heuristics when a new capture best move is found
 	void UpdateAttackHeuristic(const Minishogi& pos, Move move, Move* captures, int captureCnt, int bonus) {
-		Piece moved_piece = pos.GetChessOn(from_sq(move));
-		Piece captured = type_of(pos.GetChessOn(to_sq(move)));
+		Piece moved_piece = pos.GetPiece(move);
+		Piece captured = type_of(pos.GetCapture(move));
 		pos.GetThread()->captureHistory[moved_piece][to_sq(move)][captured] << bonus;
 
 		// Decrease all the other played capture moves
 		for (int i = 0; i < captureCnt; ++i) {
-			moved_piece = pos.GetChessOn(from_sq(captures[i]));
-			captured = type_of(pos.GetChessOn(to_sq(captures[i])));
+			moved_piece = pos.GetPiece(captures[i]);
+			captured = type_of(pos.GetCapture(captures[i]));
 			pos.GetThread()->captureHistory[moved_piece][to_sq(captures[i])][captured] << -bonus;
 		}
 	}
@@ -601,7 +605,7 @@ namespace {
 	void UpdateQuietHeuristic(const Minishogi& pos, Stack* ss, Move move, Move* quiets, int quietsCnt, int bonus) {
 		Turn us = pos.GetTurn();
 		pos.GetThread()->mainHistory[us][from_sq(move)][to_sq(move)] << bonus;
-		UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(move)), to_sq(move), bonus);
+		UpdateContinousHeuristic(ss, pos.GetPiece(move), to_sq(move), bonus);
 
 #ifndef REFUTATION_DISABLE
 		if (ss->killers[0] != move) {
@@ -617,7 +621,7 @@ namespace {
 		// Decrease all the other played quiet moves
 		for (int i = 0; i < quietsCnt; ++i) {
 			pos.GetThread()->mainHistory[us][from_sq(quiets[i])][to_sq(quiets[i])] << -bonus;
-			UpdateContinousHeuristic(ss, pos.GetChessOn(from_sq(quiets[i])), to_sq(quiets[i]), -bonus);
+			UpdateContinousHeuristic(ss, pos.GetPiece(quiets[i]), to_sq(quiets[i]), -bonus);
 		}
 	}
 
@@ -631,20 +635,22 @@ namespace {
 	// value_to_tt() adjusts a mate score from "plies to mate from the root" to
 	// "plies to mate from the current position". Non-mate scores are unchanged.
 	// The function is called before storing a value in the transposition table.
-	inline Value value_to_tt(Value v, int ply) {
+	inline Value value_to_tt(int16_t v, Turn turn, int ply) {
 		assert(v != VALUE_NONE);
-		return  v >= VALUE_MATE_IN_MAX_PLY ? v + ply
-			: v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
+		v = v >= VALUE_MATE_IN_MAX_PLY ? v + ply
+		  : v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
+		return Value(turn ? -v : v);
 	}
 
 
 	// value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score
 	// from the transposition table (which refers to the plies to mate/be mated
 	// from current position) to "plies to mate/be mated from the root".
-	inline Value value_from_tt(Value v, int ply) {
-		return  v == VALUE_NONE ? VALUE_NONE
+	inline Value value_from_tt(int16_t v, Turn turn, int ply) {
+		v = turn ? -v : v;
+		return Value(v == VALUE_NONE ? VALUE_NONE
 			: v >= VALUE_MATE_IN_MAX_PLY ? v - ply
-			: v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
+			: v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v);
 	}
 
 	inline int stat_bonus(int d) {

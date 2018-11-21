@@ -81,7 +81,7 @@ Move algebraic2move(string str, Minishogi &pos) {
 	// Find Suitable Move
 	Move moveList[TOTAL_GENE_MAX_MOVES], *end = pos.GetTotalMoves(moveList);
 	for (auto *start = moveList; start < end; start++) {
-		if (srcPiece != NO_PIECE && pos.GetChessOn(from_sq(*start)) != srcPiece)
+		if (srcPiece != NO_PIECE && pos.GetPiece(*start) != srcPiece)
 			continue;
 		if (srcFile != -1 && from_sq(*start) % 5 != srcFile)
 			continue;
@@ -438,7 +438,6 @@ namespace EvaluateLearn {
 		int eval_limit   = KIFULEARN_EVAL_LIMIT;
 		int update_patch = 1000000;
 		int save_patch   = 100000000;
-		bool skip_opening_eval = false;
 
 		virtual void Run() {
 			vector<pair<Move, Value>> kifu;
@@ -527,7 +526,7 @@ namespace EvaluateLearn {
 								else
 									kifu.back().second = v;
 							}
-							else if (skip_opening_eval) {
+							else {
 								// 排除mini-opening上的evaluate
 								for (int i = kifu.size() - 1; i >= 0 && kifu[i].first != MOVE_NONE; i--)
 									kifu[i].second = VALUE_NONE;
@@ -620,13 +619,16 @@ namespace EvaluateLearn {
 		string token;
 
 		while (ss_cmd >> token) {
-			if (token == "kifu_path")              ss_cmd >> th->kifu_path;
+			if (token == "kifu_path") {
+				getline(ss_cmd, token, '\"');
+				getline(ss_cmd, th->kifu_path, '\"');
+				cout << th->kifu_path << endl;
+			}
 			else if (token == "lambda")            ss_cmd >> lambda;
 			else if (token == "gamma")             ss_cmd >> gamma;
 			else if (token == "eta")               ss_cmd >> Weight::eta;
 			else if (token == "eval_limit")        ss_cmd >> th->eval_limit;
-			else if (token == "skip_opening_eval") th->skip_opening_eval = true;
-			else if (token == "teacher") {
+			else if (token == "teacher") { // 必須在指令的最後面
 				getline(ss_cmd, token, '\"');
 				do {
 					getline(ss_cmd, token, '\"');

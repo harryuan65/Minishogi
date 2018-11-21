@@ -103,7 +103,7 @@ bool Minishogi::InitializeByBoard(string str) {
 		sq = SQ_W_HAND;
 	}
 #ifndef ENEMY_ISO_TT
-	if (turn == BLACK)	keyHist[0] ^= 1;
+	if (turn == BLACK)	st->key ^= 1;
 #endif
 	st->checker_bb = GetChecker();
 
@@ -180,7 +180,7 @@ bool Minishogi::Initialize(std::string sfen) {
 		}
 	}
 #ifndef ENEMY_ISO_TT
-	if (turn == BLACK)	keyHist[0] ^= 1;
+	if (turn == BLACK) st->key ^= 1;
 #endif
 	st->checker_bb = GetChecker();
 
@@ -301,18 +301,10 @@ void Minishogi::DoMove(Move m) {
 	Square from = from_sq(m);
 	Square to = to_sq(m);
 	bool isPro = is_promote(m);
-	Piece pc = GetChessOn(from);
-	Piece captured = st->capture = GetChessOn(to);
+	Piece pc = GetPiece(m);
+	Piece captured = st->capture = GetCapture(m);
 	BonaPieceDiff* bonaPieceDiff = st->bonaPieceDiff;
 	Bitboard dstBoard = 1 << to;
-
-	/*st->eval = stateHist[ply - 1].eval;
-	st->key = stateHist[ply - 1].key;
-#ifdef ENEMY_ISO_TT
-	st->key2 = stateHist[ply - 1].key2;
-#endif
-	st->continueCheck[0] = stateHist[ply - 1].continueCheck[0];
-	st->continueCheck[1] = stateHist[ply - 1].continueCheck[1];*/
 
 	if (!is_drop(from)) {							/// Move or Catpure
 		if (captured) {
@@ -388,7 +380,7 @@ void Minishogi::UndoMove() {
 	Move m = stateHist[ply].move;
 	Square from = from_sq(m);
 	Square to = to_sq(m);
-	Piece pc = GetChessOn(to);
+	Piece pc = GetBoard(to);
 	Piece captured = stateHist[ply].capture;
 	BonaPieceDiff* bonaPieceDiff = stateHist[ply].bonaPieceDiff;
 	Bitboard dstBoard = 1 << to;
@@ -706,29 +698,40 @@ void Minishogi::CalcDiffPos() {
 
 bool Minishogi::PseudoLegal(Move m) const {
 	Square from = from_sq(m), to = to_sq(m);
-	// 不超出移動範圍
-	if (from >= SQUARE_NB || to >= BOARD_NB)
-		return false;
+	Piece pc = GetPiece(m), capture = (Piece)board[to];
 
-	Piece pc = GetChessOn(from), capture = GetChessOn(to);
-	// 只能打入我方的手排
+	// 全域規則
 	if (pc == NO_PIECE || color_of(pc) != turn)
 		return false;
 
-	// 如果是吃子，不能是打入，且只能吃對方
-	if (capture != NO_PIECE && (from >= BOARD_NB || color_of(capture) == turn))
-		return false;
+	if (from >= BOARD_NB) {
+		// 打入
+		if (capture)
+			return false;
 
-	// 理論上吃不到王，也不能讓自己被將
-	if (type_of(capture) == KING || IsInCheckedAfter(m))
-		return false;
-
-	// 如果是移動(吃子)，驗證這顆棋子真的走的到
-	if (!is_drop(from) && !(Movable(from, pc, occupied[WHITE] | occupied[BLACK]) & (1 << to)))
-		return false;
-
-	// 只允許某些棋子升變
-	if (is_promote(m) && !(Promotable[pc] && ((1 << from | 1 << to) & EnemyCampMask[turn])))
+		// 二步
+		Bitboard pawnBB = bitboard[PAWN | (turn << 4)];
+		if (pawnBB && type_of(pc) == PAWN && ColMask(BitScan(pawnBB)) & (1 << to))
+			return false;
+	}
+	else {
+		if (capture) {
+			// 吃子
+			if (color_of(capture) == turn || type_of(capture) == KING)
+				return false;
+		}
+		else {
+			// 走子
+			if (!(Movable(from, pc, occupied[WHITE] | occupied[BLACK]) & (1 << to)))
+				return false;
+		}
+		// 升變
+		if (is_promote(m) && !(Promotable[pc] && ((1 << from | 1 << to) & EnemyCampMask[turn])))
+			return false;
+		
+	}
+	// 強制解將 & 不得自殺
+	if (IsInCheckedAfter(m))
 		return false;
 
 	return true;
@@ -802,7 +805,7 @@ ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
 	return moveList;
 }
 
-ExtMove* Minishogi::HandGenerator(ExtMove *moveList) {
+ExtMove* Minishogi::HandGenerator(ExtMove *moveList) const {
 	Square src = (turn ? SQ_G1 : SQ_F1), dst;
 
 	// 如果沒有任何手排 直接回傳
@@ -835,55 +838,7 @@ ExtMove* Minishogi::HandGenerator(ExtMove *moveList) {
 		dstBoard = bitboard[(turn << 4) | PAWN]; // 我方的步
 		if (dstBoard)
 			nifu |= ColMask(BitScan(dstBoard)); // 二步
-
-		// 打步詰
-		Bitboard kingboard = bitboard[turn ? W_KING : B_KING];
-		Bitboard pawnboard = turn ? kingboard >> 5 : kingboard << 5;
-
-		if (checker == 0 && (pawnboard & srcBoard)) {
-			Bitboard uchifuzume = pawnboard; // 假設有打步詰
-			Square kingpos = BitScan(kingboard), pawnpos = BitScan(pawnboard);
-
-			// DoMove
-			occupied[turn] ^= pawnboard;
-			bitboard[PAWN | (turn << 4)] ^= pawnboard;
-			turn = ~turn;
-			Bitboard totalOccupied = occupied[WHITE] | occupied[BLACK];
-
-			// 對方王可 吃/移動 的位置
-			dstBoard = Movement[KING][kingpos];
-			dstBoard &= dstBoard ^ occupied[turn];
-			while (dstBoard) {
-				dst = BitScan(dstBoard);
-				// 如果王移動後脫離被王手
-				if (!IsInCheckedAfter(kingpos, dst)) {
-					uchifuzume = 0; // 代表沒有打步詰
-					break;
-				}
-				dstBoard ^= 1 << dst;
-			}
-
-			// 對方可能攻擊到步的棋子 (不包括王)
-			if (uchifuzume) {
-				Bitboard attackboard = ((RookMovable(pawnpos, totalOccupied) | BishopMovable(pawnpos, totalOccupied)) & occupied[turn]) ^ kingboard;
-				while (attackboard) {
-					Square attSrc = BitScan(attackboard);
-					// 如果真的吃得到步 且 吃了之後不會被王手
-					if ((Movable(attSrc, (Piece)board[attSrc], totalOccupied) & pawnboard) && !IsInCheckedAfter(attSrc, pawnpos)) {
-						uchifuzume = 0; // 代表沒有打步詰
-						break;
-					}
-					attackboard ^= 1 << attSrc;
-				}
-				nifu |= uchifuzume;
-			}
-
-			// UndoMove
-			turn = ~turn;
-			occupied[turn] ^= pawnboard;
-			bitboard[PAWN | (turn << 4)] ^= pawnboard;
-		}
-
+		
 		dstBoard = srcBoard & ~(EnemyCampMask[turn] | nifu);
 		while (dstBoard) {
 			dst = BitScan(dstBoard);
@@ -1019,16 +974,16 @@ bool Minishogi::IsLegelAction(Move m) {
 
 bool Minishogi::IsCheckingAfter(Move m) {
 	assert(m != MOVE_NULL);
-	const Square srcIndex = from_sq(m), dstIndex = to_sq(m);
-	const int dstChess = board[dstIndex];
-	board[dstIndex] = GetChessOn(srcIndex);
-	const bool isCheckable = Movable(dstIndex, (Piece)board[dstIndex], occupied[WHITE] | occupied[BLACK]) & bitboard[KING | ((~turn) << 4)];
-	board[dstIndex] = dstChess;
+	const Square srcSq = from_sq(m), dstSq = to_sq(m);
+	const int dstChess = board[dstSq];
+	board[dstSq] = GetPiece(m);
+	const bool isCheckable = Movable(dstSq, (Piece)board[dstSq], occupied[WHITE] | occupied[BLACK]) & bitboard[KING | ((~turn) << 4)];
+	board[dstSq] = dstChess;
 
-	if (is_drop(srcIndex)) return isCheckable;
+	if (is_drop(srcSq)) return isCheckable;
 	else if (isCheckable) return true;
 
-	const Bitboard my_occupied = occupied[turn] ^ (1 << srcIndex);
+	const Bitboard my_occupied = occupied[turn] ^ (1 << srcSq);
 	const Bitboard tmp_occupied = occupied[~turn] | my_occupied;
 
 	// get the position of the checking king
@@ -1057,7 +1012,8 @@ bool Minishogi::IsCheckingAfter(Move m) {
 bool Minishogi::IsInCheckedAfter(Square srcIndex, Square dstIndex) const {
 	const Bitboard dstBoard = 1 << dstIndex;
     Bitboard op_occupied = occupied[~turn];
-    if (board[dstIndex]) // eat
+    if (op_occupied & dstBoard) // eat
+	//if (board[dstIndex]) // eat
         op_occupied ^= dstBoard;
 
     const Bitboard tmp_occupied = (occupied[turn] | op_occupied) ^ ((!is_drop(srcIndex) ? (1 << srcIndex) : 0) | dstBoard);
@@ -1090,13 +1046,55 @@ SennichiteType Minishogi::SennichiteType(int checkMaxPly) const {
 			if (stateHist[ply].continueCheck[~turn] > ply - i)
 				return SENNICHITE_CHECK;
 			if (turn == WHITE)
-				return SENNICHITE_LOSE;
-			if (stateHist[ply].continueCheck[BLACK] < ply - i)
 				return SENNICHITE_WIN;
+			if (stateHist[ply].continueCheck[BLACK] < ply - i)
+				return SENNICHITE_LOSE;
 			return NO_SENNICHITE;
 		}
 	}
 	return NO_SENNICHITE;
+}
+
+bool Minishogi::IsUchifuzume() const {
+	Move m = stateHist[ply].move;
+	Square from = from_sq(m);
+
+	// 不是打步
+	if (from != SQ_F5 && from != SQ_G5) return false;
+
+	Square pawnpos = to_sq(m);
+	Bitboard pawnboard = 1 << pawnpos;
+	Bitboard kingboard = bitboard[turn ? B_KING : W_KING];
+	Square kingpos = BitScan(kingboard);
+
+	if ((turn ? kingboard << 5 : kingboard >> 5) != pawnboard) return false;
+
+	// 我方王可 吃/移動 的位置
+	Bitboard dstBoard = Movement[KING][kingpos];
+	dstBoard &= dstBoard ^ occupied[turn];
+	while (dstBoard) {
+		Square dstSq = BitScan(dstBoard);
+		// 如果王移動後脫離被王手
+		if (!IsInCheckedAfter(kingpos, dstSq))
+			return false; // 代表沒有打步詰
+
+		dstBoard ^= 1 << dstSq;
+	}
+
+	Bitboard totalOccupied = occupied[WHITE] | occupied[BLACK];
+
+	// 我方可能攻擊到步的棋子 (不包括王)
+	Bitboard attackboard = (AttackersTo(pawnpos, totalOccupied) & occupied[turn]) ^ kingboard;
+	while (attackboard) {
+		Square attSrc = BitScan(attackboard);
+		// 如果真的吃得到步 且 吃了之後不會被王手
+		if ((Movable(attSrc, (Piece)board[attSrc], totalOccupied) & pawnboard) && !IsInCheckedAfter(attSrc, pawnpos))
+			return false; // 代表沒有打步詰
+
+		attackboard ^= 1 << attSrc;
+	}
+
+	return true;
 }
 
 bool Minishogi::SEE(Move move, Value threshold) const {
@@ -1119,7 +1117,7 @@ bool Minishogi::SEE(Move move, Value threshold) const {
 	}
 	if (opValueEnd == opValueList) return balance >= 0; // 對方都吃不到我下的位置
 
-	balance -= PIECE_SCORE[type_of(GetChessOn(srcIndex))]; // 我方移動子被吃
+	balance -= PIECE_SCORE[type_of(board[srcIndex])]; // 我方移動子被吃
 
 	// Add myValueList
 	srcBoard = psbBoard & (occupied[turn] ^ moveBoard);
@@ -1161,6 +1159,7 @@ std::ostream& operator<<(std::ostream& os, const Minishogi& pos) {
 	ss << "\n" << COLOR_WORD[WHITE] << " : ";
 	for (int i = 0; i < 5; i++)
 		ss << pos.board[i + SQ_W_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);
+	ss << "\nHash : " << hex << pos.GetKey() << dec;
 	ss << "\nConti. Check : " << pos.stateHist[pos.GetPly()].continueCheck[0] << " " << pos.stateHist[pos.GetPly()].continueCheck[1];
 	ss << "\nChecker : " << pos.stateHist[pos.GetPly()].checker_bb;
 	os << ss.str();

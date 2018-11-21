@@ -37,7 +37,7 @@ void USI::position(Minishogi &pos, istringstream &ss_cmd) {
         pos.DoMove(m);
 		pos.GetEvaluate();
     }
-	sync_cout << pos << sync_endl;
+	sync_cout << pos << "\nEvaluate : " << pos.GetEvaluate() << sync_endl;
 }
 
 void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
@@ -152,7 +152,7 @@ void USI::loop(int argc, char** argv) {
         else if (token == "go") { go(pos, ss_cmd); }
         else if (token == "position") { position(pos, ss_cmd); }
 		// custom command
-        else if (token == "pos") { sync_cout << pos << sync_endl; }
+        else if (token == "pos") { sync_cout << pos << "\nEvaluate : " << pos.GetEvaluate() << sync_endl; }
 		else if (token == "eval") { sync_cout << "eval = " << pos.GetEvaluate() << sync_endl; }
         //else if (token == "atk") { sync_cout << move_list(moveList, pos.AttackGenerator(moveList), pos) << sync_endl; }
 		//else if (token == "move") { sync_cout << move_list(moveList, pos.MoveGenerator(moveList), pos) << sync_endl; }
@@ -204,6 +204,17 @@ void USI::loop(int argc, char** argv) {
 		}
 		else if (token == "make_opening") {
 			make_opening(ss_cmd);
+		}
+		else if (token == "tt_read") { // TODO : value_from_tt
+			bool ttHit;
+			TTentry *tte = GlobalThread->tt.Probe(pos.GetKey(), ttHit);
+			if (ttHit)
+				sync_cout << "Value : " << (pos.GetTurn() ? -tte->value : tte->value)
+					<< "\nDepth : " << (int)tte->depth
+					<< "\nMove : " << tte->move << sync_endl;
+			else 
+				sync_cout << "tt not found" << sync_endl;
+
 		}
         else { sync_cout << "unknown command : " << cmd << sync_endl; }
 

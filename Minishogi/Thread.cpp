@@ -99,7 +99,7 @@ void Thread::InitSearch() {
 	}
 	for (int i = 4; i >= 1; i--) {
 		if ((ss - i)->currentMove) {
-			(ss - i)->contHistory = &contHistory[pos.GetChessOn(from_sq((ss - i)->currentMove))][to_sq((ss - i)->currentMove)];
+			(ss - i)->contHistory = &contHistory[pos.GetPiece((ss - i)->currentMove)][to_sq((ss - i)->currentMove)];
 			pos.DoMove((ss - i)->currentMove);
 		}
 		else {

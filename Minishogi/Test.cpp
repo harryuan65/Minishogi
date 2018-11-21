@@ -264,22 +264,22 @@ void USI::perft(Minishogi &pos, std::istringstream& ss_cmd) {
 }
 
 void USI::make_opening(istringstream& ss_cmd) {
-	string src_path = "D:/Nyanpass Project/Training Kifu/20181023-1.pgn";
-	string dst_path = "position/";
+	string src_dir = "D:/Nyanpass Project/Training Kifu/";
+	string dst_dir = "position/";
+	string src_file = "20181023-1.pgn";
 	int game_per_file = 50, sample_rate = 20;
 	string token;
 
 	while (ss_cmd >> token) {
-		if (token == "src_path") {
+		if (token == "src_dir") {
 			getline(ss_cmd, token, '\"');
-			getline(ss_cmd, token, '\"');
-			ss_cmd >> src_path;
+			getline(ss_cmd, src_dir, '\"');
 		}
 		else if (token == "dst_path") {
 			getline(ss_cmd, token, '\"');
-			getline(ss_cmd, token, '\"');
-			ss_cmd >> dst_path;
+			getline(ss_cmd, dst_dir, '\"');
 		}
+		else if (token == "src_file")      ss_cmd >> src_file;
 		else if (token == "game_per_file") ss_cmd >> game_per_file;
 		else if (token == "sample_rate")   ss_cmd >> sample_rate;
 	}
@@ -292,15 +292,17 @@ void USI::make_opening(istringstream& ss_cmd) {
 	int openingCnt = 0;
 	int nextSamplePly = sample_rate;
 
-	CreateDirectory(dst_path.c_str(), NULL);
-	ifstream ifile(src_path);
-	ofstream ofile(dst_path + "opening-1.pgn");
+	cout << "src_path " << src_dir + src_file << " game_per_file " << game_per_file << " sample_rate " << sample_rate << "\n";
+
+	CreateDirectory(dst_dir.c_str(), NULL);
+	ifstream ifile(src_dir + src_file);
+	ofstream ofile(dst_dir + "opening-1.pgn");
 	if (!ifile) {
-		cout << "Error : Can't find source file" << endl;
+		cout << "Error : Can't find source pgn file" << endl;
 		return;
 	}
 	if (!ofile) {
-		cout << "Error : Can't open destination file" << endl;
+		cout << "Error : Can't open destination pgn file" << endl;
 		return;
 	}
 
@@ -330,20 +332,20 @@ void USI::make_opening(istringstream& ss_cmd) {
 					getline(ifile, token, '}'); // 18 5:51}
 				}
 				if (++ply >= nextSamplePly) {
+					if (!ofile) ofile.open(dst_dir + "opening-" + to_string(openingCnt / game_per_file + 1) + ".pgn");;
+					bool skipFlag = false;
 					len = (int)ifile.tellg() - start;
 					ifile.seekg(start);
 					for (int i = 0; i < len; i++) {
 						ifile >> noskipws >> c >> skipws;
-						ofile << c;
-						if (c == '\n')
-							i++;
+						if (c == '{') skipFlag = true;
+						if (!skipFlag) ofile << c;
+						if (c == '}') skipFlag = false;
+						if (c == '\n') i++;
 					}
 					ofile << "\n\n";
 					nextSamplePly += sample_rate;
-					if (++openingCnt % game_per_file == 0) {
-						ofile.close();
-						ofile.open(dst_path + "opening-" + to_string(openingCnt / game_per_file + 1) + ".pgn");;
-					}
+					if (++openingCnt % game_per_file == 0) ofile.close();
 				}
 			}
 			getline(ifile, token);
@@ -354,5 +356,184 @@ void USI::make_opening(istringstream& ss_cmd) {
 	}
 	ifile.close();
 	ofile.close();
-	cout << "make opening finished" << endl;
+
+	string src_name = src_file.substr(0, src_file.find('.'));
+	if (!ofile) {
+		cout << "Error : Can't open destination trn file" << endl;
+		return;
+	}
+	for (int i = 1; i < (float)openingCnt / game_per_file + 1; i++) {
+		ofile.open(dst_dir + "Tourney_kifugene_" + to_string(i) + ".trn");
+		ofile << "-participants {Shokidoki UEC9+\n"
+			"Shokidoki UEC9+\n"
+			"}\n"
+			"-seedBase 523836227\n"
+			"-tourneyType 0\n"
+			"-tourneyCycles 1\n"
+			"-defaultMatchGames " << game_per_file << "\n"
+			"-syncAfterRound false\n"
+			"-syncAfterCycle true\n"
+			"-saveGameFile \"D:\\Winboard 4.8.0\\WinBoard\\tournament\\" << src_name << " UEC9+-" << i << ".pgn\"\n"
+			"-loadGameFile \"D:\\Winboard 4.8.0\\WinBoard\\tournament\\opening-" << i << ".pgn\"\n"
+			"-loadGameIndex -1\n"
+			"-loadPositionFile \"D:\\Winboard 4.8.0\\WinBoard\\mini.fen\"\n"
+			"-loadPositionIndex -1\n"
+			"-rewindIndex 0\n"
+			"-usePolyglotBook true\n"
+			"-polyglotBook \"minibooklet.bin\"\n"
+			"-bookDepth 12\n"
+			"-bookVariation 50\n"
+			"-discourageOwnBooks false\n"
+			"-defaultHashSize 64\n"
+			"-defaultCacheSizeEGTB 4\n"
+			"-ponderNextMove true\n"
+			"-smpCores 1\n"
+			"-mps 40\n"
+			"-tc 30\n"
+			"-inc 0.00\n"
+			"-results \"\"\n";
+		ofile.close();
+	}
+	cout << "make " << openingCnt << " position success" << endl;
 }
+
+/*void fix_opening() {
+	string src_path = "D:/Nyanpass Project/Training Kifu/20181023-1.pgn";
+	int game_per_file = 20, sample_rate = 30;
+	vector<int> split;
+	string token;
+
+	int start = 0, len = 0;
+	string line;
+	float f;
+	char c;
+	int ply = 0;
+	int nextSamplePly = sample_rate;
+
+	ifstream ifile(src_path);
+	if (!ifile) {
+		cout << "Error : Can't find source file" << endl;
+		return;
+	}
+
+	while (getline(ifile, line)) {
+		istringstream iss(line);
+		iss >> token;
+		if (token[0] == '{' || token == "[Annotator") {
+			if (token[0] == '{')
+				for (int j = 0; j < 7; j++)
+					getline(ifile, line);
+			while (true) {
+				if (ply % 2 == 0 && token != "1.") {
+					ifile >> token;             // 1.
+					if (token[0] == '{')
+						break;
+				}
+				ifile >> token;                 // Gc2
+				if (token[0] == '{')
+					break;
+
+				ifile >> noskipws >> c >> skipws;
+				if (ifile.peek() == '{') {
+					ifile >> c;                 // {
+					getline(ifile, token, '/'); // +0.68/
+					istringstream ss(token);
+					ss >> f;
+					getline(ifile, token, '}'); // 18 5:51}
+				}
+				if (++ply >= nextSamplePly) {
+					nextSamplePly += sample_rate;
+					split.push_back(ply);
+				}
+			}
+			getline(ifile, token);
+			ply = 0;
+			nextSamplePly = sample_rate;
+			start = ifile.tellg();
+		}
+	}
+	ifile.close();
+	cout << split.size() << endl;
+
+	string dst_path = "C:/Users/Nyanpass/Desktop/test_kifu/";
+	ifile.open(dst_path + "20181023-1 UEC9+1.pgn");
+	ofstream oofile(dst_path + "new/20181023-1 UEC9+1.pgn");
+	int openingCnt = 1;
+
+	start = ifile.tellg();
+	while (split.size()) {
+		if (!getline(ifile, line)) {
+			if (openingCnt > 5)
+				break;
+			ifile.close();
+			ifile.open(dst_path + "20181023-1 UEC9+" + to_string(openingCnt) + ".pgn");
+			ifile.seekg(start);
+			while (ifile >> noskipws >> c >> skipws) {
+				oofile << c;
+			}
+			ifile.close();
+			oofile.close();
+			openingCnt++;
+			ifile.open(dst_path + "20181023-1 UEC9+" + to_string(openingCnt) + ".pgn");
+			oofile.open(dst_path + "new/20181023-1 UEC9+" + to_string(openingCnt) + ".pgn");
+			start = ifile.tellg();
+			continue;
+		}
+		istringstream iss(line);
+		iss >> token;
+		bool isSkip = false;
+		if (token[0] == '{' || token == "[Annotator") {
+			if (token[0] == '{')
+				for (int j = 0; j < 7; j++)
+					getline(ifile, line);
+			while (true) {
+				if (ply % 2 == 0 && token != "1.") {
+					ifile >> token;             // 1.
+					if (token[0] == '{')
+						break;
+				}
+				ifile >> token;                 // Gc2
+				if (token[0] == '{')
+					break;
+
+				ifile >> noskipws >> c >> skipws;
+				if (!isSkip && split.empty())
+					cout << "error" << endl;
+				if (!isSkip && ++ply == split.front()) {
+					split.erase(split.begin());
+					len = (int)ifile.tellg() - start;
+					ifile.seekg(start);
+					for (int i = 0; i < len; i++) {
+						ifile >> noskipws >> c >> skipws;
+						oofile << c;
+						if (c == '\n') i++;
+					}
+					isSkip = true;
+					start = -1;
+				}
+				if (ifile.peek() == '{') {
+					ifile >> c;                 // {
+					getline(ifile, token, '/'); // +0.68/
+					istringstream ss(token);
+					ss >> f;
+					getline(ifile, token, '}'); // 18 5:51}
+				}
+				if (start == -1)
+					start = ifile.tellg();
+			}
+			ply = 0;
+		}
+	}
+	ifile.close();
+	ifile.open(dst_path + "20181023-1 UEC9+" + to_string(openingCnt) + ".pgn");
+	ifile.seekg(start);
+	while (ifile >> noskipws >> c >> skipws) {
+		oofile << c;
+	}
+	ifile.close();
+	oofile.close();
+	if (split.size())
+		cout << "Fix failed " << split.size() << endl;
+	else
+		cout << "Fix Success" << endl;
+}*/

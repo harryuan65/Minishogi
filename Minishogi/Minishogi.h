@@ -57,7 +57,7 @@ public:
 
 	ExtMove* AttackGenerator(ExtMove *moveList, Bitboard dstBB = BitboardMask) const;
 	ExtMove* MoveGenerator(ExtMove *moveList) const;
-	ExtMove* HandGenerator(ExtMove *moveList);
+	ExtMove* HandGenerator(ExtMove *moveList) const;
 	bool SEE(Move m, Value threshold = VALUE_ZERO) const;
 
 	void PrintChessBoard() const;
@@ -65,7 +65,7 @@ public:
 	bool LoadBoard(std::string filename, std::streamoff &offset);
 	void PrintKifu(std::ostream &os) const;
 
-	/// Slow, just for debug
+	/* Slow, just for debug */
 
 	// Position結構是否正確
 	bool CheckLegal() const;
@@ -78,10 +78,10 @@ public:
 	// 產生所有移動 並排除千日手和自殺步
 	Move* GetLegalMoves(Move* moveList);
 
-	/// Fast, use in search
+	/* Fast, use in search */
 
 	// 現在是否將軍對方
-	bool IsChecking(); /// 可以更快 但沒有速度要求
+	bool IsChecking();
 	// 移動完有沒有將軍對方
 	bool IsCheckingAfter(Move m);
 	// 現在是否被將軍
@@ -92,22 +92,30 @@ public:
 	bool IsInCheckedAfter(Square srcIndex, Square dstIndex) const;
 	// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後再判斷
 	SennichiteType SennichiteType(int checkMaxPly) const;
+	// 是否會發生打步詰 需要先DoMove後再判斷
+	bool IsUchifuzume() const;
+
+	/* Position Get Function */
 
 	Thread* GetThread() const;
 	Turn GetTurn() const;
 	int GetPly() const;
+	Piece GetBoard(Square sq) const;
+	Piece GetPiece(Move m) const;
+	Piece GetCapture(Move m) const;
+	Bitboard GetOccupied(Turn t) const;
+	Bitboard GetBitboard(Piece c) const;
+	uint32_t GetKifuHash() const;
+	const BonaPiece* GetPieceList(Turn t) const;
+
+	/* StateInfo Get Function */
+
 	Value GetEvaluate();
 	Key GetKey() const;
 	Key GetKey(int p) const;
-	Piece GetChessOn(int sq) const;
 	Move GetHistMove(int i) const;
 	Move GetPrevMove() const;
 	Piece GetPrevCapture() const;
-	int GetBoard(Square sq) const;
-	Bitboard GetBitboard(Piece c) const;
-	Bitboard GetOccupied(Turn t) const;
-	const BonaPiece* GetPieceList(Turn t) const;
-	uint32_t GetKifuHash() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const Minishogi& pos);
 
@@ -162,10 +170,12 @@ inline bool Minishogi::IsInChecked() const {
 	return stateHist[ply].checker_bb;
 }
 
-/// 移動完有沒有被將軍
+// 移動完有沒有被將軍
 inline bool Minishogi::IsInCheckedAfter(Move m) const {
 	return IsInCheckedAfter(from_sq(m), to_sq(m));
 }
+
+/* Position Get Function */
 
 inline Thread* Minishogi::GetThread() const { 
 	return thisThread;
@@ -178,6 +188,39 @@ inline Turn Minishogi::GetTurn() const {
 inline int Minishogi::GetPly() const { 
 	return ply;
  }
+
+inline Piece Minishogi::GetBoard(Square sq) const {
+	return (Piece)board[sq];
+}
+
+inline Piece Minishogi::GetPiece(Move m) const {
+	return (Piece)(from_sq(m) < BOARD_NB ? board[from_sq(m)] : HandToPiece[from_sq(m)]);
+}
+
+inline Piece Minishogi::GetCapture(Move m) const {
+	return (Piece)board[to_sq(m)];
+}
+
+inline Bitboard Minishogi::GetOccupied(Turn t) const {
+	return occupied[t];
+}
+
+inline Bitboard Minishogi::GetBitboard(Piece c) const {
+	return bitboard[c];
+}
+
+inline uint32_t Minishogi::GetKifuHash() const {
+	unsigned int seed = ply;
+	//for (int i = 0; i < ply; i++)
+		//seed ^= toU32(moveHist[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	return seed;
+}
+
+inline const BonaPiece* Minishogi::GetPieceList(Turn t) const {
+	return pieceList[t];
+}
+
+/* StateInfo Get Function */
 
 inline Value Minishogi::GetEvaluate() { 
 	if (stateHist[ply].eval.IsNotCalc()) {
@@ -197,18 +240,14 @@ inline Value Minishogi::GetEvaluate() {
 
 inline Key Minishogi::GetKey() const {
 #ifdef ENEMY_ISO_TT
-	return turn ? key2Hist[ply] : keyHist[ply];
+	return turn ? stateHist[ply].key2 : stateHist[ply].key;
 #else
 	return stateHist[ply].key;
 #endif
 }
 
 inline Key Minishogi::GetKey(int p) const { 
-	return (turn ^ (p % 2 == 0)) ? stateHist[ply].key2 : stateHist[ply].key;
-}
-
-inline Piece Minishogi::GetChessOn(int sq) const { 
-	return (Piece)(sq < BOARD_NB ? board[sq] : (board[sq] ? HandToChess[sq] : NO_PIECE));
+	return (turn ^ (p % 2 == 0)) ? stateHist[p].key2 : stateHist[p].key;
 }
 
 inline Move Minishogi::GetHistMove(int i) const {
@@ -223,28 +262,7 @@ inline Piece Minishogi::GetPrevCapture() const {
 	return stateHist[ply].capture;
 }
 
-inline int Minishogi::GetBoard(Square sq) const {
-	return board[sq];
-}
-
-inline Bitboard Minishogi::GetBitboard(Piece c) const {
-	return bitboard[c];
-}
-
-inline Bitboard Minishogi::GetOccupied(Turn t) const {
-	return occupied[t];
-}
-
-inline const BonaPiece* Minishogi::GetPieceList(Turn t) const {
-	return pieceList[t];
-}
-
-inline uint32_t Minishogi::GetKifuHash() const {
-	unsigned int seed = ply;
-	//for (int i = 0; i < ply; i++)
-		//seed ^= toU32(moveHist[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	return seed;
-}
+/* Private Set Function */
 
 inline void Minishogi::SetBonaPiece(Square sq, Piece pc) {
 	BonaPieceIndex index; 

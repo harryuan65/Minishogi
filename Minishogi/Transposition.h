@@ -52,8 +52,8 @@ public:
 	~Transposition();
 	void Initialize(int ttBit);
 	void Clean();
-	//TTentry* Probe(Key key, bool &ttHit);
-	TTentry* Probe(Key key, int turn, bool &ttHit);
+	TTentry* Probe(Key key, bool &ttHit);
+	//TTentry* Probe(Key key, int turn, bool &ttHit);
 	uint64_t ZobristToIndex(Key zobrist);
 	int HashFull() const;
 
