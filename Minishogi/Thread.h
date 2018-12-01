@@ -86,7 +86,7 @@ public:
 	int selDepth;
 	int maxCheckPly;
 
-	Thread(int ttBit = 1);
+	Thread(int ttSize = 0);
 	~Thread();
 	void Clean();
 

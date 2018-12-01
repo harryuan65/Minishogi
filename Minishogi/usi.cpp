@@ -95,7 +95,6 @@ void USI::loop(int argc, char** argv) {
 
 	Zobrist::Initialize();
 	Evaluate::GlobalEvaluater.Load(USI::Options["EvalDir"]);
-	GlobalThread = new Thread(USI::Options["HashEntry"]);
 	cout << Observer::GetSettingStr() << endl;
 
     Minishogi pos(nullptr);
@@ -115,15 +114,18 @@ void USI::loop(int argc, char** argv) {
 
         ss_cmd >> skipws >> token;
 
+		if (token != "usi" && token != "usinewgame" && token != "quit" && !GlobalThread)
+			GlobalThread = new Thread(USI::Options["HashEntry"]);
+
         // usi command
 		if (token == "quit" ||
 			token == "gameover") {
-			GlobalThread->Stop();
+			if (GlobalThread) GlobalThread->Stop();
 			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
 			Observer::PrintGameReport(cout);
 		}
 		else if (token == "stop") {
-			GlobalThread->Stop();
+			if (GlobalThread) GlobalThread->Stop();
         }
         else if (token == "usi") {
             sync_cout << "id name " << AI_NAME
@@ -142,7 +144,7 @@ void USI::loop(int argc, char** argv) {
         else if (token == "usinewgame") {
 			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
 			Observer::PrintGameReport(cout);
-			delete GlobalThread;
+			if (GlobalThread) delete GlobalThread;
 			GlobalThread = new Thread(USI::Options["HashEntry"]);
 			pos.Initialize();
 			Observer::GameStart();
@@ -157,7 +159,7 @@ void USI::loop(int argc, char** argv) {
         //else if (token == "atk") { sync_cout << move_list(moveList, pos.AttackGenerator(moveList), pos) << sync_endl; }
 		//else if (token == "move") { sync_cout << move_list(moveList, pos.MoveGenerator(moveList), pos) << sync_endl; }
 		//else if (token == "drop") { sync_cout << move_list(moveList, pos.HandGenerator(moveList), pos) << sync_endl; }
-		else if (token == "legal") { sync_cout << move_list(moveList, pos.GetLegalMoves(moveList), pos) << sync_endl; }
+		else if (token == "legal") { sync_cout << move_list(moveList, pos.GetLegalMoves(moveList)) << sync_endl; }
         else if (token == "sfen") { sync_cout << pos.Sfen() << sync_endl; }
 		else if (token == "log") { Observer::startLogger(true); }
 		else if (token == "version") { sync_cout << Observer::GetSettingStr() << sync_endl;	}
@@ -200,7 +202,10 @@ void USI::loop(int argc, char** argv) {
 			for (char c : token)
 				if (c == '+' || c == '-')
 					win[(t = !t) ^ (c == '+')]++;
-			sync_cout << win[0] << " : " << win[1] << sync_endl;
+			sync_cout << win[0] << " : " << win[1] << "\n"
+				<< std::setiosflags(std::ios::fixed) << std::setprecision(1) 
+				<< win[0] * 100.0 / (win[0] + win[1]) << "% : "
+				<< win[1] * 100.0 / (win[0] + win[1]) << "%" << sync_endl;
 		}
 		else if (token == "make_opening") {
 			make_opening(ss_cmd);
@@ -266,7 +271,7 @@ string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 	return ss.str();
 }
 
-string USI::move_list(Move *begin, Move *end, Minishogi &pos) {
+string USI::move_list(Move *begin, Move *end) {
 	stringstream ss;
 	//ss << "size : " << end - begin << " ";
 	for (; begin < end; begin++) {

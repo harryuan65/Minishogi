@@ -213,7 +213,7 @@ namespace Observer {
 #else
 		ss << "Transposition Table : Single Hashcode\n";
 #endif
-		ss << "Transposition Entry : 2^" << Options["HashEntry"] << "\n";
+		ss << "Transposition Size  : 2^" << Options["HashEntry"] << "\n";
 #endif
 
 #ifndef ITERATIVE_DEEPENING_DISABLE

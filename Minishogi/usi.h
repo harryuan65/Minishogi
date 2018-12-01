@@ -117,7 +117,7 @@ namespace USI {
 
     std::string value(Value s);
     std::string pv(const RootMove &rm, const Thread &th, Value alpha, Value beta);
-	std::string move_list(Move *begin, Move *end, Minishogi &pos);
+	std::string move_list(Move *begin, Move *end);
 }
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om);

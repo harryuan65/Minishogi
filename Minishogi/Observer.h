@@ -22,7 +22,7 @@
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #111"
+#define AI_NAME "Nyanpass #112 no £w¥þpin"
 
 namespace Observer {
 	typedef std::chrono::milliseconds::rep TimePoint;

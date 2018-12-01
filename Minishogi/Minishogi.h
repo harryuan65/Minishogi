@@ -35,6 +35,9 @@ struct StateInfo {
 	// 移動與吃子的BonaPiece變化
 	// 0 MoverDiff 1 CaptureDiff
 	BonaPieceDiff bonaPieceDiff[2];
+	int sCount;
+	bool sLegal;
+	SennichiteType sType;
 };
 
 class Minishogi {
@@ -91,7 +94,7 @@ public:
 	// 移動完有沒有被將軍
 	bool IsInCheckedAfter(Square srcIndex, Square dstIndex) const;
 	// 如果現在盤面曾經出現過 且距離為偶數(同個人) 判定為千日手 需要先DoMove後再判斷
-	SennichiteType SennichiteType(int checkMaxPly) const;
+	void CalcSennichiteType(int checkMaxPly);
 	// 是否會發生打步詰 需要先DoMove後再判斷
 	bool IsUchifuzume() const;
 
@@ -116,6 +119,7 @@ public:
 	Move GetHistMove(int i) const;
 	Move GetPrevMove() const;
 	Piece GetPrevCapture() const;
+	Value GetSennichiteValue() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const Minishogi& pos);
 
@@ -260,6 +264,20 @@ inline Move Minishogi::GetPrevMove() const {
 
 inline Piece Minishogi::GetPrevCapture() const { 
 	return stateHist[ply].capture;
+}
+
+inline Value Minishogi::GetSennichiteValue() const {
+	if (!stateHist[ply].sLegal)
+		return VALUE_NONE;
+	switch (stateHist[ply].sType) {
+	case SENNICHITE_WIN:
+		return VALUE_MATE - (3 - stateHist[ply].sCount) * VALUE_SENNICHITE - 1;
+	case SENNICHITE_LOSE:
+	case SENNICHITE_CHECK:
+		return -(VALUE_MATE - (3 - stateHist[ply].sCount) * VALUE_SENNICHITE) + 1;
+	case NO_SENNICHITE:
+		return VALUE_NONE;
+	}
 }
 
 /* Private Set Function */

@@ -28,7 +28,7 @@ constexpr int SINGLE_GENE_MAX_MOVES = 112;
 constexpr int TOTAL_GENE_MAX_MOVES = 162;  // AtkGene 21, MoveGene 29, HandGene 112
 constexpr int MAX_SEARCH_DEPTH = 30;
 constexpr int DEPTH_NONE = -256;
-constexpr int MAX_PLY = 256;
+constexpr int MAX_PLY = 1024;
 const std::string PIECE_2_CHAR = ".PSGBRK..PS.BR...psgbrk..ps.br";
 const std::string HAND_2_CHAR = "PSGBRpsgbr";
 const std::string PIECE_WORD = "  步銀金角飛王    ㄈ全  馬龍      步銀金角飛玉    ㄈ全  馬龍";
@@ -63,8 +63,8 @@ enum Value : int {
 	PIN_GOLD			= -377,
 	PIN_BISHOP			= -375,
 	PIN_ROOK			= -500,
-	PIN_PRO_PAWN		= -365,
-	PIN_PRO_SILVER		= -403,
+	PIN_PRO_PAWN		= 0,//-365,
+	PIN_PRO_SILVER		= 0,//-403,
 	PIN_PRO_BISHOP		= -525,
 	PIN_PRO_ROOK		= -650,
 
@@ -72,6 +72,7 @@ enum Value : int {
 	VALUE_MATE			= 30000,
 	VALUE_INFINITE		= 31001,
 	VALUE_NONE			= 32002,
+	VALUE_SENNICHITE	= 512,
 	VALUE_MATE_IN_MAX_PLY  = (int) VALUE_MATE - 2 * MAX_SEARCH_DEPTH,
 	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_SEARCH_DEPTH
 };

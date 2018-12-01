@@ -331,11 +331,11 @@ namespace EvaluateLearn {
 				values[0] = VALUE_NONE;
 
 				// Playing
-				pthread = new Thread(rootPos, USI::Options["HashEntry"]);
+				pthread = new Thread(rootPos, USI::Options["Hash"]);
 				cout << "Cycle " << cycle << " Game " << b << " ";
 				while (ply < MAX_PLY - 50) {
 					RootMove rm;
-					pthread->IDAS(rm, USI::Options["HashEntry"]);
+					pthread->IDAS(rm, USI::Options["Hash"]);
 					if (rm.pv[0] == MOVE_NULL)
 						break;
 					pthread->DoMove(rm.pv[0]);
@@ -427,17 +427,19 @@ namespace EvaluateLearn {
 		SetConsoleTitle("Nyanpass " AI_NAME " - EvaluateLearn : Stop");
 	}
 	*/
-	
+
 	struct KifuLearn : public Thread {
 	public:
 		const Value SHOKIDOKO_SKIP_MIN = Value(399 * PIECE_SCORE[PAWN]);
-		const Value SHOKIDOKO_SKIP_MAX = Value(400 * PIECE_SCORE[PAWN]);
+		//const Value SHOKIDOKO_SKIP_MAX = Value(400 * PIECE_SCORE[PAWN]);
 
 		vector<string> teacher;
 		string kifu_path = KIFULEARN_KIFU_PATH;
 		int eval_limit   = KIFULEARN_EVAL_LIMIT;
 		int update_patch = 1000000;
 		int save_patch   = 100000000;
+
+		KifuLearn(int ttSize) : Thread(ttSize) {}
 
 		virtual void Run() {
 			vector<pair<Move, Value>> kifu;
@@ -519,9 +521,9 @@ namespace EvaluateLearn {
 								if (!isTeacher[pos.GetTurn()] ||
 									(v >= eval_limit && winner == pos.GetTurn()) ||
 									(v <= -eval_limit && winner != pos.GetTurn()) ||
-									// Shokidoko條款 排除0 399~400 -399~-400
+									// Shokidoko條款 排除0 399+ -399-
 									v == VALUE_ZERO ||
-									(SHOKIDOKO_SKIP_MIN <= abs(v) && abs(v) <= SHOKIDOKO_SKIP_MAX))
+									SHOKIDOKO_SKIP_MIN <= abs(v))
 									v = VALUE_NONE;
 								else
 									kifu.back().second = v;
@@ -532,6 +534,13 @@ namespace EvaluateLearn {
 									kifu[i].second = VALUE_NONE;
 							}
 							pos.DoMove(kifu.back().first);
+						}
+						for (int i = kifu.size() - 1; i >= 0; i--) {
+							if (kifu[i].second != VALUE_NONE)
+								break;
+							if (kifu[i].first != MOVE_NONE)
+								for (int j = kifu.size() - 1; j >= i; j--)
+									kifu.pop_back();	
 						}
 						kifu.push_back(make_pair(MOVE_NONE, VALUE_NONE));
 					}
@@ -551,6 +560,7 @@ namespace EvaluateLearn {
 
 			cout << "Learn Start." << endl;
 			pos.Initialize();
+			TimePoint t = now();
 			while (boardCount && !IsStop()) {
 				for (auto &k : kifu) {
 					if (CheckStop())
@@ -591,7 +601,7 @@ namespace EvaluateLearn {
 
 					if (++updateGradCount % update_patch == 0) {
 						UpdateKPPT(++epoch);
-						cout << "epoch : " << epoch << " mse : " << sqrt(sumError / update_patch) << endl;
+						cout << "epoch : " << epoch << " mse : " << sqrt(sumError / update_patch);
 						if (sqrt(sumError / update_patch) > minSumError && epoch > Weight::skip_count) {
 							if (++convFailCount > 8)
 								Stop();
@@ -603,6 +613,8 @@ namespace EvaluateLearn {
 						sumError = 0.0;
 						if (updateGradCount % save_patch == 0)
 							Evaluate::GlobalEvaluater.Save(KPPT_DIRPATH + Observer::GetTimeStamp());
+						cout << " elpased : " << now() - t << endl;
+						t = now();
 					}
 				}
 			}
@@ -615,7 +627,7 @@ namespace EvaluateLearn {
 	};
 
 	void StartKifuLearn(istringstream& ss_cmd) {
-		KifuLearn *th = new KifuLearn();
+		KifuLearn *th = new KifuLearn(1);//(USI::Options["HashEntry"]);
 		string token;
 
 		while (ss_cmd >> token) {

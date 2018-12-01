@@ -70,10 +70,10 @@ void Thread::IDAS(RootMove &rm, int depth) {
 #endif
 		while (true) {
 			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
-			
+
 			if (IsStop())
 				break;
-			if (value <= alpha || value >= beta)	{
+			if (value <= alpha || value >= beta) {
 				alpha = max(value - delta, -VALUE_INFINITE);
 				beta = min(value + delta, VALUE_INFINITE);
 			}
@@ -82,6 +82,28 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			delta += delta;
 			isResearch = true;
 		}
+/*#ifndef ASPIRE_WINDOW_DISABLE
+		if (rootDepth >= 5) {
+			delta = Value(50);
+			alpha = max(value - delta, -VALUE_INFINITE);
+			beta = min(value + delta, VALUE_INFINITE);
+		}
+#endif
+		while (true) {
+			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
+			
+			if (IsStop())
+				break;
+
+			if (value <= alpha)
+				alpha = max(value - delta, -VALUE_INFINITE);
+			else if (value >= beta)
+				beta = min(value + delta, VALUE_INFINITE);
+			else
+				break;
+			delta = delta * 3;
+			isResearch = true;
+		}*/
 		if (IsStop()) {
 			//sync_cout << "readyok" << sync_endl;
 			break;
@@ -311,17 +333,8 @@ namespace {
 				value = mated_in(ss->ply);
 			}
 			else {
-				switch (pos.SennichiteType(thisThread->maxCheckPly)) {
-				case SENNICHITE_WIN:
-					value = mate_in(ss->ply + 1);
-					break;
-				case SENNICHITE_LOSE:
-					value = mated_in(ss->ply + 1);
-					break;
-				case SENNICHITE_CHECK:
-					value = mated_in(ss->ply + 1);
-					break;
-				case NO_SENNICHITE:
+				value = pos.GetSennichiteValue();
+				if (value == VALUE_NONE) {
 					if (pvNode)
 						(ss + 1)->pv[0] = MOVE_NULL;
 
@@ -540,19 +553,9 @@ namespace {
 				value = mated_in(ss->ply);
 			}
 			else {
-				switch (pos.SennichiteType(thisThread->maxCheckPly)) {
-				case SENNICHITE_WIN:
-					value = mate_in(ss->ply + 1);
-					break;
-				case SENNICHITE_LOSE:
-					value = mated_in(ss->ply + 1);
-					break;
-				case SENNICHITE_CHECK:
-					value = mated_in(ss->ply + 1);
-					break;
-				default:
+				value = pos.GetSennichiteValue();
+				if (value == VALUE_NONE)
 					value = -QuietSearch(pvNode, pos, ss + 1, rootKey, -beta, -alpha, depth - 1);
-				}
 			}
 			pos.UndoMove();
 

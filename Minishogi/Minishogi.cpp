@@ -373,6 +373,7 @@ void Minishogi::DoMove(Move m) {
 		st->continueCheck[~turn] += 2;
 	else
 		st->continueCheck[~turn] = 0;
+	CalcSennichiteType(16);
 
 }
 
@@ -427,6 +428,8 @@ void Minishogi::DoNullMove() {
 	st->continueCheck[0] = 0;
 	st->continueCheck[1] = 0;
 	st->nullMovePly = ply;
+	st->sType = NO_SENNICHITE;
+	st->sCount = 0;
 }
 
 void Minishogi::UndoNullMove() {
@@ -1039,20 +1042,40 @@ bool Minishogi::IsInCheckedAfter(Square srcIndex, Square dstIndex) const {
 	return false;
 }
 
-SennichiteType Minishogi::SennichiteType(int checkMaxPly) const {
+void Minishogi::CalcSennichiteType(int checkMaxPly) {
 	const int stop = max(ply - checkMaxPly, stateHist[ply].nullMovePly);
 	for (int i = ply - 4; i >= stop; i -= 2) {
 		if (stateHist[i].key == stateHist[ply].key) {
-			if (stateHist[ply].continueCheck[~turn] > ply - i)
-				return SENNICHITE_CHECK;
-			if (turn == WHITE)
-				return SENNICHITE_WIN;
-			if (stateHist[ply].continueCheck[BLACK] < ply - i)
-				return SENNICHITE_LOSE;
-			return NO_SENNICHITE;
+			if (stateHist[ply].continueCheck[~turn] > ply - i) {
+				if (stateHist[i].sType != NO_SENNICHITE)
+					stateHist[ply].sType = stateHist[i].sType;
+				else
+					stateHist[ply].sType = SENNICHITE_CHECK;
+			}
+			else if (turn == WHITE) {
+				stateHist[ply].sType = SENNICHITE_WIN;
+			}
+			else if (stateHist[ply].continueCheck[BLACK] < ply - i) {
+				stateHist[ply].sType = SENNICHITE_LOSE;
+			}
+			else {
+				stateHist[ply].sType = NO_SENNICHITE;
+				stateHist[ply].sCount = 0;
+				return;
+			}
+			stateHist[ply].sCount = stateHist[i].sCount + 1;
+			for (int j = ply - 2; j >= i; j -= 2) {
+				if (stateHist[j].sCount >= stateHist[ply].sCount) {
+					stateHist[ply].sLegal = false;
+					return;
+				}
+			}
+			stateHist[ply].sLegal = true;
+			return;
 		}
 	}
-	return NO_SENNICHITE;
+	stateHist[ply].sType = NO_SENNICHITE;
+	stateHist[ply].sCount = 0;
 }
 
 bool Minishogi::IsUchifuzume() const {
@@ -1159,9 +1182,11 @@ std::ostream& operator<<(std::ostream& os, const Minishogi& pos) {
 	ss << "\n" << COLOR_WORD[WHITE] << " : ";
 	for (int i = 0; i < 5; i++)
 		ss << pos.board[i + SQ_W_HAND] << PIECE_WORD.substr((i + 1) * 2, 2);
-	ss << "\nHash : " << hex << pos.GetKey() << dec;
+	/*ss << "\nHash : " << hex << pos.GetKey() << dec;
 	ss << "\nConti. Check : " << pos.stateHist[pos.GetPly()].continueCheck[0] << " " << pos.stateHist[pos.GetPly()].continueCheck[1];
 	ss << "\nChecker : " << pos.stateHist[pos.GetPly()].checker_bb;
+	ss << "\nsCount : " << pos.stateHist[pos.GetPly()].sCount;
+	ss << "\nsType : " << pos.stateHist[pos.GetPly()].sType;*/
 	os << ss.str();
 
 	return os;

@@ -4,7 +4,7 @@ isready
 usinewgame
 go
 
-setoption name depth value 12
+setoption name depth value 10
 usi
 isready
 usinewgame
@@ -17,7 +17,7 @@ setoption name EvalDir value kppt/2018-09-25_13-19-01
 
 -------kifulearn------
 kifulearn teacher "Shokidoki UEC9+"
-kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu\new" teacher "Shokidoki UEC9+"
+kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu" teacher "Shokidoki UEC9+"
 
 // 2010.10 "Shokidoki 0.9s"   from http://hgm.nubati.net/WinBoard-SG.zip
 // 2014.10 "Shokidoki tori3"  from http://hgm.nubati.net/WinBoard-mini.exe
@@ -25,13 +25,19 @@ kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu\new" teacher "Shokidoki
 // 2015.12 "Shokidoki UEC9+"  from http://hgm.nubati.net/miniShogi.zip
 
 -------timetest-------
-setoption name depth value 14
+setoption name depth value 12
+setoption name HashEntry value 28
 timetest path "D:/Nyanpass Project/Training Kifu/shokidoki15_train1.pgn" test_num 200
 
 -------make opening-------
-make_opening src_file 20181121-3.pgn
-
-
+make_opening src_file 20181103-7.pgn game_per_file 30
+make_opening src_file 20181103-6.pgn game_per_file 30
+make_opening src_file 20181030-1.pgn game_per_file 20
+make_opening src_file 20181023-2.pgn game_per_file 20
+make_opening src_file 20181016-4.pgn game_per_file 20
+make_opening src_file 20181010-8.pgn game_per_file 20
+make_opening src_file 20181010-6.pgn game_per_file 20
+make_opening src_file 20181010-5.pgn game_per_file 20
 
 
 

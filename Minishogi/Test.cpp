@@ -12,7 +12,7 @@ struct TimeTestThread : public Thread {
 	string path = "board/timetest.sfen";
 	int test_num = 50;
 
-	TimeTestThread(int ttBit) : Thread(ttBit) {}
+	TimeTestThread(int ttSize) : Thread(ttSize) {}
 
 	void Test_sfen() {
 		streamoff readBoardOffset = 0;
@@ -265,9 +265,9 @@ void USI::perft(Minishogi &pos, std::istringstream& ss_cmd) {
 
 void USI::make_opening(istringstream& ss_cmd) {
 	string src_dir = "D:/Nyanpass Project/Training Kifu/";
-	string dst_dir = "position/";
+	string dst_dir = "opening/";
 	string src_file = "20181023-1.pgn";
-	int game_per_file = 50, sample_rate = 20;
+	int game_per_file = 50, sample_skip = 10, sample_rate = 20, hash_size = 1024;
 	string token;
 
 	while (ss_cmd >> token) {
@@ -281,7 +281,9 @@ void USI::make_opening(istringstream& ss_cmd) {
 		}
 		else if (token == "src_file")      ss_cmd >> src_file;
 		else if (token == "game_per_file") ss_cmd >> game_per_file;
+		else if (token == "sample_skip")   ss_cmd >> sample_skip;
 		else if (token == "sample_rate")   ss_cmd >> sample_rate;
+		else if (token == "hash_size")     ss_cmd >> hash_size;
 	}
 
 	int start = 0, len = 0;
@@ -290,19 +292,17 @@ void USI::make_opening(istringstream& ss_cmd) {
 	char c;
 	int ply = 0;
 	int openingCnt = 0;
-	int nextSamplePly = sample_rate;
+	int nextSamplePly = sample_skip;
 
-	cout << "src_path " << src_dir + src_file << " game_per_file " << game_per_file << " sample_rate " << sample_rate << "\n";
+	cout << "-src_path " << src_dir + src_file << "\n-game_per_file " << game_per_file << "\n-sample_skip " << sample_skip << "\n-sample_rate " << sample_rate << "\n-hash_size " << hash_size << "MB\n";
+	cout << "making opening start\n";
 
 	CreateDirectory(dst_dir.c_str(), NULL);
 	ifstream ifile(src_dir + src_file);
-	ofstream ofile(dst_dir + "opening-1.pgn");
+	ofstream ofile;
+	string src_name = src_file.substr(0, src_file.find('.'));
 	if (!ifile) {
 		cout << "Error : Can't find source pgn file" << endl;
-		return;
-	}
-	if (!ofile) {
-		cout << "Error : Can't open destination pgn file" << endl;
 		return;
 	}
 
@@ -331,19 +331,24 @@ void USI::make_opening(istringstream& ss_cmd) {
 					ss >> f;
 					getline(ifile, token, '}'); // 18 5:51}
 				}
-				if (++ply >= nextSamplePly) {
-					if (!ofile) ofile.open(dst_dir + "opening-" + to_string(openingCnt / game_per_file + 1) + ".pgn");;
+				else {
+					f = 1000;
+				}
+				if (++ply >= nextSamplePly && abs(f) < 50 && f != 0) {
+					if (!ofile.is_open()) ofile.open(dst_dir + src_name + "_UEC9+-" + to_string(openingCnt / game_per_file + 1) + "_opening.pgn");;
 					bool skipFlag = false;
 					len = (int)ifile.tellg() - start;
 					ifile.seekg(start);
+					ifile >> noskipws;
 					for (int i = 0; i < len; i++) {
-						ifile >> noskipws >> c >> skipws;
+						ifile >> c;
 						if (c == '{') skipFlag = true;
 						if (!skipFlag) ofile << c;
 						if (c == '}') skipFlag = false;
 						if (c == '\n') i++;
 					}
-					ofile << "\n\n";
+					ifile >> skipws;
+					ofile << "\n";
 					nextSamplePly += sample_rate;
 					if (++openingCnt % game_per_file == 0) ofile.close();
 				}
@@ -357,26 +362,25 @@ void USI::make_opening(istringstream& ss_cmd) {
 	ifile.close();
 	ofile.close();
 
-	string src_name = src_file.substr(0, src_file.find('.'));
-	if (!ofile) {
-		cout << "Error : Can't open destination trn file" << endl;
-		return;
-	}
 	for (int i = 1; i < (float)openingCnt / game_per_file + 1; i++) {
-		ofile.open(dst_dir + "Tourney_kifugene_" + to_string(i) + ".trn");
+		ofile.open(dst_dir + src_name + "_UEC9+-" + to_string(i) + "_trn.trn");
+		if (!ofile) {
+			cout << "Error : Can't open destination trn file" << endl;
+			return;
+		}
 		ofile << "-participants {Shokidoki UEC9+\n"
 			"Shokidoki UEC9+\n"
 			"}\n"
 			"-seedBase 523836227\n"
 			"-tourneyType 0\n"
 			"-tourneyCycles 1\n"
-			"-defaultMatchGames " << game_per_file << "\n"
+			"-defaultMatchGames " << (i < (float)openingCnt / game_per_file ? game_per_file : openingCnt % game_per_file) << "\n"
 			"-syncAfterRound false\n"
 			"-syncAfterCycle true\n"
-			"-saveGameFile \"D:\\Winboard 4.8.0\\WinBoard\\tournament\\" << src_name << " UEC9+-" << i << ".pgn\"\n"
-			"-loadGameFile \"D:\\Winboard 4.8.0\\WinBoard\\tournament\\opening-" << i << ".pgn\"\n"
+			"-saveGameFile \"" << src_name << "_UEC9+-" << i << ".pgn\"\n"
+			"-loadGameFile \"" << src_name << "_UEC9+-" << i << "_opening.pgn\"\n"
 			"-loadGameIndex -1\n"
-			"-loadPositionFile \"D:\\Winboard 4.8.0\\WinBoard\\mini.fen\"\n"
+			"-loadPositionFile \"mini.fen\"\n"
 			"-loadPositionIndex -1\n"
 			"-rewindIndex 0\n"
 			"-usePolyglotBook true\n"
@@ -384,9 +388,9 @@ void USI::make_opening(istringstream& ss_cmd) {
 			"-bookDepth 12\n"
 			"-bookVariation 50\n"
 			"-discourageOwnBooks false\n"
-			"-defaultHashSize 64\n"
+			"-defaultHashSize " << hash_size <<"\n"
 			"-defaultCacheSizeEGTB 4\n"
-			"-ponderNextMove true\n"
+			"-ponderNextMove false\n"
 			"-smpCores 1\n"
 			"-mps 40\n"
 			"-tc 30\n"
@@ -394,7 +398,7 @@ void USI::make_opening(istringstream& ss_cmd) {
 			"-results \"\"\n";
 		ofile.close();
 	}
-	cout << "make " << openingCnt << " position success" << endl;
+	cout << "make " << openingCnt << " position success\n" << endl;
 }
 
 /*void fix_opening() {

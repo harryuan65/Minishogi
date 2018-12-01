@@ -11,8 +11,9 @@ using namespace USI;
 
 Thread *GlobalThread;
 
-Thread::Thread(int ttBit) : pos(this), stdThread(&Thread::IdleLoop, this) {
-	tt.Initialize(ttBit);
+Thread::Thread(int ttSize) : pos(this), stdThread(&Thread::IdleLoop, this) {
+	//int ttBit = ttSize ? log2(ttSize) + 16 : 1;
+	tt.Initialize(ttSize);
 	selDepth = 0;
 	maxCheckPly = Options["MaxCheckPly"];
 

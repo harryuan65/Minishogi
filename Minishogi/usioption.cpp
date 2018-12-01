@@ -18,11 +18,10 @@ vector<string> GetEvalFilesPath() {
 
 	for (auto &p : fs::directory_iterator(KPPT_DIRPATH))
 		if (fs::is_directory(p))
-			filenames.push_back(KPPT_DIRPATH + fs::path(p).filename().string());
+			filenames.insert(filenames.begin(), KPPT_DIRPATH + fs::path(p).filename().string());
 
-	if (filenames.empty())
-		filenames.push_back("none");
-
+	filenames.push_back(KPPT_DIRPATH + "none");
+	
 	string confPath = KPPT_DIRPATH + "config.txt";
 	ifstream ifs(confPath);
 
@@ -36,7 +35,7 @@ vector<string> GetEvalFilesPath() {
 	string kpptPath = KPPT_DIRPATH + str;
 
 	if (find(filenames.begin(), filenames.end(), kpptPath) != filenames.end())
-		iter_swap(filenames.end() - 1, find(filenames.begin(), filenames.end(), kpptPath));
+		iter_swap(filenames.begin(), find(filenames.begin(), filenames.end(), kpptPath));
 
     return filenames;
 }
@@ -44,14 +43,14 @@ vector<string> GetEvalFilesPath() {
 void OptionsMap::Initialize() {
 	vector<string> filenames = GetEvalFilesPath();
 
-    //(*this)["Hash"]            = Option(64, 1, 65536, [](const Option& opt) {  });
+    //(*this)["Hash"]            = Option(2048, 1, 65536);
 	(*this)["HashEntry"]       = Option(27, 1, 32);
-	(*this)["Depth"]           = Option(10, 1, 16);
+	(*this)["Depth"]           = Option(12, 1, 16);
     (*this)["USI_Ponder"]      = Option(true);
 	(*this)["FullMovePonder"]  = Option(false);
     (*this)["NetworkDelay"]    = Option(0, 0, 60000);
     (*this)["ResignValue"]     = Option(-VALUE_MATE, -VALUE_MATE, VALUE_MATE);
-	(*this)["EvalDir"]         = Option(filenames, filenames.back(), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
+	(*this)["EvalDir"]         = Option(filenames, filenames.front(), [](const Option& opt) { Evaluate::GlobalEvaluater.Load(opt); });
 	(*this)["EvalStandardize"] = Option(true);
 	(*this)["MaxCheckPly"]     = Option(16, 0, 1024);
 }
