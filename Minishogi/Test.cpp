@@ -178,7 +178,7 @@ void USI::timetest(istringstream& ss_cmd) {
 	}
 
 	delete GlobalThread;
-	EvaluateLearn::InitGrad();
+	//EvaluateLearn::InitGrad();
 	USI::Limits.ponder = false;
 	GlobalThread = th;
 	GlobalThread->StartWorking();

@@ -74,6 +74,8 @@ namespace Observer {
 	vector<uint64_t> initKey;
 	vector<uint32_t> kifuHash1;
 	vector<uint32_t> kifuHash2;
+	//int aspFail[6];
+	//int aspTime[6];
 
 
 	void StartSearching() {
@@ -151,6 +153,11 @@ namespace Observer {
 		os << " Search depths           : " << setw(10) << Options["Depth"] << "\n";
 		os << " Search nums             : " << setw(10) << game_data[searchNum] << "\n";
 		PrintData(os, game_data);
+		os << "Aspiration failed rate : ";
+		for (int i = 0; i < 6; i++)
+			 os << (int)ceil((float)Observer::aspFail[i] * 100 / Observer::aspTime[i]) << "% ";
+		os << "\n";
+
 		os << endl;
 	}
 

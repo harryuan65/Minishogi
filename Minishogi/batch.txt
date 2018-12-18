@@ -13,6 +13,7 @@ go
 
 -------usi option------
 setoption name depth value 5
+setoption name HashEntry value 28
 setoption name EvalDir value kppt/2018-09-25_13-19-01
 
 -------kifulearn------
@@ -25,9 +26,8 @@ kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu" teacher "Shokidoki UEC
 // 2015.12 "Shokidoki UEC9+"  from http://hgm.nubati.net/miniShogi.zip
 
 -------timetest-------
-setoption name depth value 12
-setoption name HashEntry value 28
-timetest path "D:/Nyanpass Project/Training Kifu/shokidoki15_train1.pgn" test_num 200
+setoption name depth value 10
+timetest path "D:\Nyanpass\Nyanpass Project\Training Kifu/shokidoki15_train1.pgn" test_num 200
 
 -------make opening-------
 make_opening src_file 20181103-7.pgn game_per_file 30

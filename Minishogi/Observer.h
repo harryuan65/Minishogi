@@ -22,7 +22,7 @@
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #112 no ㄈ全pin"
+#define AI_NAME "Nyanpass #113 升變pin=原pin 150,*2,αβ只改一邊"
 
 namespace Observer {
 	typedef std::chrono::milliseconds::rep TimePoint;
@@ -68,6 +68,9 @@ namespace Observer {
 	extern std::vector<Winner> winnerTable2;
 	extern std::vector<uint32_t> kifuHash1;
 	extern std::vector<uint32_t> kifuHash2;
+
+	//extern int aspFail[6];
+	//extern int aspTime[6];
 
 	inline std::tm localtime_xp(std::time_t timer) {
 		std::tm bt{};

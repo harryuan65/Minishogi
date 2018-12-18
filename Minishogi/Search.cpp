@@ -57,53 +57,57 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			rootDepth = rm.depth + 1;
 		}
 	}
-	
+
 	// Iterative Deepening
 	for (; rootDepth <= depth && !IsStop() && !isWin; rootDepth++) {
 		bool isResearch = false;
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
-			delta = Value(100);
+			delta = Value(150);
 			alpha = max(value - delta, -VALUE_INFINITE);
 			beta = min(value + delta, VALUE_INFINITE);
 		}
 #endif
-		while (true) {
-			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
-
-			if (IsStop())
-				break;
-			if (value <= alpha || value >= beta) {
-				alpha = max(value - delta, -VALUE_INFINITE);
-				beta = min(value + delta, VALUE_INFINITE);
-			}
-			else
-				break;
-			delta += delta;
-			isResearch = true;
-		}
-/*#ifndef ASPIRE_WINDOW_DISABLE
-		if (rootDepth >= 5) {
-			delta = Value(50);
-			alpha = max(value - delta, -VALUE_INFINITE);
-			beta = min(value + delta, VALUE_INFINITE);
-		}
-#endif
-		while (true) {
+		
+		for (int retryCnt = 0; !IsStop(); retryCnt++) {
+			//Observer::aspTime[retryCnt]++;
 			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
 			
-			if (IsStop())
-				break;
-
-			if (value <= alpha)
-				alpha = max(value - delta, -VALUE_INFINITE);
-			else if (value >= beta)
-				beta = min(value + delta, VALUE_INFINITE);
+#if 1
+			if (value <= alpha) {
+				if (retryCnt > 3) {
+					alpha = -VALUE_INFINITE;
+				}
+				else {
+					alpha = max(value - delta, -VALUE_INFINITE);
+				}
+			}
+			else if (value >= beta) {
+				if (retryCnt > 3) {
+					beta = VALUE_INFINITE;
+				}
+				else {
+					beta = min(value + delta, VALUE_INFINITE);
+				}
+			}
+#else
+			if (value <= alpha || value >= beta) {
+				if (retryCnt > 3) {
+					alpha = -VALUE_INFINITE;
+					beta = VALUE_INFINITE;
+				}
+				else {
+					alpha = max(value - delta, -VALUE_INFINITE);
+					beta = min(value + delta, VALUE_INFINITE);
+				}
+			}
+#endif
 			else
 				break;
-			delta = delta * 3;
+			delta = delta * 2;
 			isResearch = true;
-		}*/
+			//Observer::aspFail[retryCnt]++;
+		}
 		if (IsStop()) {
 			//sync_cout << "readyok" << sync_endl;
 			break;
