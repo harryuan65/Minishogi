@@ -107,83 +107,8 @@ void Thread::InitSearch() {
 			(ss - i)->contHistory = &contHistory[NO_PIECE][0];
 		}
 	}
+	//tt.Clean();
 }
-
-/*void Thread::StartGameLoop() {
-	if (!stdThread)
-		stdThread = new thread(&Thread::GameLoop, this);
-}
-
-void Thread::GameLoop() {
-	while (!isExit) {
-		mutex.lock();
-		if (bestMove.enemyMove == MOVE_UNDO) {
-			pos.UndoMove();
-			pos.UndoMove();
-			bestMove.enemyMove = MOVE_NONE;
-		}
-		else if (bestMove.enemyMove == MOVE_NULL) {
-			isExit = true;
-			mutex.unlock();
-			break;
-		}
-		else if (IsDoMove(bestMove.enemyMove)) {
-			pos.DoMove(bestMove.enemyMove);
-		}
-		mutex.unlock();
-
-		if (pos.IsGameOver()) {
-			isExit = true;
-			break;
-		}
-		if (pos.GetTurn() == us) {
-			mutex.lock();
-			Observer::StartSearching();
-			bestMove.depth = 0;
-			for (int i = 0; i < rootMoves.size(); i++) {
-				if (rootMoves[i].enemyMove == bestMove.enemyMove) {
-					bestMove = rootMoves[i];
-					sync_cout << "Thread " << us << " : Hit rootMoves" << sync_endl;
-					break;
-				}
-			}
-			if (!bestMove.depth) {
-				RootMove rm;
-				rm.enemyMove = bestMove.enemyMove;
-				mutex.unlock();
-				finishDepth = false;
-				sync_cout << "Thread " << us << " : IDAS" << sync_endl;
-
-				IDAS(rm, Observer::depth);
-
-				mutex.lock();
-				bestMove = rm;
-			}
-			rootMoves.clear();
-			if (bestMove.pv[0])
-				pos.DoMove(bestMove.pv[0]);
-			else
-				isExit = true;
-			bestMove.enemyMove = MOVE_NONE;
-			sync_cout << "Thread " << us << " : Domove " << bestMove.pv[0] << sync_endl;
-
-			cv.notify_all();
-			isStop = false;
-			mutex.unlock();
-			Observer::EndSearching();
-		}
-		else {
-			PreIDAS();
-			sync_cout << "Thread " << us << " : Stop Presearch" << sync_endl;
-			if (isReject) {
-				rootMoves.clear();
-				isReject = false;
-			}
-			isStop = false;
-		}
-	}
-	sync_cout << "Thread " << us << " : Exit" << sync_endl;
-}*/
 
 void Thread::StartSearching(const Minishogi &rootPos, const LimitsType& limits) {
 	if (Limits.ponder) {

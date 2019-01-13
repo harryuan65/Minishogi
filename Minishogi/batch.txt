@@ -26,7 +26,7 @@ kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu" teacher "Shokidoki UEC
 // 2015.12 "Shokidoki UEC9+"  from http://hgm.nubati.net/miniShogi.zip
 
 -------timetest-------
-setoption name depth value 10
+setoption name depth value 14
 timetest path "D:\Nyanpass\Nyanpass Project\Training Kifu/shokidoki15_train1.pgn" test_num 200
 
 -------make opening-------

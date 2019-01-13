@@ -121,6 +121,8 @@ struct TimeTestThread : public Thread {
 					<< setw(11) << r.second
 					<< setw(11) << rm.value;
 				if (rm.value != VALUE_NONE &&
+					rm.value < VALUE_MATE_IN_MAX_PLY &&
+					rm.value > VALUE_MATED_IN_MAX_PLY &&
 					r.second != VALUE_ZERO &&
 					r.second != VALUE_NONE &&
 					r.second < SHOKIDOKO_SKIP_MIN &&

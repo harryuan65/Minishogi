@@ -114,7 +114,7 @@ void USI::loop(int argc, char** argv) {
 
         ss_cmd >> skipws >> token;
 
-		if (token != "usi" && token != "usinewgame" && token != "quit" && !GlobalThread)
+		if (token != "usi" && token != "usinewgame" && token != "quit" && token != "results" && !GlobalThread)
 			GlobalThread = new Thread(USI::Options["HashEntry"]);
 
         // usi command
@@ -199,9 +199,13 @@ void USI::loop(int argc, char** argv) {
 			bool t = 0;
 			int win[2] = { 0 };
 			ss_cmd >> token;
-			for (char c : token)
+			for (char c : token) {
+				if (c == '\"')
+					continue;
+				t = !t;
 				if (c == '+' || c == '-')
-					win[(t = !t) ^ (c == '+')]++;
+					win[t ^ (c == '+')]++;
+			}
 			sync_cout << win[0] << " : " << win[1] << "\n"
 				<< std::setiosflags(std::ios::fixed) << std::setprecision(1) 
 				<< win[0] * 100.0 / (win[0] + win[1]) << "% : "

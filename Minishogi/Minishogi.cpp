@@ -709,7 +709,7 @@ bool Minishogi::PseudoLegal(Move m) const {
 
 	if (from >= BOARD_NB) {
 		// 打入
-		if (capture)
+		if (capture || board[from] == 0)
 			return false;
 
 		// 二步

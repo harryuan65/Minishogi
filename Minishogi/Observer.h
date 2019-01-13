@@ -22,7 +22,7 @@
 #define REFUTATION_DISABLE
 #define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #113 升變pin=原pin 150,*2,αβ只改一邊"
+#define AI_NAME "Nyanpass #114 nullMove ex nullmove R=3~4 DR=4"
 
 namespace Observer {
 	typedef std::chrono::milliseconds::rep TimePoint;

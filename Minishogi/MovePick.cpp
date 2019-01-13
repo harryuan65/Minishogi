@@ -48,7 +48,7 @@ namespace {
 MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh,
 	const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
 	: pos(p), depth(d), mainHistory(mh), captureHistory(cph), contHistory(ch)
-	/*,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } }*/ {
+	,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } } {
 	assert(d > 0);
 
 #ifndef MOVEPICK_DISABLE
@@ -145,7 +145,8 @@ Move MovePicker::select(Pred filter) {
 
 		move = *cur++;
 
-		if (move != ttMove &&
+		if (move &&
+			move != ttMove &&
 			filter() &&
 			(from_sq(move) >= BOARD_NB || !pos.IsInCheckedAfter(move)))
 			return move;
@@ -181,17 +182,18 @@ top:
 
 	case GOOD_CAPTURE:
 		if (select<Best>([&]() {
-			return pos.SEE(move) ? true : (*endBadCaptures++ = move, false); 
+			return pos.SEE(move/*, Value(-55 * (cur - 1)->score / 1024)*/) ? true : (*endBadCaptures++ = move, false);
 		}))
 			return move;
+
 #ifndef REFUTATION_DISABLE
 		// Prepare the pointers to loop over the refutations array
 		cur = std::begin(refutations);
 		endMoves = std::end(refutations);
 
 		// If the countermove is the same as a killer, skip it
-		if (refutations[0].move == refutations[2].move
-			|| refutations[1].move == refutations[2].move)
+		if (refutations[0].move == refutations[2].move ||
+			refutations[1].move == refutations[2].move)
 			--endMoves;
 #endif
 
@@ -200,7 +202,7 @@ top:
 	case REFUTATION:
 #ifndef REFUTATION_DISABLE
 		if (select<Next>([&]() { 
-			return move != MOVE_NULL && !pos.GetChessOn(to_sq(move)) && pos.PseudoLegal(move); 
+			return move != MOVE_NULL && !pos.GetCapture(move) && pos.PseudoLegal(move);
 		}))
 			return move;
 #endif
@@ -222,7 +224,9 @@ top:
 #ifdef REFUTATION_DISABLE
 			Any
 #else
-			[&]() {return move != refutations[0] && move != refutations[1] && move != refutations[2]; }
+			[&]() {
+			return move != refutations[0] && move != refutations[1] && move != refutations[2];
+		}
 #endif
 		))
 			return move;

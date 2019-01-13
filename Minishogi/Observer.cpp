@@ -153,9 +153,9 @@ namespace Observer {
 		os << " Search depths           : " << setw(10) << Options["Depth"] << "\n";
 		os << " Search nums             : " << setw(10) << game_data[searchNum] << "\n";
 		PrintData(os, game_data);
-		os << "Aspiration failed rate : ";
-		for (int i = 0; i < 6; i++)
-			 os << (int)ceil((float)Observer::aspFail[i] * 100 / Observer::aspTime[i]) << "% ";
+		//os << "Aspiration failed rate : ";
+		//for (int i = 0; i < 6; i++)
+		//	 os << (int)ceil((float)Observer::aspFail[i] * 100 / Observer::aspTime[i]) << "% ";
 		os << "\n";
 
 		os << endl;
@@ -257,6 +257,11 @@ namespace Observer {
 		ss << "MovePicker          : Enable\n";
 #else
 		ss << "MovePicker          : Disable\n";
+#endif
+#ifndef REFUTATION_DISABLE
+ss << "Refutation          : Enable\n";
+#else
+ss << "Refutation          : Disable\n";
 #endif
 		return ss.str();
 	}

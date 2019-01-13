@@ -70,6 +70,7 @@ void Thread::IDAS(RootMove &rm, int depth) {
 #endif
 		
 		for (int retryCnt = 0; !IsStop(); retryCnt++) {
+			//cout << alpha << " " << beta << endl;
 			//Observer::aspTime[retryCnt]++;
 			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
 			
@@ -231,7 +232,7 @@ namespace {
 		ss->lmr_flag = (ss - 1)->lmr_flag;
 		ss->currentMove = bestMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
-		//(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
+		(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
 		prevSq = to_sq((ss - 1)->currentMove);
 
 		// Transposition table lookup
@@ -263,32 +264,33 @@ namespace {
 
 #ifndef NULLMOVE_DISABLE
 		// Null move search with verification search
-		/*Ex-Null Move
+		// Ex-Null Move
 		if (!pvNode &&
-			!thisThread->nmp_ply &&
+			pos.GetEvaluate() >= beta &&
+			!(ss - 1)->nmp_flag &&
 			!pos.IsInChecked()) {
-			int R = depth <= 6 ? 4 : 5;
+			int R = depth <= 6 ? 3 : 4;
 			ss->currentMove = MOVE_NULL;
 			ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
 
-			thisThread->nmp_ply = ss->ply;
+			ss->nmp_flag = true;
 			pos.DoNullMove();
-			Value nullValue = -NegaScout(false, pos, ss + 1, rootMove, -beta, -beta + 1, depth - R, isResearch);
+			Value nullValue = -NegaScout(false, pos, ss + 1, rootKey, -beta, -beta + 1, depth - R - 1, isResearch);
 			pos.UndoNullMove();
-			thisThread->nmp_ply = 0;
+			ss->nmp_flag = false;
 
 			if (nullValue >= beta) {
 				depth -= 4;
 				if (depth < 1)
-					return QuietSearch(pvNode, pos, ss, rootMove, alpha, beta, 0);
+					return QuietSearch(pvNode, pos, ss, rootKey, alpha, beta, 0);
 			}
-		}*/
-		//Value nullValue = VALUE_NONE;
-		if (!pvNode &&
-			depth > 3 &&
+		}
+		// Null Move
+		/*if (!pvNode &&
+			pos.GetEvaluate() >= beta &&
 			!(ss - 1)->nmp_flag &&
 			!pos.IsInChecked()) {
-			int R = (depth <= 6 || (depth <= 8 && abs(pos.GetEvaluate()) < 6000)) ? 1 : 2;
+			int R = (depth <= 6 || (depth <= 8 && abs(pos.GetEvaluate()) < 1000)) ? 2 : 3;
 
 			ss->currentMove = MOVE_NULL;
 			ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
@@ -309,16 +311,42 @@ namespace {
 				if (nullValue < VALUE_MATE_IN_MAX_PLY)
 					alpha = nullValue;
 			}
-			// Debug : null move zugzwangs
-			/*else {
-				nullValue = VALUE_NONE;
-			}*/
-		}
+		}*/
+		// Stockfish
+		/*if (!pvNode &&
+			pos.GetEvaluate() >= beta &&
+			pos.GetEvaluate() >= beta - 36 * depth + 225 &&
+			!(ss - 1)->nmp_flag &&
+			!pos.IsInChecked()) {
+			int R = ((823 + 67 * (depth)) / 256 + min((pos.GetEvaluate() - beta) / VALUE_PAWN, 3));
+
+			ss->currentMove = MOVE_NULL;
+			ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
+			ss->nmp_flag = true;
+			pos.DoNullMove();
+			Value nullValue = -NegaScout(false, pos, ss + 1, rootKey, -beta, -beta + 1, depth - R, isResearch);
+			pos.UndoNullMove();
+			ss->nmp_flag = false;
+
+			if (nullValue >= beta) {
+				Observer::data[Observer::nullMoveNum]++;
+				if (nullValue >= VALUE_MATE_IN_MAX_PLY)
+					nullValue = beta;
+
+				if (depth < 12 && abs(beta) < 10000)
+					return nullValue;
+
+				Value nullValue = -NegaScout(false, pos, ss, rootKey, beta - 1, beta, depth - R, isResearch);
+
+				if (nullValue >= beta)
+					return nullValue;
+			}
+		}*/
 #endif
 
 		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
-		Move capturesSearched[32], quietsSearched[64], countermove = MOVE_NULL;//thisThread->counterMoves[pos.GetChessOn(prevSq)][prevSq];
-		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, nullptr);
+		Move capturesSearched[32], quietsSearched[64], countermove = thisThread->counterMoves[pos.GetBoard(prevSq)][prevSq];
+		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
 		bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 		int captureCount = 0, quietCount = 0;
 		
@@ -344,17 +372,6 @@ namespace {
 
 					// Late Move Reduction
 #ifndef LMR_DISABLE
-				/*if (!pvNode &&
-						depth >= 3 &&
-						bestValue > VALUE_MATED_IN_MAX_PLY &&
-						ss->moveCount >= 25 &&
-					!(ss - 1)->lmr_flag &&
-					!isCapture &&
-					!pos.IsInChecked() &&
-					!pos.IsCheckingAfter(move)) {
-					ss->lmr_flag = true;
-					R = 1;
-				}*/
 					if (!pvNode &&
 						depth >= 3 &&
 						bestValue > VALUE_MATED_IN_MAX_PLY &&
@@ -620,8 +637,8 @@ namespace {
 			ss->killers[0] = move;
 		}
 		if ((ss - 1)->currentMove != MOVE_NULL) {
-			int prevSq = to_sq((ss - 1)->currentMove);
-			pos.GetThread()->counterMoves[pos.GetChessOn(prevSq)][prevSq] = move;
+			Square prevSq = to_sq((ss - 1)->currentMove);
+			pos.GetThread()->counterMoves[pos.GetBoard(prevSq)][prevSq] = move;
 		}
 #endif
 
