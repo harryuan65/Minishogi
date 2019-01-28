@@ -1,13 +1,16 @@
 #include "Transposition.h"
 #include "Observer.h"
+
 using std::cout;
+
+Transposition GlobalTT;
 
 Transposition::~Transposition() {
 	if (transpositTable)
 		delete transpositTable;
 }
 
-void Transposition::Initialize(int ttBit) {
+void Transposition::Resize(int ttBit) {
 	if (transpositTable)
 		delete transpositTable;
 #ifndef TRANSPOSITION_DISABLE

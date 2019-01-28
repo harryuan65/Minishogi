@@ -9,6 +9,7 @@
 #include "Zobrist.h"
 #include "Thread.h"
 #include "Observer.h"
+
 using namespace std;
 using namespace Evaluate;
 
@@ -205,6 +206,21 @@ bool Minishogi::CheckLegal() const {
 		}
 	}
 
+	// occupied檢查
+	for (int i = 0; i < 2; i++) {
+		Bitboard o = occupied[i];
+		while (o) {
+			Square sq = BitScan(o);
+			o ^= 1 << sq;
+			if (board[sq] == NO_PIECE || color_of((Piece)board[sq]) != i) {
+				cout << IO_LOCK << (*this) << IO_UNLOCK << endl;
+				sync_cout << "Error :　board[" << sq << "] is " << board[sq] << 
+					" but occupied[" << i << "]:pos[" << sq << "] has piece" << sync_endl;
+				return false;
+			}
+		}
+	}
+
 	for (Square sq = BOARD_NB; sq < SQUARE_NB; ++sq) {
 		// 檢查手牌上的數量在範圍內
 		if (board[sq] < 0 || 3 <= board[sq]) {
@@ -374,7 +390,6 @@ void Minishogi::DoMove(Move m) {
 	else
 		st->continueCheck[~turn] = 0;
 	CalcSennichiteType(16);
-
 }
 
 void Minishogi::UndoMove() {
@@ -751,22 +766,21 @@ ExtMove* Minishogi::AttackGenerator(ExtMove *moveList, Bitboard dstBB) const {
 	if (!attackboard)
 		attackboard = BitboardMask;
 
-	for (int i = 0; i < 10; i++) {
-		srcBoard = bitboard[AttackerOrder[i] | turnBit];
+	for (Piece pc : AttackerOrder) {
+		srcBoard = bitboard[pc | turnBit];
 		while (srcBoard) {
 			src = BitScan(srcBoard);
 			srcBoard ^= 1 << src;
 			dstBoard = Movable(src, (Piece)board[src], totalOccupied) & opboard;
-			if (attackboard && AttackerOrder[i] != KING)
+			if (attackboard && pc != KING)
 				dstBoard &= attackboard;
 			while (dstBoard) {
 				dst = turn ? BitScanRev(dstBoard) : BitScan(dstBoard);
 				dstBoard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
-					Promotable[AttackerOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
+					Promotable[pc] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
 
-				//if (AttackerOrder[i] != PAWN && is_promote(*(moveList - 1))) {
-				if (AttackerOrder[i] == SILVER && is_promote(*(moveList - 1))) {
+				if (pc == SILVER && is_promote(*(moveList - 1))) {
 					*moveList++ = make_move(src, dst, 0);
 				}
 			}
@@ -784,22 +798,21 @@ ExtMove* Minishogi::MoveGenerator(ExtMove *moveList) const {
 	Square src, dst;
 	int turnBit = turn << 4;
 
-	for (int i = 0; i < 10; i++) {
-		srcBoard = bitboard[MoverOrder[i] | turnBit];
+	for (Piece pc : MoverOrder) {
+		srcBoard = bitboard[pc | turnBit];
 		while (srcBoard) {
 			src = BitScan(srcBoard);
 			srcBoard ^= 1 << src;
 			dstBoard = Movable(src, (Piece)board[src], totalOccupied) & blankboard;
-			if (attackboard && MoverOrder[i] != KING) 
+			if (attackboard && pc != KING)
 				dstBoard &= attackboard;
 			while (dstBoard) {
 				dst = turn ? BitScanRev(dstBoard) : BitScan(dstBoard);
 				dstBoard ^= 1 << dst;
 				*moveList++ = make_move(src, dst,
-					Promotable[MoverOrder[i]] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
+					Promotable[pc] && ((1 << src | 1 << dst) & EnemyCampMask[turn]));
 				
-				//if (MoverOrder[i] != PAWN && is_promote(*(moveList - 1))) {
-				if (MoverOrder[i] == SILVER && is_promote(*(moveList - 1))) {
+				if (pc == SILVER && is_promote(*(moveList - 1))) {
 					*moveList++ = make_move(src, dst, 0);
 				}
 			}
@@ -852,73 +865,6 @@ ExtMove* Minishogi::HandGenerator(ExtMove *moveList) const {
 	return moveList;
 }
 
-Move* Minishogi::GetTotalMoves(Move* moveList) {
-	ExtMove start[TOTAL_GENE_MAX_MOVES], *end;
-	end = AttackGenerator(start);
-	end = MoveGenerator(end);
-	end = HandGenerator(end);
-	for (ExtMove* i = start; i < end; i++)
-		*moveList++ = *i;
-	return moveList;
-}
-
-Move* Minishogi::GetLegalMoves(Move* moveList) {
-	ExtMove start[TOTAL_GENE_MAX_MOVES], *end;
-	end = AttackGenerator(start);
-	end = MoveGenerator(end);
-	end = HandGenerator(end);
-	for (ExtMove* i = start; i < end; i++) {
-		if (!IsInCheckedAfter(*i)) {
-			DoMove(*i);
-			auto type = SennichiteType(256);
-			if (type == NO_SENNICHITE || type == SENNICHITE_LOSE)
-				*moveList++ = *i;
-			UndoMove();
-		}
-	}
-	return moveList;
-}
-
-void Minishogi::PrintChessBoard() const {
-	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	cout << "---------- ply  " << ply << " ----------\n";
-	SetConsoleTextAttribute(hConsole, 7);
-	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
-	for (int rank = 0; rank < 5; rank++) {
-		cout << "—┼—┼—┼—┼—┼—┼—" << (rank == 0 ? "      後手持駒\n" : "\n");
-
-		cout << " " << char('a' + rank) << "｜";
-		for (int file = 0; file < 5; file++) {
-			Piece p = Piece(board[rank * 5 + file]);
-			if (p != NO_PIECE)
-				SetConsoleTextAttribute(hConsole, 10 + color_of(p) * 2 + is_promote(p));
-			cout << PIECE_WORD.substr(p * 2, 2);
-			SetConsoleTextAttribute(hConsole, 7);
-			cout << "｜";
-		}
-		cout << char('a' + rank) << "   ";
-
-		if (rank == 0)
-			for (int i = 0; i < 5; i++)
-				if (board[SQ_F5 + i])
-					cout << board[SQ_F5 + i] << PIECE_WORD.substr((i + 1) * 2, 2);
-				else
-					cout << "   ";
-		if (rank == 4)
-			for (int i = 0; i < 5; i++)
-				if (board[SQ_G5 + i])
-					cout << board[SQ_G5 + i] << PIECE_WORD.substr((i + 1) * 2, 2);
-				else
-					cout << "   ";
-		cout << "\n";
-	}
-	cout << "—┼—┼—┼—┼—┼—┼—      先手持駒\n";
-	cout << "  ｜ 5｜ 4｜ 3｜ 2｜ 1｜\n";
-	cout << "SFEN : " << Sfen() << "\n";
-	cout << "----------" << COLOR_WORD[turn] << " Turn----------\n";
-}
-
 /// 第一行 +代表白方先 -代表黑方先
 /// 第二~六行 5*5的棋盤 旗子符號請見Piece.h的SAVE_CHESS_WORD
 /// 第七~八行 ▼0步0銀0金0角0飛 △0步0銀0金0角0飛
@@ -956,23 +902,15 @@ bool Minishogi::LoadBoard(string filename, streamoff &offset) {
 	return false;
 }
 
-void Minishogi::PrintKifu(ostream &os) const {
-	os << "Kifu hash : " << setw(10) << hex << GetKifuHash() << "\n";
-	os << "Initboard : " << setw(18) << hex << GetKey(0) << dec << "\n";
-	for (int i = 0; i < ply; i++) {
-		os << setw(2) << i << " : " << COLOR_WORD[i % 2];
-		//os << moveHist[i] << setw(18) << hex << GetKey(i + 1) << dec << "\n";
-	}
-}
-
-bool Minishogi::IsGameOver() {
-	Move moveList[TOTAL_GENE_MAX_MOVES];
-	return moveList == GetLegalMoves(moveList);
-}
-
-bool Minishogi::IsLegelAction(Move m) {
-	Move moveList[TOTAL_GENE_MAX_MOVES], *end = GetLegalMoves(moveList);
-	return end != find(moveList, end, m);
+bool Minishogi::IsMate() {
+	ExtMove moveList[TOTAL_GENE_MAX_MOVES], *end;
+	end = AttackGenerator(moveList);
+	end = MoveGenerator(end);
+	end = HandGenerator(end);
+	for (auto* m = moveList; m < end; m++)
+		if (!IsInCheckedAfter(*m))
+			return true;
+	return false;
 }
 
 bool Minishogi::IsCheckingAfter(Move m) {
@@ -1016,7 +954,6 @@ bool Minishogi::IsInCheckedAfter(Square srcIndex, Square dstIndex) const {
 	const Bitboard dstBoard = 1 << dstIndex;
     Bitboard op_occupied = occupied[~turn];
     if (op_occupied & dstBoard) // eat
-	//if (board[dstIndex]) // eat
         op_occupied ^= dstBoard;
 
     const Bitboard tmp_occupied = (occupied[turn] | op_occupied) ^ ((!is_drop(srcIndex) ? (1 << srcIndex) : 0) | dstBoard);

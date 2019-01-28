@@ -9,6 +9,7 @@
 #include "Thread.h"
 #include "Minishogi.h"
 #include "EvaluateLearn.h"
+
 using namespace std;
 using namespace Evaluate;
 
@@ -19,7 +20,7 @@ namespace USI {
 
 void USI::position(Minishogi &pos, istringstream &ss_cmd) {
     string token, sfen;
-	Move m;
+	Move move;
 
 	ss_cmd >> token;
     if (token == "startpos") {     
@@ -33,8 +34,12 @@ void USI::position(Minishogi &pos, istringstream &ss_cmd) {
         return;
 
     pos.Initialize(sfen);
-    while ((ss_cmd >> token) && (m = usi2move(token, pos.GetTurn()))) {
-        pos.DoMove(m);
+    while ((ss_cmd >> token) && (move = usi2move(token, pos.GetTurn()))) {
+		if (!pos.PseudoLegal(move)) {
+			sync_cout << "info string error move " << token << sync_endl;
+			break;
+		}
+        pos.DoMove(move);
 		pos.GetEvaluate();
     }
 	sync_cout << pos << "\nEvaluate : " << pos.GetEvaluate() << sync_endl;
@@ -93,12 +98,10 @@ void USI::setoption(istringstream& ss_cmd) {
 void USI::loop(int argc, char** argv) {
 	Observer::startLogger(true);
 
-	Zobrist::Initialize();
-	Evaluate::GlobalEvaluater.Load(USI::Options["EvalDir"]);
 	cout << Observer::GetSettingStr() << endl;
 
     Minishogi pos(nullptr);
-	Move moveList[SINGLE_GENE_MAX_MOVES];
+	ExtMove moveList[SINGLE_GENE_MAX_MOVES];
     string cmd, token;
 	pos.Initialize();
 
@@ -114,14 +117,11 @@ void USI::loop(int argc, char** argv) {
 
         ss_cmd >> skipws >> token;
 
-		if (token != "usi" && token != "usinewgame" && token != "quit" && token != "results" && !GlobalThread)
-			GlobalThread = new Thread(USI::Options["HashEntry"]);
-
         // usi command
 		if (token == "quit" ||
 			token == "gameover") {
 			if (GlobalThread) GlobalThread->Stop();
-			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
+			Observer::GameOver(~pos.GetTurn(), false);
 			Observer::PrintGameReport(cout);
 		}
 		else if (token == "stop") {
@@ -134,32 +134,45 @@ void USI::loop(int argc, char** argv) {
                 << "\nusiok" << sync_endl;
         }
         else if (token == "ponderhit") { 
-			Limits.ponder = false;
-            if (Limits.byoyomi) {
-                Limits.start_time = now();
-                //Time.reset();
-            }
-			GlobalThread->StartSearching(pos, Limits);
+			if (!Limits.ponder) {
+				sync_cout << "Error : engine is not pondering" << sync_endl;
+			}
+			else {
+				Limits.ponder = false;
+				if (Limits.byoyomi) {
+					Limits.start_time = now();
+					//Time.reset();
+				}
+			}
         }
         else if (token == "usinewgame") {
-			Observer::GameOver(~pos.GetTurn(), false, pos.GetKifuHash());
+			Observer::GameOver(~pos.GetTurn(), false);
 			Observer::PrintGameReport(cout);
 			if (GlobalThread) delete GlobalThread;
-			GlobalThread = new Thread(USI::Options["HashEntry"]);
+			GlobalThread = new Thread();
 			pos.Initialize();
 			Observer::GameStart();
 		}
         else if (token == "isready") { sync_cout << "readyok" << sync_endl; }
         else if (token == "setoption") { setoption(ss_cmd); }
-        else if (token == "go") { go(pos, ss_cmd); }
+        else if (token == "go") {
+			if (!GlobalThread) GlobalThread = new Thread();
+			go(pos, ss_cmd);
+		}
         else if (token == "position") { position(pos, ss_cmd); }
 		// custom command
         else if (token == "pos") { sync_cout << pos << "\nEvaluate : " << pos.GetEvaluate() << sync_endl; }
-		else if (token == "eval") { sync_cout << "eval = " << pos.GetEvaluate() << sync_endl; }
-        //else if (token == "atk") { sync_cout << move_list(moveList, pos.AttackGenerator(moveList), pos) << sync_endl; }
-		//else if (token == "move") { sync_cout << move_list(moveList, pos.MoveGenerator(moveList), pos) << sync_endl; }
-		//else if (token == "drop") { sync_cout << move_list(moveList, pos.HandGenerator(moveList), pos) << sync_endl; }
-		else if (token == "legal") { sync_cout << move_list(moveList, pos.GetLegalMoves(moveList)) << sync_endl; }
+		else if (token == "eval") { sync_cout << "Evaluate : " << pos.GetEvaluate() << sync_endl; }
+        else if (token == "atk") { sync_cout << move_list(moveList, pos.AttackGenerator(moveList), pos) << sync_endl; }
+		else if (token == "move") { sync_cout << move_list(moveList, pos.MoveGenerator(moveList), pos) << sync_endl; }
+		else if (token == "drop") { sync_cout << move_list(moveList, pos.HandGenerator(moveList), pos) << sync_endl; }
+		else if (token == "legal") {
+			ExtMove *end;
+			end = pos.AttackGenerator(moveList);
+			end = pos.MoveGenerator(end);
+			end = pos.HandGenerator(end);
+			sync_cout << move_list(moveList, end, pos) << sync_endl;
+		}
         else if (token == "sfen") { sync_cout << pos.Sfen() << sync_endl; }
 		else if (token == "log") { Observer::startLogger(true); }
 		else if (token == "version") { sync_cout << Observer::GetSettingStr() << sync_endl;	}
@@ -168,12 +181,12 @@ void USI::loop(int argc, char** argv) {
 		else if (token == "timetest") { timetest(ss_cmd); }
 		else if (token == "perft") { perft(pos, ss_cmd); }
         else if (token == "harry") {
-            if (!Limits.ponder)
+            if (GlobalThread && !Limits.ponder)
 				GlobalThread->Stop();
         }
         else if (token == "resign") {
             sync_cout << "bestmove resign" << sync_endl;
-            if (!Limits.ponder)
+            if (GlobalThread && !Limits.ponder)
 				GlobalThread->Stop();
         }
 		else if (token == "do") {
@@ -216,7 +229,7 @@ void USI::loop(int argc, char** argv) {
 		}
 		else if (token == "tt_read") { // TODO : value_from_tt
 			bool ttHit;
-			TTentry *tte = GlobalThread->tt.Probe(pos.GetKey(), ttHit);
+			TTentry *tte = GlobalTT.Probe(pos.GetKey(), ttHit);
 			if (ttHit)
 				sync_cout << "Value : " << (pos.GetTurn() ? -tte->value : tte->value)
 					<< "\nDepth : " << (int)tte->depth
@@ -264,7 +277,7 @@ string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 		<< " nps " << nodes * 1000 / elapsed;
 
 	if (elapsed > 1000)
-		ss << " hashfull " << th.tt.HashFull();
+		ss << " hashfull " << GlobalTT.HashFull();
 
 	ss << " time " << elapsed
 		<< " pv";
@@ -275,11 +288,13 @@ string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 	return ss.str();
 }
 
-string USI::move_list(Move *begin, Move *end) {
+string USI::move_list(ExtMove *begin, ExtMove *end, Minishogi &pos) {
 	stringstream ss;
-	//ss << "size : " << end - begin << " ";
-	for (; begin < end; begin++) {
-		ss << *begin << " ";
-	}
-	return ss.str();
+	int cnt = 0;
+	for (; begin < end; begin++)
+		if (!pos.IsInCheckedAfter(begin->move)) {
+			ss << begin->move << " ";
+			cnt++;
+		}
+	return "size:" + to_string(cnt) + " " + ss.str();
 }

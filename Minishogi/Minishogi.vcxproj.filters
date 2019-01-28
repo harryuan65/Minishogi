@@ -68,9 +68,6 @@
     <ClInclude Include="Bitboard.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="FileMapping.h">
-      <Filter>標頭檔</Filter>
-    </ClInclude>
     <ClInclude Include="Types.h">
       <Filter>標頭檔</Filter>
     </ClInclude>

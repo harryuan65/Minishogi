@@ -4,6 +4,7 @@
 #include "Observer.h"
 #include "Minishogi.h"
 #include "Movepick.h"
+
 using namespace std;
 
 namespace {
@@ -46,9 +47,9 @@ namespace {
 
   /// MovePicker constructor for the main search
 MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh,
-	const CapturePieceToHistory* cph, const PieceToHistory** ch, Move cm, Move* killers)
+	const CapturePieceToHistory* cph, const PieceToHistory** ch/*, Move cm, Move* killers*/)
 	: pos(p), depth(d), mainHistory(mh), captureHistory(cph), contHistory(ch)
-	,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } } {
+	/*,refutations{ { killers[0], 0 },{ killers[1], 0 },{ cm, 0 } } */{
 	assert(d > 0);
 
 #ifndef MOVEPICK_DISABLE
@@ -67,7 +68,6 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 	: pos(p), mainHistory(mh), captureHistory(cph), contHistory(ch), recaptureSquare(rs), depth(d) {
 	assert(d <= 0);
 
-//#ifndef MOVEPICK_DISABLE
 	if (pos.IsInChecked())
 		stage = EVASION_TT;
 	else if (d > -2)
@@ -81,10 +81,6 @@ MovePicker::MovePicker(Minishogi& p, Move ttm, int d, const ButterflyHistory* mh
 
 	ttMove = ttm && pos.PseudoLegal(ttm) ? ttm : MOVE_NULL;
 	stage += (ttMove == MOVE_NULL);
-/*#else
-	stage = NONSORT_INIT;
-	ttMove = MOVE_NULL;
-#endif*/
 }
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
@@ -117,9 +113,9 @@ void MovePicker::score(GenType type) {
 		}
 		else if (type == QUIETS) {
 			m.score = (*mainHistory)[pos.GetTurn()][from][to]
-				+ (*contHistory[0])[from_pc][to]
-				+ (*contHistory[1])[from_pc][to]
-				+ (*contHistory[3])[from_pc][to];
+					+ (*contHistory[0])[from_pc][to]
+					+ (*contHistory[1])[from_pc][to]
+					+ (*contHistory[3])[from_pc][to];
 		}
 		else { // Type == EVASIONS 
 			if (to_pc) {
@@ -182,7 +178,7 @@ top:
 
 	case GOOD_CAPTURE:
 		if (select<Best>([&]() {
-			return pos.SEE(move/*, Value(-55 * (cur - 1)->score / 1024)*/) ? true : (*endBadCaptures++ = move, false);
+			return pos.SEE(move) ? true : (*endBadCaptures++ = move, false);
 		}))
 			return move;
 
@@ -195,19 +191,19 @@ top:
 		if (refutations[0].move == refutations[2].move ||
 			refutations[1].move == refutations[2].move)
 			--endMoves;
-#endif
 
 		stage++;
 
 	case REFUTATION:
-#ifndef REFUTATION_DISABLE
 		if (select<Next>([&]() { 
 			return move != MOVE_NULL && !pos.GetCapture(move) && pos.PseudoLegal(move);
 		}))
 			return move;
-#endif
-
 		stage++;
+#else
+		stage += 2;
+
+#endif
 
 	case QUIET_INIT:
 		cur = endBadCaptures;

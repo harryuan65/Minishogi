@@ -1,12 +1,12 @@
 #include <iostream>
-#include <fstream>
-#include <windows.h>
+#include <filesystem>
 
 #include "Observer.h"
 #include "usi.h"
 
 using namespace std;
 using namespace USI;
+namespace fs = std::experimental::filesystem;
 
 namespace Observer {
 	struct Tie : public streambuf {
@@ -32,7 +32,7 @@ namespace Observer {
 			static Logger log;
 
 			if (b && !log.file.is_open()) {
-				CreateDirectory("log", NULL);
+				fs::create_directory("log");
 				log.file.open("log/" + GetTimeStamp() + "_io_log.txt", ifstream::out);
 				cin.rdbuf(&log.in);
 				cout.rdbuf(&log.out);
@@ -67,20 +67,18 @@ namespace Observer {
 	// 全部結果
 	uint64_t total_data[DataType::COUNT] = { 0 };
 	uint32_t gameNum = 0;
-	uint32_t player1WinNum = 0;
-	uint32_t player2WinNum = 0;
-	vector<Winner> winnerTable1;
-	vector<Winner> winnerTable2;
 	vector<uint64_t> initKey;
-	vector<uint32_t> kifuHash1;
-	vector<uint32_t> kifuHash2;
+
+	//uint64_t lmrTest[162];
+	//uint64_t total_lmrTest[162];
 	//int aspFail[6];
 	//int aspTime[6];
-
 
 	void StartSearching() {
 		for (int i = 0; i < COUNT; i++)
 			data[i] = 0;
+		//for (int i = 0; i < 70; i++)
+		//	lmrTest[i] = 0;
 		start_time = now();
 	}
 
@@ -89,6 +87,8 @@ namespace Observer {
 		data[searchTime] += now() - start_time;
 		for (int i = 0; i < COUNT; i++)
 			game_data[i] += data[i];
+		//for (int i = 0; i < 70; i++)
+		//	total_lmrTest[i] += lmrTest[i];
 	}
 
 	void GameStart() {
@@ -96,26 +96,19 @@ namespace Observer {
 			game_data[i] = 0;
 	}
 
-	void GameOver(bool _winner, bool isSwap, uint32_t _kifuHash) {
+	void GameOver(bool _winner, bool isSwap) {
 		gameNum++;
 		winner = (Winner)(_winner != isSwap);
-		if (winner == PLAYER1)
-			player1WinNum++;
-		else if (winner == PLAYER2)
-			player2WinNum++;
-		if (!isSwap) {
-			winnerTable1.push_back(winner);
-			kifuHash1.push_back(_kifuHash);
-		}
-		else {
-			winnerTable2.push_back(winner);
-			kifuHash2.push_back(_kifuHash);
-		}
 		for (int i = 0; i < COUNT; i++)
 			total_data[i] += game_data[i];
 	}
 
 	void PrintData(std::ostream &os, uint64_t *d) {
+		/*uint64_t maxLMR = *max_element(total_lmrTest, total_lmrTest + 162);
+		cout << "MAX LMR : " << maxLMR << endl;
+		for (int i = 0; i < 162; i++)
+			os << (double)Observer::total_lmrTest[i] / maxLMR << endl;*/
+
 		bool isZero = d[searchNum] == 0;
 		if (isZero) d[searchNum] = 1;
 		os << std::setiosflags(std::ios::fixed) << std::setprecision(2);
@@ -149,7 +142,6 @@ namespace Observer {
 		os << "Game" << setw(3) << gameNum - 1 << "\n";
 		os << "Game Result :\n";
 		os << " Winner                  : " << setw(10) << (winner ? "Player2" : "Player1") << "\n";
-		//os << " Kifu hashcode           : " << setw(10) << hex << kifuHash.back() << dec << "\n";
 		os << " Search depths           : " << setw(10) << Options["Depth"] << "\n";
 		os << " Search nums             : " << setw(10) << game_data[searchNum] << "\n";
 		PrintData(os, game_data);
@@ -168,30 +160,6 @@ namespace Observer {
 		os << " Search depths           : " << setw(10) << Options["Depth"] << "\n";
 		os << " Search nums             : " << setw(10) << total_data[searchNum] << "\n";
 		PrintData(os, total_data);
-		os << endl;
-	}
-
-	void PrintWinnerReport(ostream &os) {
-		if (!os) return;
-		if (gameNum == 0) return;
-		os << "Total Result :\n";
-		os << " Game play nums          : " << setw(10) << gameNum << "\n";
-		os << " Player 1 win nums       : " << setw(10) << player1WinNum << "\n";
-		os << " Player 2 win nums       : " << setw(10) << player2WinNum << "\n";
-		os << "Game | A | B |  A kifu  |  B kifu  | Game\n";
-		for (int i = 0; i < winnerTable1.size(); i++) {
-			os << setw(4) << i << " | " << (winnerTable1[i] ? "-" : "+") << " | ";
-			if (i < winnerTable2.size()) {
-				os << (winnerTable2[i] ? "-" : "+") << " | ";
-			}
-			os << hex << setw(8) << kifuHash1[i] << dec << " | ";
-			if (i < winnerTable2.size()) {
-				os << hex << setw(8) << kifuHash2[i] << dec << " | ";
-				os << setw(4) << i + winnerTable1.size();
-			}
-			os << "\n";
-		}
-		os << "(+:Player 1 win,-:Player 2 Win)\n";
 		os << endl;
 	}
 

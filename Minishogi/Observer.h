@@ -20,9 +20,9 @@
 #define ENEMY_ISO_TT
 //#define MOVEPICK_DISABLE
 #define REFUTATION_DISABLE
-#define BACKGROUND_SEARCH_DISABLE
+//#define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #114 nullMove ex nullmove R=3~4 DR=4"
+#define AI_NAME "Nyanpass #115 ponder"
 
 namespace Observer {
 	typedef std::chrono::milliseconds::rep TimePoint;
@@ -62,13 +62,9 @@ namespace Observer {
 	// 全部結果
 	extern uint64_t total_data[COUNT];
 	extern uint32_t gameNum;
-	extern uint32_t player1WinNum;
-	extern uint32_t player2WinNum;
-	extern std::vector<Winner> winnerTable1;
-	extern std::vector<Winner> winnerTable2;
-	extern std::vector<uint32_t> kifuHash1;
-	extern std::vector<uint32_t> kifuHash2;
 
+	//extern uint64_t lmrTest[162];
+	//extern uint64_t total_lmrTest[162];
 	//extern int aspFail[6];
 	//extern int aspTime[6];
 
@@ -96,12 +92,12 @@ namespace Observer {
 	void StartSearching();
 	void EndSearching();
 	void GameStart();
-	void GameOver(bool _winner, bool isSwap, uint32_t _kifuHash);
+	void GameOver(bool _winner, bool isSwap);
+
 	void PrintData(std::ostream &os, uint64_t *d);
 	void PrintSearchReport(std::ostream &os);
 	void PrintGameReport(std::ostream &os);
 	void PrintTotalReport(std::ostream &os);
-	void PrintWinnerReport(std::ostream &os);
 	std::string GetSettingStr();
 }
 #endif

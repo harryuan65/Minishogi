@@ -1,12 +1,10 @@
 #include <algorithm>
-#include <assert.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <filesystem>
 #include <vector>
 #define NOMINMAX
-#include <windows.h>
 
 #include "Thread.h"
 #include "Zobrist.h"
@@ -16,6 +14,7 @@
 #include "Evaluate.h"
 #include "EvaluateLearn.h"
 #include "usi.h"
+
 using namespace std;
 using namespace Evaluate;
 namespace fs = std::experimental::filesystem;
@@ -23,7 +22,7 @@ namespace fs = std::experimental::filesystem;
 Move algebraic2move(string str, Minishogi &pos) {
 	Piece srcPiece = NO_PIECE;
 	int i = 0, srcFile = -1, srcRank = -1, dstFile = -1, dstRank = -1;
-	bool isDrop = false, isPromote = false;
+	bool isDrop = false, isPromote = false, isCapture = false;
 
 	// mover pro (+)
 	if (str[i] == '+') {
@@ -47,6 +46,7 @@ Move algebraic2move(string str, Minishogi &pos) {
 	}
 	// atk (x)
 	if (str[i] == 'x') {
+		isCapture = true;
 		i++;
 	}
 	// drop (@)
@@ -79,7 +79,13 @@ Move algebraic2move(string str, Minishogi &pos) {
 	}
 
 	// Find Suitable Move
-	Move moveList[TOTAL_GENE_MAX_MOVES], *end = pos.GetTotalMoves(moveList);
+	ExtMove moveList[SINGLE_GENE_MAX_MOVES], *end;
+	if (isCapture)
+		end = pos.AttackGenerator(moveList);
+	else if (isDrop)
+		end = pos.HandGenerator(moveList);
+	else
+		end = pos.MoveGenerator(moveList);
 	for (auto *start = moveList; start < end; start++) {
 		if (srcPiece != NO_PIECE && pos.GetPiece(*start) != srcPiece)
 			continue;
@@ -91,10 +97,10 @@ Move algebraic2move(string str, Minishogi &pos) {
 			continue;
 		if (dstRank != -1 && to_sq(*start) / 5 != dstRank)
 			continue;
-		if (isDrop != is_drop(from_sq(*start)))
+		/*if (isDrop != is_drop(from_sq(*start)))
 			continue;
 		if (isPromote != is_promote(*start))
-			continue;
+			continue;*/
 		if (pos.IsInCheckedAfter(*start))
 			continue;
 		return *start;
@@ -107,7 +113,6 @@ Move algebraic2move(string str, Minishogi &pos) {
 	cout << "isDrop " << isDrop << " isPromote " << isPromote << endl;
 	cout << pos << endl;
 	system("pause");
-	assert(false);
 	return MOVE_NULL;
 }
 
@@ -407,10 +412,10 @@ namespace EvaluateLearn {
 		cout << "¿é¤J°V½mCycle¦¸¼Æ" << endl;
 		cin >> cycleNum;
 
-		// Initialize
+		// Resize
 		CreateDirectory(KPPT_DIRPATH.c_str(), NULL);
 		EvaluateLearn::InitGrad();
-		Zobrist::Initialize();
+		Zobrist::Resize();
 		cout << Observer::GetTimeStamp() << " Set Depth " << USI::Options["Depth"] << ",Cycle " << cycleNum
 			<< ",LEARN_PATCH_SIZE " << LEARN_PATCH_SIZE << ",EVAL_LIMIT " << EVAL_LIMIT << ",lambda " << lambda
 			<< ",gamma " << gamma << ",eta " << Weight::eta << ",skip_count " << Weight::skip_count << "\n";
@@ -439,11 +444,11 @@ namespace EvaluateLearn {
 		int update_patch = 1000000;
 		int save_patch   = 100000000;
 
-		KifuLearn(int ttSize) : Thread(ttSize) {}
+		KifuLearn() : Thread() {}
 
 		virtual void Run() {
 			vector<pair<Move, Value>> kifu;
-			CreateDirectory(KPPT_DIRPATH.c_str(), NULL);
+			fs::create_directory(KPPT_DIRPATH);
 
 			// Load Kifu Data
 			for (auto &p : fs::directory_iterator(kifu_path)) {
@@ -627,7 +632,7 @@ namespace EvaluateLearn {
 	};
 
 	void StartKifuLearn(istringstream& ss_cmd) {
-		KifuLearn *th = new KifuLearn(1);//(USI::Options["HashEntry"]);
+		KifuLearn *th = new KifuLearn();
 		string token;
 
 		while (ss_cmd >> token) {
@@ -653,6 +658,7 @@ namespace EvaluateLearn {
 		delete GlobalThread;
 		EvaluateLearn::InitGrad();
 		GlobalThread = th;
+		GlobalTT.Resize(1);
 		cout << "Kifu Learn Setting : eta " << Weight::eta 
 			<< " lambda " << lambda
 			<< " eval_limit " << th->eval_limit << endl;

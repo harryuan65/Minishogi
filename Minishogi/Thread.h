@@ -28,6 +28,7 @@
 
 typedef std::mutex Mutex;
 typedef std::condition_variable ConditionVariable;
+
 struct LimitsType;
 
 /// Threshold used for countermoves based pruning
@@ -40,7 +41,21 @@ struct RootMove {
 	Value value;
 	int depth;
 	
-	RootMove() { Clean(); }
+	RootMove() {
+		rootKey = KEY_NULL;
+		rootMove = MOVE_NULL;
+		pv[0] = MOVE_NULL;
+		value = VALUE_NONE;
+		depth = 0;
+	}
+
+	RootMove(Key key, Move move) {
+		rootKey = key;
+		rootMove = move;
+		pv[0] = MOVE_NULL;
+		value = VALUE_NONE;
+		depth = 0;
+	}
 
 	void Clean() {
 		rootKey = KEY_NULL;
@@ -68,7 +83,7 @@ struct Stack {
 	int ply;
 	Move currentMove;
 	//Move excludedMove;
-	Move killers[2];
+	//Move killers[2];
 	//Value staticEval;
 	//int statScore;
 	int moveCount;
@@ -81,12 +96,11 @@ public:
 	ButterflyHistory mainHistory;
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
-	CounterMoveHistory counterMoves;
-	Transposition tt;
+	//CounterMoveHistory counterMoves;
 	int selDepth;
 	int maxCheckPly;
 
-	Thread(int ttSize = 0);
+	Thread();
 	~Thread();
 	void Clean();
 
@@ -104,27 +118,28 @@ public:
 	void InitSearch();
 	//void StartGameLoop();
 	//void GameLoop();
-	void StartSearching(const Minishogi &rootPos, const LimitsType& limits);
 	void StartWorking();
+	void WaitWorking();
+	void StartSearching(const Minishogi &rootPos, const LimitsType& limits);
 	void IdleLoop();
 	void Stop();
 	virtual void Run();
 
 protected:
 	Minishogi pos;
-	bool isExit = false;
+	bool isExit;
 
 private:
-	Mutex searchMutex;
-	ConditionVariable searchCV;
+	Mutex mutex;
+	ConditionVariable cv;
 	std::thread stdThread;
 	Stack stack[MAX_PLY + 7], *ss;
 
 	RootMove bestMove;
 	std::vector<RootMove> rootMoves;
 	int beginTime = 0;
-	bool isSearching = false, finishDepth = false;
-	std::atomic_bool isStop = false;
+	bool isSearching, finishDepth;
+	std::atomic_bool isStop;
 };
 
 extern Thread *GlobalThread;

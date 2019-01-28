@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <fstream>
-#include <windows.h>
 //#include <iostream>
 
 #include "Zobrist.h"
@@ -9,6 +8,7 @@
 #include "Transposition.h"
 #include "Observer.h"
 #include "usi.h"
+
 using namespace USI;
 using namespace std;
 
@@ -39,7 +39,6 @@ void Thread::IDAS(RootMove &rm, int depth) {
 	fstream file;
 	Value value, alpha, beta, delta;
 	int rootDepth;
-	bool isWin;
 
 	selDepth = 0;
 #ifndef ITERATIVE_DEEPENING_DISABLE
@@ -47,19 +46,27 @@ void Thread::IDAS(RootMove &rm, int depth) {
 #else
 	rootDepth = depth;
 #endif
-	isWin = pos.IsChecking();
 	value = alpha = delta = -VALUE_INFINITE;
 	beta = VALUE_INFINITE;
 
-	if (rm.depth) {
-		if (rm.depth < depth) {
-			value = rm.value; 
-			rootDepth = rm.depth + 1;
-		}
+	if (pos.IsChecking()) {
+		rm.value = VALUE_MATE;
+		rm.depth = 0;
+		if (rm.rootKey == Limits.rootKey)
+			sync_cout << USI::pv(rm, *this, alpha, beta) << sync_endl;
+		return;
+	}
+	
+	if (rm.depth && rm.value != VALUE_NONE) {
+		value = rm.value; 
+		rootDepth = rm.depth + 1;
+		if (value >= VALUE_MATE_IN_MAX_PLY ||
+			value <= VALUE_MATED_IN_MAX_PLY)
+			return;
 	}
 
 	// Iterative Deepening
-	for (; rootDepth <= depth && !IsStop() && !isWin; rootDepth++) {
+	for (; rootDepth <= depth; rootDepth++) {
 		bool isResearch = false;
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
@@ -70,11 +77,9 @@ void Thread::IDAS(RootMove &rm, int depth) {
 #endif
 		
 		for (int retryCnt = 0; !IsStop(); retryCnt++) {
-			//cout << alpha << " " << beta << endl;
 			//Observer::aspTime[retryCnt]++;
 			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
 			
-#if 1
 			if (value <= alpha) {
 				if (retryCnt > 3) {
 					alpha = -VALUE_INFINITE;
@@ -91,29 +96,15 @@ void Thread::IDAS(RootMove &rm, int depth) {
 					beta = min(value + delta, VALUE_INFINITE);
 				}
 			}
-#else
-			if (value <= alpha || value >= beta) {
-				if (retryCnt > 3) {
-					alpha = -VALUE_INFINITE;
-					beta = VALUE_INFINITE;
-				}
-				else {
-					alpha = max(value - delta, -VALUE_INFINITE);
-					beta = min(value + delta, VALUE_INFINITE);
-				}
-			}
-#endif
 			else
 				break;
 			delta = delta * 2;
 			isResearch = true;
 			//Observer::aspFail[retryCnt]++;
 		}
-		if (IsStop()) {
-			//sync_cout << "readyok" << sync_endl;
-			break;
-		}
-
+		if (IsStop()) break;
+		
+		// Save Result
 		int i = 0;
 		rm.depth = rootDepth;
 		rm.value = value;
@@ -124,83 +115,72 @@ void Thread::IDAS(RootMove &rm, int depth) {
 		if (rm.rootKey == Limits.rootKey)
 			sync_cout << USI::pv(rm, *this, alpha, beta) << sync_endl;
 
-		// value => 必勝或必輸, ss->moveCount => 只有一個合法步
 		if (CheckStop(rm.rootKey) ||
-			value >= VALUE_MATE_IN_MAX_PLY || 
+			value >= VALUE_MATE_IN_MAX_PLY ||
 			value <= VALUE_MATED_IN_MAX_PLY ||
 			(!Limits.ponder && ss->moveCount == 1))
 			break;
 	}
-	if (isWin) { // Debug Usage
-		sync_cout << "info depth 0 score " << USI::value(VALUE_MATE) << sync_endl;
-	}
-
-	if (!Limits.ponder || isStop) {
-		if (isWin) {
-			sync_cout << "bestmove win" << sync_endl;
-		}
-		else if (value <= -VALUE_MATE + 1) {
-			sync_cout << "bestmove resign" << sync_endl;
-		}
-		else {
-			sync_cout << "bestmove " << rm.pv[0];
-			if (Options["USI_Ponder"] && rm.pv[1] != MOVE_NULL)
-				cout << " ponder " << rm.pv[1];
-			cout << sync_endl;
-		}
-	}
 }
 
 void Thread::PreIDAS() {
-	rootMoves.clear();
-
-	bool isTerminal = false;
-#ifndef BACKGROUND_SEARCH_DISABLE
-	Move move;
 	int depth = USI::Options["Depth"];
-	bool ttHit;
-	const TTentry *tte = tt.Probe(pos.GetKey(), pos.GetTurn(), ttHit); // Save TT?
-	const Move ttMove = ttHit ? tte->move : MOVE_NULL;
-	const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
-	const Move counterMove = MOVE_NULL;//counterMoves[rootPos.GetChessOn(to_sq((ss - 1)->currentMove))][to_sq((ss - 1)->currentMove)];
+	Move ponderMove = pos.GetPrevMove();
 
+	rootMoves.clear();
 	finishDepth = false;
-	MovePicker mp(pos, ttMove, depth, &mainHistory, &captureHistory, contHist, counterMove, nullptr);
-	sync_cout << "Thread : Preseaching Depth " << depth << sync_endl;
-	while (!IsStop() && ((move = mp.GetNextMove(false)) != MOVE_NULL)) {
-		rootMoves.emplace_back();
-		pos.DoMove(move);
-		rootMoves.back().rootKey = pos.GetKey();
-		rootMoves.back().rootMove = move;
+
+	if (Options["TotalMovePonder"] && pos.GetPly() > 0) {
+		bool ttHit;
+		const TTentry *tte = GlobalTT.Probe(pos.GetKey(), ttHit); // Save TT?
+		const Move ttMove = ttHit ? tte->move : MOVE_NULL;
+		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
+		//const Move counterMove = counterMoves[rootPos.GetChessOn(to_sq((ss - 1)->currentMove))][to_sq((ss - 1)->currentMove)];
+		Move move;
+		MovePicker mp(pos, ttMove, depth, &mainHistory, &captureHistory, contHist/*, counterMove, nullptr*/);
+		
+		while (!IsStop() && ((move = mp.GetNextMove()) != MOVE_NULL)) {
+			pos.UndoMove();
+			pos.DoMove(move);
+			(ss - 1)->currentMove = move;
+			(ss - 1)->contHistory = &contHistory[pos.GetPiece(move)][to_sq(move)];
+			rootMoves.emplace_back(pos.GetKey(), move);
+			IDAS(rootMoves.back(), depth);
+		}
+	}
+	else {
+		rootMoves.emplace_back(pos.GetKey(), ponderMove);
 		IDAS(rootMoves.back(), depth);
-		pos.UndoMove();
 	}
+
 	finishDepth = true;
-	if (!rootMoves.size()) {
-		isExit = true;
-		return;
-	}
 	depth++;
 
-	while (!IsStop() && !isTerminal) {
-		isTerminal = true;
-		sync_cout << "Thread : Preseaching Depth " << depth << sync_endl;
-		for (int i = 0; !IsStop() && i < rootMoves.size(); i++) {
-			if (rootMoves[i].value >= VALUE_MATE_IN_MAX_PLY || 
-				rootMoves[i].value <= VALUE_MATED_IN_MAX_PLY)
+	bool isCompleted = false;
+	while (!IsStop() && !isCompleted) {
+		isCompleted = true;
+		for (auto& rm : rootMoves) {
+			if (IsStop() ||
+				rm.value >= VALUE_MATE_IN_MAX_PLY ||
+				rm.value <= VALUE_MATED_IN_MAX_PLY)
 				continue;
-			isTerminal = false;
-			pos.DoMove(rootMoves[i].rootMove);
-			IDAS(rootMoves[i], depth);
-			pos.UndoMove();
+
+			isCompleted = false;
+			if (Options["TotalMovePonder"] && pos.GetPly() > 0) {
+				pos.UndoMove();
+				pos.DoMove(rm.rootMove);
+				(ss - 1)->currentMove = rm.rootMove;
+				(ss - 1)->contHistory = &contHistory[pos.GetPiece(rm.rootMove)][to_sq(rm.rootMove)];
+			}
+			IDAS(rm, depth);
 		}
 		depth++;
 	}
-#else
-	isTerminal = true;
-#endif
-	while (isTerminal && !CheckStop())
-		Sleep(10);
+
+	if (pos.GetPrevMove() != ponderMove) {
+		pos.UndoMove();
+		pos.DoMove(ponderMove);
+	}
 }
 
 namespace {
@@ -232,11 +212,11 @@ namespace {
 		ss->lmr_flag = (ss - 1)->lmr_flag;
 		ss->currentMove = bestMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
-		(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
+		//(ss + 2)->killers[0] = (ss + 2)->killers[1] = MOVE_NULL;
 		prevSq = to_sq((ss - 1)->currentMove);
 
 		// Transposition table lookup
-		tte = thisThread->tt.Probe(pos.GetKey(), ttHit);
+		tte = GlobalTT.Probe(pos.GetKey(), ttHit);
 		ttValue = ttHit ? value_from_tt(tte->value, pos.GetTurn(), ss->ply) : VALUE_NONE;
 		ttMove = ttHit ? tte->move : MOVE_NULL;
 
@@ -345,8 +325,8 @@ namespace {
 #endif
 
 		const PieceToHistory* contHist[] = { (ss - 1)->contHistory, (ss - 2)->contHistory, nullptr, (ss - 4)->contHistory };
-		Move capturesSearched[32], quietsSearched[64], countermove = thisThread->counterMoves[pos.GetBoard(prevSq)][prevSq];
-		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist, countermove, ss->killers);
+		Move capturesSearched[32], quietsSearched[64]; //, countermove = thisThread->counterMoves[pos.GetBoard(prevSq)][prevSq];
+		MovePicker mp(pos, ttMove, depth, &thisThread->mainHistory, &thisThread->captureHistory, contHist/*, countermove, ss->killers*/);
 		bool isInChecked = pos.IsInChecked(); // 若此盤面處於被將 解將不考慮千日手
 		int captureCount = 0, quietCount = 0;
 		
@@ -373,16 +353,16 @@ namespace {
 					// Late Move Reduction
 #ifndef LMR_DISABLE
 					if (!pvNode &&
-						depth >= 3 &&
+						depth >= 4 &&
 						bestValue > VALUE_MATED_IN_MAX_PLY &&
 						ss->moveCount >= 5 &&
 						!(ss - 1)->lmr_flag &&
+						!(ss - 1)->nmp_flag &&
 						!isCapture &&
-						from_sq(move) < BOARD_NB &&
 						!isInChecked &&
 						!pos.IsInChecked()) {
 						ss->lmr_flag = true;
-						R = 1;
+						R = depth / 3;
 					}
 #endif
 
@@ -456,14 +436,10 @@ namespace {
 		/*if (value < beta && nullValue != VALUE_NONE && nullValue > value)
 			Observer::data[Observer::zugzwangsNum]++;*/
 
-		// Debug : LMR test
-		/*if (!pvNode &&
-			depth >= 3 &&
-			bestValue > VALUE_MATED_IN_MAX_PLY &&
-			ss->moveCount > 5 &&
-			!(ss - 1)->nmp_flag &&
-			!isChecked) {
-			Observer::data[Observer::lmrTestNum]++;
+		// Debug : move ordering
+		/*if (value >= beta &&
+			!pos.IsInChecked()) {
+			Observer::lmrTest[ss->moveCount]++;
 		}*/
 
 		Observer::data[Observer::scoutSearchBranch] += ss->moveCount;
@@ -521,7 +497,7 @@ namespace {
 		ss->currentMove = bestMove = MOVE_NULL;
 		ss->contHistory = &thisThread->contHistory[NO_PIECE][0];
 
-		tte = thisThread->tt.Probe(key, ttHit);
+		tte = GlobalTT.Probe(key, ttHit);
 		ttValue = ttHit ? value_from_tt(tte->value, pos.GetTurn(), ss->ply) : VALUE_NONE;
 		ttMove = ttHit ? tte->move : MOVE_NULL;
 		ttMoveLegal = ttHit ? pos.PseudoLegal(ttMove) : true;

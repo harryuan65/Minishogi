@@ -1,51 +1,45 @@
 #include <assert.h>
 #include <iostream>
+#ifdef _WIN32
 #include <windows.h>
+#elif __unix__
+#include <unistd.h>
+#endif
 
 #include "usi.h"
 #include "Types.h"
 #include "Thread.h"
 #include "Observer.h"
+
 using namespace std;
 using namespace USI;
 
 Thread *GlobalThread;
 
-Thread::Thread(int ttSize) : pos(this), stdThread(&Thread::IdleLoop, this) {
-	//int ttBit = ttSize ? log2(ttSize) + 16 : 1;
-	tt.Initialize(ttSize);
-	selDepth = 0;
-	maxCheckPly = Options["MaxCheckPly"];
+Thread::Thread() : pos(this) {
+	WaitWorking();
 
-	counterMoves.fill(MOVE_NULL);
-	mainHistory.fill(0);
-	captureHistory.fill(0);
-	for (int i = 0; i < PIECE_NB; i++)
-		for (int j = 0; j < SQUARE_NB; j++)
-			contHistory[i][j].fill(0);
-	contHistory[NO_PIECE][0].fill(CounterMovePruneThreshold - 1);
-
-	ss = stack + 4; // To reference from (ss-4) to (ss+2)
-	memset(ss - 4, 0, 7 * sizeof(Stack));
-	for (int i = 4; i > 0; i--)
-		(ss - i)->contHistory = &contHistory[NO_PIECE][0]; // Use as sentinel
+	isExit = false;
+	isStop = false;
+	isSearching = true;
+	finishDepth = false;
+	Clean();
+	stdThread = thread(&Thread::IdleLoop, this);
 }
 
 Thread::~Thread() {
-	searchMutex.lock();
 	isExit = true;
-	isSearching = true;
-	searchCV.notify_all();
-	searchMutex.unlock();
+	StartWorking();
 	stdThread.join();
 	sync_cout << "Thread Delete" << sync_endl;
 }
 
 void Thread::Clean() {
-	tt.Clean();
 	selDepth = 0;
+	maxCheckPly = Options["MaxCheckPly"];
+	GlobalTT.Resize(USI::Options["HashEntry"]);
 
-	counterMoves.fill(MOVE_NULL);
+	//counterMoves.fill(MOVE_NULL);
 	mainHistory.fill(0);
 	captureHistory.fill(0);
 	for (int i = 0; i < PIECE_NB; i++)
@@ -68,32 +62,12 @@ bool Thread::CheckStop(Key rootKey) {
 	return isStop;
 }
 
-/*void Thread::SetEnemyMove(Key k) {
-	lock_guard<Mutex> lk(moveMutex);
-	bestMove.depth = 0;
-	Limits.rootKey = k;
-	sync_cout << "GameLoop : Set enemy move to Thread " << sync_endl;
-}
-
-RootMove Thread::GetBestMove() {
-	unique_lock<Mutex> lk(moveMutex);
-	if (!bestMove.depth) {
-		sync_cout << "GameLoop : Waiting move from Thread " << sync_endl;
-		beginTime = clock();
-		moveCV.wait(lk, [&] { return bestMove.depth; });
-		beginTime = 0;
-		lk.unlock();
-	}
-	sync_cout << "GameLoop : Thread Finished" << sync_endl;
-	return bestMove;
-}*/
-
 void Thread::InitSearch() {
-	int ply = pos.GetPly();
-
 	finishDepth = false;
 	ss = stack + 4;
 	memset(ss - 4, 0, 7 * sizeof(Stack));
+
+	int ply = pos.GetPly();
 	for (int i = 1; i <= 4 && i <= ply; i++) {
 		(ss - i)->currentMove = pos.GetHistMove(ply - i + 1);
 		pos.UndoMove();
@@ -107,87 +81,106 @@ void Thread::InitSearch() {
 			(ss - i)->contHistory = &contHistory[NO_PIECE][0];
 		}
 	}
-	//tt.Clean();
+}
+
+void Thread::StartWorking() {
+	lock_guard<Mutex> lk(mutex);
+
+	isSearching = true;
+	cv.notify_one(); // Wake up the thread in idle_loop()
+}
+
+void Thread::WaitWorking() {
+	unique_lock<Mutex> lk(mutex);
+	cv.wait(lk, [&] { return !isSearching; });
 }
 
 void Thread::StartSearching(const Minishogi &rootPos, const LimitsType& limits) {
-	if (Limits.ponder) {
-		Limits.rootKey = limits.rootKey;
-		Limits.ponder = false;
-	}
-	else {
-		bestMove.Clean();
-	}
-
 	isStop = true;
-	lock_guard<Mutex> lk(searchMutex);
+	WaitWorking();
+	isStop = false;
 
 	pos.Initialize(rootPos);
 	Limits = limits;
 	assert(pos.GetKey() == Limits.rootKey);
 
-	isSearching = true;
-	searchCV.notify_one(); // Wake up the thread in idle_loop()
-}
-
-void Thread::StartWorking() {
-	isStop = true;
-	lock_guard<Mutex> lk(searchMutex);
-
-	isSearching = true;
-	searchCV.notify_one(); // Wake up the thread in idle_loop()
+	StartWorking();
 }
 
 void Thread::IdleLoop() {
-	while (!isExit) {
-		unique_lock<Mutex> lk(searchMutex);
-
+	while (true) {
+		unique_lock<Mutex> lk(mutex);
 		isSearching = false;
-
-		while (!isSearching && !isExit) {
-			searchCV.notify_one();
-			searchCV.wait(lk, [&] { return isSearching; });
-		}
+		cv.notify_one();
+		cv.wait(lk, [&] { return isSearching; });
+		
+		if (isExit)
+			return;
 
 		lk.unlock();
-		isStop = false;
 
-		if (!isExit)
-			Run();
+		Run();
 	}
 }
 
 void Thread::Run() {
+	InitSearch();
 	if (Limits.ponder) {
-		rootMoves.clear();
-		if (Options["FullMovePonder"] && pos.GetPly() > 0) {
-			Move ponderMove = pos.GetPrevMove();
-			pos.UndoMove();
-			InitSearch();
-			Observer::StartSearching();
-			PreIDAS();
-			Observer::EndSearching();
-			pos.DoMove(ponderMove);
-		}
-		else {
-			InitSearch();
-			rootMoves.emplace_back();
-			rootMoves[0].rootKey = pos.GetKey();
-			Observer::StartSearching();
-			IDAS(rootMoves[0], MAX_PLY);
-			Observer::EndSearching();
-		}
-	}
-	else {
-		for (int i = 0; i < rootMoves.size(); i++) {
-			if (rootMoves[i].rootKey == Limits.rootKey) {
-				bestMove = rootMoves[i];
+#ifndef BACKGROUND_SEARCH_DISABLE
+		Observer::StartSearching();
+		PreIDAS();
+
+		// Select ponder result to show 'bestmove'
+		for (auto& rm : rootMoves) {
+			if (rm.rootKey == Limits.rootKey) {
+				bestMove = rm;
+				break;
 			}
 		}
-		InitSearch();
-		bestMove.rootKey = pos.GetKey();
+		Observer::EndSearching();
+#endif
+		// Wait for USI call 'ponderhit' or 'stop'
+		while (!CheckStop())
+#ifdef _WIN32
+			Sleep(10);
+#elif __unix__
+			delay(10);
+#endif
+	}
+	else {
 		Observer::StartSearching();
+		// Load ponder result
+		for (auto& rm : rootMoves) {
+			if (rm.rootKey == Limits.rootKey) {
+				bestMove = rm;
+				break;
+			}
+		}
+		bestMove.Clean();
+		bestMove.rootKey = pos.GetKey();
 		IDAS(bestMove, USI::Options["Depth"]);
 		Observer::EndSearching();
+	}
+
+	// Show 'bestmove'
+	if (bestMove.value == VALUE_MATE) {
+		sync_cout << "bestmove win" << sync_endl;
+	}
+	else if (bestMove.value <= -VALUE_MATE + 1) {
+		sync_cout << "bestmove resign" << sync_endl;
+	}
+	else {
+		/*stringstream str;
+		cout << endl;
+		cout.flush();
+		str << "bestmove " << bestMove.pv[0];
+		if (Options["USI_Ponder"] && bestMove.pv[1] != MOVE_NULL)
+			str << " ponder " << bestMove.pv[1];
+		sync_cout << str.str() << sync_endl;
+		cout.flush();*/
+		sync_cout << endl << "bestmove " << bestMove.pv[0];
+		if (Options["USI_Ponder"] && bestMove.pv[1] != MOVE_NULL)
+			cout << " ponder " << bestMove.pv[1];
+		cout << sync_endl;
 	}
 }

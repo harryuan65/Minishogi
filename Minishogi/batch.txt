@@ -4,12 +4,16 @@ isready
 usinewgame
 go
 
-setoption name depth value 10
 usi
 isready
 usinewgame
-position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves
+position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves 2e3d
+go ponder
+stop
+go ponder
+ponderhit
 go
+stop
 
 -------usi option------
 setoption name depth value 5
@@ -24,9 +28,11 @@ kifulearn kifu_path "C:\Users\Nyanpass\Desktop\test_kifu" teacher "Shokidoki UEC
 // 2014.10 "Shokidoki tori3"  from http://hgm.nubati.net/WinBoard-mini.exe
 // 2015.07 "Shokidoki euro"   from http://hgm.nubati.net/WinBoard-Chu.zip
 // 2015.12 "Shokidoki UEC9+"  from http://hgm.nubati.net/miniShogi.zip
+// http://hgm.nubati.net/UCI2WB.zip 
+// http://hgm.nubati.net/WinBoard-AA.zip
 
 -------timetest-------
-setoption name depth value 14
+setoption name depth value 12
 timetest path "D:\Nyanpass\Nyanpass Project\Training Kifu/shokidoki15_train1.pgn" test_num 200
 
 -------make opening-------
@@ -40,43 +46,3 @@ make_opening src_file 20181010-6.pgn game_per_file 20
 make_opening src_file 20181010-5.pgn game_per_file 20
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-position sfen 1r1gk/b2s1/P3p/2S2/KGRB1 w - 10
-go
-
-position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves 2e3d 5a5b 1e1d 5b5a 1d1e 5a5b 
-
-uci
-setoption name UCI_Variant value minishogi
-position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves e1e4 e5e4 d1b3 d5e5 c1d2 R@d4 P@e3
-go perft 1
-
-position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves 1e1b 1a1b 2e4c 2a1a 3e2d R*2b P*1c
-perft 1
-
-position sfen rbsgk/4p/5/P4/KGSBR b - 1 moves a2a3 a5a3 a1b2 a3b3 b2a1 b3a3 a1b2 a3b3 b2a1 b3a3 a1b2 a3b3 b2a1 b3a3 a1b2 a3b3 b2a1 b3a3 a1b2
-go perft 1
- a3b3 b2a1 b3a3 a1b2
-
-do 5d5c
-do 5a5c
-do 5e4d
-do 5c4c
-do 4d5e
-legal
-do 4c5c

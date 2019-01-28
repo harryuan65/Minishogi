@@ -2,6 +2,7 @@
 #define _MOVEPICK_H_
 
 #include <array>
+
 #include "Minishogi.h"
 
 /// StatsEntry stores the stat table value. It is usually a number but could
@@ -90,7 +91,7 @@ public:
 	MovePicker& operator=(const MovePicker&) = delete;
 	//MovePicker(Minishogi&, Move, Value, const CapturePieceToHistory*);
 	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Square);
-	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory**, Move, Move*);
+	MovePicker(Minishogi&, Move, int depth, const ButterflyHistory*, const CapturePieceToHistory*, const PieceToHistory** /*, Move, Move**/);
 	Move GetNextMove();
 	int GetStage() { return stage; }
 

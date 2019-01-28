@@ -48,11 +48,10 @@ private:
     Fn* on_change_;
 };
 
-// 大文字小文字を区別せず、アルファベット順の大小比較をする。これはstd::mapのために定義されている。
-// これにより、OptionsMapはアルファベット順にオーダリングされることになる。
+// OptionsMap 以ASCII code排序
 struct CaseInsensitiveLess {
     bool operator() (const std::string& s1, const std::string& s2) const     {
-        // lexicographical_compare はコンテナを比較する
+        // lexicographical_compare 順序比較
         return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(),
             [](char c1, char c2) { return tolower(c1) < tolower(c2); });
     }
@@ -76,28 +75,28 @@ struct LimitsType {
     // 増加時間
     int inc[2];
 
-    // 秒読み(ms換算で)
+    // 讀秒(ms換算で)
     int byoyomi;
 
-    // 探索深さを固定するとき用(0以外を指定してあるなら)
+    // 固定深度搜尋之深度(0為不固定)
     int depth;
 
-    // 固定思考時間(0以外が指定してあるなら) : 単位は[ms]
+    // 固定思考時間之時間(0為無限制) 單位:ms
     int move_time;
 
-    // 思考時間無制限かどうかのフラグ。非0なら無制限。
+    // 思考時間限制 flag(true為無限制)
     bool infinite;
 
-    // ponder中であるかのフラグ
+    // ponder flag
     Key ponder;
 
-	// 探索盤面 hash
+	// 搜索根盤面 hash key
 	Key rootKey;
 
-    // この探索ノード数だけ探索したら探索を打ち切る。
+    // 固定node數搜尋之數量
     uint64_t nodes;
 
-    // go開始時刻
+    // go開始時間
     TimePoint start_time;
 };
 
@@ -117,7 +116,7 @@ namespace USI {
 
     std::string value(Value s);
     std::string pv(const RootMove &rm, const Thread &th, Value alpha, Value beta);
-	std::string move_list(Move *begin, Move *end);
+	std::string move_list(ExtMove *begin, ExtMove *end, Minishogi &pos);
 }
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om);

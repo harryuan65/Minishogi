@@ -1,12 +1,14 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #define NOMINMAX
-#include <windows.h>
 
 #include "Evaluate.h"
 #include "Thread.h"
 #include "Observer.h"
+
 using namespace std;
+namespace fs = std::experimental::filesystem;
 
 namespace Evaluate {
 	Evaluater GlobalEvaluater;
@@ -30,7 +32,7 @@ namespace Evaluate {
 	}
 
 	bool Evaluater::Save(string path) {
-		CreateDirectory(path.c_str(), NULL);
+		fs::create_directory(path);
 
 		ofstream ofKK(path + "/" + KK_FILENAME, ios::binary);
 		ofstream ofKKP(path + "/" + KKP_FILENAME, ios::binary);

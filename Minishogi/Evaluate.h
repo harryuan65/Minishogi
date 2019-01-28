@@ -2,6 +2,7 @@
 #define _EVALUATE_H_
 #include <array>
 #include <string>
+
 #include "Types.h"
 
 class Minishogi;

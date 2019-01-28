@@ -1,9 +1,12 @@
 #include <string>
-#include <windows.h>
+#include <filesystem>
+#include <algorithm>
 
 #include "Observer.h"
 #include "usi.h"
 #include "EvaluateLearn.h"
+
+namespace fs = std::experimental::filesystem;
 using namespace std;
 
 struct TimeTestThread : public Thread {
@@ -12,7 +15,7 @@ struct TimeTestThread : public Thread {
 	string path = "board/timetest.sfen";
 	int test_num = 50;
 
-	TimeTestThread(int ttSize) : Thread(ttSize) {}
+	TimeTestThread() : Thread() {}
 
 	void Test_sfen() {
 		streamoff readBoardOffset = 0;
@@ -76,7 +79,7 @@ struct TimeTestThread : public Thread {
 					}
 					else {
 						// 排除mini-opening上的evaluate
-						for (int i = kifu.size() - 1; i >= 0 && kifu[i].first != MOVE_NONE; i--)
+						for (size_t i = kifu.size() - 1; i >= 0 && kifu[i].first != MOVE_NONE; i--)
 							kifu[i].second = VALUE_NONE;
 					}
 					pos.DoMove(kifu.back().first);
@@ -161,13 +164,13 @@ struct TimeTestThread : public Thread {
 			sync_cout << "Error : Wrong file extension \"" << ext << "\"" << sync_endl;
 		}
 
-		Observer::GameOver(0, 0, 0);
+		Observer::GameOver(0, 0);
 		Observer::PrintGameReport(cout);
 	}
 };
 
 void USI::timetest(istringstream& ss_cmd) {
-	TimeTestThread *th = new TimeTestThread(USI::Options["HashEntry"]);
+	TimeTestThread *th = new TimeTestThread();
 	string token;
 
 	while (ss_cmd >> token) {
@@ -228,17 +231,21 @@ void perft(Minishogi &pos, Move m, int depth, PerftResult &r) {
 			r.promotions++;
 		if (pos.IsInChecked()) {
 			r.checks++;
-			if (pos.IsGameOver())
+			if (pos.IsMate())
 				r.checkmates++;
 		}
 	}
 	else {
-		Move moveList[TOTAL_GENE_MAX_MOVES], *end;
-		end = pos.GetLegalMoves(moveList);
-		for (Move* m = moveList; m < end; m++) {
-			pos.DoMove(*m);
-			perft(pos, *m, depth - 1, r);
-			pos.UndoMove();
+		ExtMove moveList[TOTAL_GENE_MAX_MOVES], *end;
+		end = pos.AttackGenerator(moveList);
+		end = pos.MoveGenerator(end);
+		end = pos.HandGenerator(end);
+		for (auto* m = moveList; m < end; m++) {
+			if (!pos.IsInCheckedAfter(*m)) {
+				pos.DoMove(*m);
+				perft(pos, *m, depth - 1, r);
+				pos.UndoMove();
+			}
 		}
 	}
 }
@@ -288,7 +295,7 @@ void USI::make_opening(istringstream& ss_cmd) {
 		else if (token == "hash_size")     ss_cmd >> hash_size;
 	}
 
-	int start = 0, len = 0;
+	streamoff start = 0, len = 0;
 	string line;
 	float f;
 	char c;
@@ -299,7 +306,7 @@ void USI::make_opening(istringstream& ss_cmd) {
 	cout << "-src_path " << src_dir + src_file << "\n-game_per_file " << game_per_file << "\n-sample_skip " << sample_skip << "\n-sample_rate " << sample_rate << "\n-hash_size " << hash_size << "MB\n";
 	cout << "making opening start\n";
 
-	CreateDirectory(dst_dir.c_str(), NULL);
+	fs::create_directory(dst_dir);
 	ifstream ifile(src_dir + src_file);
 	ofstream ofile;
 	string src_name = src_file.substr(0, src_file.find('.'));

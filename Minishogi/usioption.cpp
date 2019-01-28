@@ -9,6 +9,7 @@
 #include "usi.h"
 #include "Evaluate.h"
 #include "Observer.h"
+
 using namespace std;
 using namespace Evaluate;
 namespace fs = std::experimental::filesystem;
@@ -45,7 +46,7 @@ void OptionsMap::Initialize() {
 
     //(*this)["Hash"]            = Option(2048, 1, 65536);
 	(*this)["HashEntry"]       = Option(27, 1, 32);
-	(*this)["Depth"]           = Option(12, 1, 16);
+	(*this)["Depth"]           = Option(14, 1, 128);
     (*this)["USI_Ponder"]      = Option(true);
 	(*this)["FullMovePonder"]  = Option(false);
     (*this)["NetworkDelay"]    = Option(0, 0, 60000);

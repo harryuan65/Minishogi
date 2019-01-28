@@ -33,8 +33,7 @@ struct StateInfo {
 	Piece capture;
 	Bitboard checker_bb;
 	// 移動與吃子的BonaPiece變化
-	// 0 MoverDiff 1 CaptureDiff
-	BonaPieceDiff bonaPieceDiff[2];
+	BonaPieceDiff bonaPieceDiff[2]; // 0 MoverDiff 1 CaptureDiff
 	int sCount;
 	bool sLegal;
 	SennichiteType sType;
@@ -56,33 +55,27 @@ public:
 	void UndoMove();
 	void DoNullMove();
 	void UndoNullMove();
-	bool PseudoLegal(Move m) const;
 
 	ExtMove* AttackGenerator(ExtMove *moveList, Bitboard dstBB = BitboardMask) const;
 	ExtMove* MoveGenerator(ExtMove *moveList) const;
 	ExtMove* HandGenerator(ExtMove *moveList) const;
 	bool SEE(Move m, Value threshold = VALUE_ZERO) const;
 
-	void PrintChessBoard() const;
 	bool SaveBoard(std::string filename) const;
 	bool LoadBoard(std::string filename, std::streamoff &offset);
-	void PrintKifu(std::ostream &os) const;
+
 
 	/* Slow, just for debug */
 
 	// Position結構是否正確
 	bool CheckLegal() const;
-	// 是否有合法步可動
-	bool IsGameOver();
-	// 完整判斷是否為合法步
-	bool IsLegelAction(Move m);
-	// 產生所有移動 不排除千日手和自殺步
-	Move* GetTotalMoves(Move* moveList);
-	// 產生所有移動 並排除千日手和自殺步
-	Move* GetLegalMoves(Move* moveList);
+	bool IsMate();
+
 
 	/* Fast, use in search */
 
+	// 該移動是否是合法步 不檢查千日手等違規步
+	bool PseudoLegal(Move m) const;
 	// 現在是否將軍對方
 	bool IsChecking();
 	// 移動完有沒有將軍對方
@@ -108,7 +101,6 @@ public:
 	Piece GetCapture(Move m) const;
 	Bitboard GetOccupied(Turn t) const;
 	Bitboard GetBitboard(Piece c) const;
-	uint32_t GetKifuHash() const;
 	const BonaPiece* GetPieceList(Turn t) const;
 
 	/* StateInfo Get Function */
@@ -211,13 +203,6 @@ inline Bitboard Minishogi::GetOccupied(Turn t) const {
 
 inline Bitboard Minishogi::GetBitboard(Piece c) const {
 	return bitboard[c];
-}
-
-inline uint32_t Minishogi::GetKifuHash() const {
-	unsigned int seed = ply;
-	//for (int i = 0; i < ply; i++)
-		//seed ^= toU32(moveHist[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	return seed;
 }
 
 inline const BonaPiece* Minishogi::GetPieceList(Turn t) const {
