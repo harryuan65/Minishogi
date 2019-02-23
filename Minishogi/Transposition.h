@@ -7,11 +7,11 @@
 #include "Zobrist.h"
 
 struct TTentry {
-	uint32_t key32;    //4Bytes
-	int16_t  value;    //2Bytes -32767~32767
-	int8_t   depth;    //1Bytes -128~127
-	Move     move;     //4Bytes
-	enum Bound : uint8_t {   //1Bytes 1~3
+	uint32_t key32;			// 4 Bytes
+	int16_t  value;			// 2 Bytes
+	int8_t   depth;			// 1 Bytes
+	Move     move;			// 4 Bytes
+	enum Bound : uint8_t {	// 1 Bytes
 		UNKNOWN = 1,
 		FAILHIGH = 2,
 		EXACT = 3

@@ -62,7 +62,6 @@ namespace Observer {
 	uint64_t game_data[DataType::COUNT];
 
 	Winner winner;
-	TimePoint start_time;
 
 	// 全部結果
 	uint64_t total_data[DataType::COUNT] = { 0 };
@@ -79,12 +78,11 @@ namespace Observer {
 			data[i] = 0;
 		//for (int i = 0; i < 70; i++)
 		//	lmrTest[i] = 0;
-		start_time = now();
 	}
 
-	void EndSearching() {
+	void EndSearching(int elpased) {
 		data[searchNum]++;
-		data[searchTime] += now() - start_time;
+		data[searchTime] += elpased;
 		for (int i = 0; i < COUNT; i++)
 			game_data[i] += data[i];
 		//for (int i = 0; i < 70; i++)

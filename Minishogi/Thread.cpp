@@ -10,6 +10,7 @@
 #include "Types.h"
 #include "Thread.h"
 #include "Observer.h"
+#include "TimeManage.h"
 
 using namespace std;
 using namespace USI;
@@ -22,7 +23,7 @@ Thread::Thread() : pos(this) {
 	isExit = false;
 	isStop = false;
 	isSearching = true;
-	finishDepth = false;
+	isFinishPonder = false;
 	Clean();
 	stdThread = thread(&Thread::IdleLoop, this);
 }
@@ -35,7 +36,7 @@ Thread::~Thread() {
 }
 
 void Thread::Clean() {
-	selDepth = 0;
+	//selDepth = 0;
 	maxCheckPly = Options["MaxCheckPly"];
 	GlobalTT.Resize(USI::Options["HashEntry"]);
 
@@ -54,16 +55,25 @@ void Thread::Clean() {
 }
 
 bool Thread::CheckStop(Key rootKey) {
-	if (isStop || isExit ||
-		//(Observer::limitTime && GetSearchDuration() > Observer::limitTime) ||
-		(!Limits.ponder && (Limits.rootKey != rootKey || finishDepth))) {
-		isStop = true;
+	if (isStop || isExit
+		|| (!Limits.ponder && (Limits.rootKey != rootKey || isFinishPonder))) {
+		return isStop = true;
+	}
+
+	if (Limits.ponder)
+		return isStop;
+
+	int elapsed = Time.Elapsed();
+	if ((!Limits.move_time && Limits.IsTimeManagement() && elapsed >= Time.GetMaximum())
+		|| (Limits.move_time && elapsed >= Limits.move_time)
+		|| (Limits.nodes && Observer::data[Observer::mainNode] >= Limits.nodes)) {
+		return isStop = true;
 	}
 	return isStop;
 }
 
 void Thread::InitSearch() {
-	finishDepth = false;
+	isFinishPonder = false;
 	ss = stack + 4;
 	memset(ss - 4, 0, 7 * sizeof(Stack));
 
@@ -81,6 +91,9 @@ void Thread::InitSearch() {
 			(ss - i)->contHistory = &contHistory[NO_PIECE][0];
 		}
 	}
+	Time.Init(Limits, pos.GetTurn(), ply);
+
+	GlobalTT.Clean();
 }
 
 void Thread::StartWorking() {
@@ -137,7 +150,7 @@ void Thread::Run() {
 				break;
 			}
 		}
-		Observer::EndSearching();
+		Observer::EndSearching(Time.Elapsed());
 #endif
 		// Wait for USI call 'ponderhit' or 'stop'
 		while (!CheckStop())
@@ -159,27 +172,20 @@ void Thread::Run() {
 		bestMove.Clean();
 		bestMove.rootKey = pos.GetKey();
 		IDAS(bestMove, USI::Options["Depth"]);
-		Observer::EndSearching();
+		Observer::EndSearching(Time.Elapsed());
 	}
 
 	// Show 'bestmove'
 	if (bestMove.value == VALUE_MATE) {
 		sync_cout << "bestmove win" << sync_endl;
 	}
-	else if (bestMove.value <= -VALUE_MATE + 1) {
-		sync_cout << "bestmove resign" << sync_endl;
+	// Debug : when checkmated position ponder miss UCI2WB will not send bestmove to winboard, then the engine can't quit (winboard think engine is pondering)
+	else if (VALUE_MATE + bestMove.value == 2) { 
+		sync_cout << endl << "bestmove resign" << sync_endl;
 	}
 	else {
-		/*stringstream str;
-		cout << endl;
-		cout.flush();
-		str << "bestmove " << bestMove.pv[0];
-		if (Options["USI_Ponder"] && bestMove.pv[1] != MOVE_NULL)
-			str << " ponder " << bestMove.pv[1];
-		sync_cout << str.str() << sync_endl;
-		cout.flush();*/
 		sync_cout << endl << "bestmove " << bestMove.pv[0];
-		if (Options["USI_Ponder"] && bestMove.pv[1] != MOVE_NULL)
+		if (Options["USI_Ponder"] && bestMove.pv[0] != MOVE_NULL && bestMove.pv[1] != MOVE_NULL)
 			cout << " ponder " << bestMove.pv[1];
 		cout << sync_endl;
 	}

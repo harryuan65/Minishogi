@@ -9,6 +9,7 @@
 #include "Thread.h"
 #include "Minishogi.h"
 #include "EvaluateLearn.h"
+#include "TimeManage.h"
 
 using namespace std;
 using namespace Evaluate;
@@ -55,10 +56,10 @@ void USI::go(const Minishogi &pos, istringstream& ss_cmd) {
 		if (token == "searchmoves")
 			while (ss_cmd >> token)
 				limits.search_moves.push_back(usi2move(token, Turn(pos.GetTurn() ^ (limits.search_moves.size() % 2))));
-        else if (token == "btime")    ss_cmd >> limits.time[BLACK];
-        else if (token == "wtime")    ss_cmd >> limits.time[WHITE];
-        else if (token == "binc")     ss_cmd >> limits.inc[BLACK];
-        else if (token == "winc")     ss_cmd >> limits.inc[WHITE];
+        else if (token == "btime")    ss_cmd >> limits.time[WHITE];
+        else if (token == "wtime")    ss_cmd >> limits.time[BLACK];
+        else if (token == "binc")     ss_cmd >> limits.inc[WHITE];
+        else if (token == "winc")     ss_cmd >> limits.inc[BLACK];
         else if (token == "movetime") ss_cmd >> limits.move_time;
         else if (token == "byoyomi")  ss_cmd >> limits.byoyomi;
         else if (token == "depth")    ss_cmd >> limits.depth;
@@ -139,10 +140,10 @@ void USI::loop(int argc, char** argv) {
 			}
 			else {
 				Limits.ponder = false;
-				if (Limits.byoyomi) {
+				//if (Limits.byoyomi) {
 					Limits.start_time = now();
-					//Time.reset();
-				}
+					Time.Reset();
+				//}
 			}
         }
         else if (token == "usinewgame") {
@@ -251,8 +252,10 @@ string USI::value(Value v) {
     assert(-SCORE_INFINITE < v && v < SCORE_INFINITE);
     stringstream ss;
 
-	if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-		ss << "cp " << (Options["EvalStandardize"] ? v * 100 / PIECE_SCORE[PAWN] : v);
+	if (abs(v) < VALUE_SENNI_IN_MAX_COUNT && Options["EvalStandardize"])
+		ss << "cp " << v * 100 / PIECE_SCORE[PAWN];
+	else if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+		ss << "cp " << v;
     else
         ss << "mate " << (v > 0 ? VALUE_MATE - v : -VALUE_MATE - v);
 
@@ -261,7 +264,7 @@ string USI::value(Value v) {
 
 string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 	stringstream ss;
-	int elapsed = int(now() - Observer::start_time + 1);
+	int elapsed = Time.Elapsed() + 1;
 	uint64_t nodes = Observer::data[Observer::mainNode] + Observer::data[Observer::quiesNode];
 
 	if (ss.rdbuf()->in_avail()) // Not at first line
@@ -269,7 +272,7 @@ string USI::pv(const RootMove &rm, const Thread &th, Value alpha, Value beta) {
 
 	ss << "info"
 		<< " depth " << rm.depth
-		<< " seldepth " << th.selDepth
+		//<< " seldepth " << th.selDepth
 		<< " multipv " << 1
 		<< " score " << USI::value(rm.value)
 		<< (rm.value >= beta ? " lowerbound" : rm.value <= alpha ? " upperbound" : "")

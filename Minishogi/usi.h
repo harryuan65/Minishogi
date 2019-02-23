@@ -65,7 +65,7 @@ public:
 
 struct LimitsType {
     LimitsType() { std::memset(this, 0, sizeof(LimitsType)); }
-    //bool useTimeManagement() const { return !(move_time | depth | nodes | infinite); }
+    inline bool IsTimeManagement() const { return !(move_time | depth | nodes | infinite); }
 
     std::vector<Move> search_moves;
 

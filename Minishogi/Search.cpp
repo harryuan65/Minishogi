@@ -8,6 +8,7 @@
 #include "Transposition.h"
 #include "Observer.h"
 #include "usi.h"
+#include "TimeManage.h"
 
 using namespace USI;
 using namespace std;
@@ -38,9 +39,10 @@ void Thread::Search(RootMove &rm, int depth) {
 void Thread::IDAS(RootMove &rm, int depth) {
 	fstream file;
 	Value value, alpha, beta, delta;
+	double pvFactor = 0;
 	int rootDepth;
 
-	selDepth = 0;
+	//selDepth = 0;
 #ifndef ITERATIVE_DEEPENING_DISABLE
 	rootDepth = 1;
 #else
@@ -66,8 +68,9 @@ void Thread::IDAS(RootMove &rm, int depth) {
 	}
 
 	// Iterative Deepening
-	for (; rootDepth <= depth; rootDepth++) {
+	while (true) {
 		bool isResearch = false;
+		pvFactor *= 0.55;
 #ifndef ASPIRE_WINDOW_DISABLE
 		if (rootDepth >= 5) {
 			delta = Value(150);
@@ -80,31 +83,27 @@ void Thread::IDAS(RootMove &rm, int depth) {
 			//Observer::aspTime[retryCnt]++;
 			value = NegaScout(true, pos, ss, rm.rootKey, alpha, beta, rootDepth, isResearch);
 			
-			if (value <= alpha) {
-				if (retryCnt > 3) {
+			if (value <= alpha) 
+				if (retryCnt > 3) 
 					alpha = -VALUE_INFINITE;
-				}
-				else {
+				else 
 					alpha = max(value - delta, -VALUE_INFINITE);
-				}
-			}
-			else if (value >= beta) {
-				if (retryCnt > 3) {
+			else if (value >= beta)
+				if (retryCnt > 3)
 					beta = VALUE_INFINITE;
-				}
-				else {
+				else
 					beta = min(value + delta, VALUE_INFINITE);
-				}
-			}
 			else
 				break;
 			delta = delta * 2;
 			isResearch = true;
 			//Observer::aspFail[retryCnt]++;
 		}
-		if (IsStop()) break;
-		
+		if (IsStop()) 
+			break;
+
 		// Save Result
+		pvFactor += rm.pv[0] != ss->pv[0];
 		int i = 0;
 		rm.depth = rootDepth;
 		rm.value = value;
@@ -115,11 +114,22 @@ void Thread::IDAS(RootMove &rm, int depth) {
 		if (rm.rootKey == Limits.rootKey)
 			sync_cout << USI::pv(rm, *this, alpha, beta) << sync_endl;
 
+		// Time Management
+		if (Limits.IsTimeManagement()) {
+			Time.SetTimer(rm.value, pvFactor);
+			if (!Limits.ponder) {
+				sync_cout << "info string optimum " << Time.GetOptimum() << " maximum " << Time.GetMaximum() << sync_endl;
+				if (Time.Elapsed() >= Time.GetOptimum())
+					break;
+			}
+		}
+
 		if (CheckStop(rm.rootKey) ||
-			value >= VALUE_MATE_IN_MAX_PLY ||
-			value <= VALUE_MATED_IN_MAX_PLY ||
+			value >= VALUE_SENNI_IN_MAX_COUNT ||
+			value <= -VALUE_SENNI_IN_MAX_COUNT ||
 			(!Limits.ponder && ss->moveCount == 1))
 			break;
+		rootDepth++;
 	}
 }
 
@@ -128,7 +138,7 @@ void Thread::PreIDAS() {
 	Move ponderMove = pos.GetPrevMove();
 
 	rootMoves.clear();
-	finishDepth = false;
+	isFinishPonder = false;
 
 	if (Options["TotalMovePonder"] && pos.GetPly() > 0) {
 		bool ttHit;
@@ -153,7 +163,7 @@ void Thread::PreIDAS() {
 		IDAS(rootMoves.back(), depth);
 	}
 
-	finishDepth = true;
+	isFinishPonder = true;
 	depth++;
 
 	bool isCompleted = false;
@@ -161,8 +171,8 @@ void Thread::PreIDAS() {
 		isCompleted = true;
 		for (auto& rm : rootMoves) {
 			if (IsStop() ||
-				rm.value >= VALUE_MATE_IN_MAX_PLY ||
-				rm.value <= VALUE_MATED_IN_MAX_PLY)
+				rm.value >= VALUE_SENNI_IN_MAX_COUNT ||
+				rm.value <= -VALUE_SENNI_IN_MAX_COUNT)
 				continue;
 
 			isCompleted = false;
@@ -202,8 +212,8 @@ namespace {
 		if (thisThread->CheckStop(rootKey))
 			return VALUE_ZERO;
 
-		if (pvNode && thisThread->selDepth < ss->ply)
-			thisThread->selDepth = ss->ply;
+		//if (pvNode && thisThread->selDepth < ss->ply)
+		//	thisThread->selDepth = ss->ply;
 
 		bestValue = -VALUE_INFINITE;
 		ss->moveCount = 0;
@@ -488,8 +498,8 @@ namespace {
 		if (pvNode) {
 			ss->pv[0] = MOVE_NULL;
 			oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-			if (thisThread->selDepth < ss->ply)
-				thisThread->selDepth = ss->ply;
+			//if (thisThread->selDepth < ss->ply)
+			//	thisThread->selDepth = ss->ply;
 		}
 
 		ss->moveCount = 0;

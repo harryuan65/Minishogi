@@ -1,5 +1,6 @@
 #ifndef _BITBOARD_H_
 #define _BITBOARD_H_
+#include <intrin.h>
 #include "Types.h"
 
 typedef unsigned __int32 Bitboard;
@@ -193,19 +194,22 @@ const int index32[] = {
 	7, 24, 20,  6, 23,  5,  4, 31
 };
 
-// LSB
+// LSB 最右邊的1是第幾個bit 最右邊是0 
 inline Square BitScan(Bitboard bitboard) {
-    return (Square)index32[((bitboard ^ (bitboard - 1)) * debrujin32) >> 27];
+	//return Square(index32[((bitboard ^ (bitboard - 1)) * debrujin32) >> 27]);
+	return Square(_tzcnt_u32(bitboard));
 }
 
-// MSB
+// MSB 最左邊的1是第幾個bit 最右邊是0
 inline Square BitScanRev(Bitboard bitboard) {
+	/*Bitboard o = bitboard;
 	bitboard |= bitboard >> 1;
 	bitboard |= bitboard >> 2;
 	bitboard |= bitboard >> 4;
 	bitboard |= bitboard >> 8;
 	bitboard |= bitboard >> 16;
-    return (Square)index32[(bitboard * debrujin32) >> 27];
+	return Square(index32[(bitboard * debrujin32) >> 27]);*/
+	return Square(31 - _lzcnt_u32(bitboard));
 }
 
 // pin value

@@ -63,16 +63,17 @@ enum Value : int {
 	PIN_GOLD			= -377,
 	PIN_BISHOP			= -375,
 	PIN_ROOK			= -500,
-	PIN_PRO_PAWN		= PIN_PAWN,//-365,
-	PIN_PRO_SILVER		= PIN_SILVER,//-403,
-	PIN_PRO_BISHOP		= PIN_BISHOP,//-525,
-	PIN_PRO_ROOK		= PIN_ROOK,//-650,
+	PIN_PRO_PAWN		= PIN_PAWN,
+	PIN_PRO_SILVER		= PIN_SILVER,
+	PIN_PRO_BISHOP		= PIN_BISHOP,
+	PIN_PRO_ROOK		= PIN_ROOK,
 
 	VALUE_KNOWN_WIN		= 10000,
 	VALUE_MATE			= 30000,
 	VALUE_INFINITE		= 31001,
 	VALUE_NONE			= 32002,
 	VALUE_SENNICHITE	= 512,
+	VALUE_SENNI_IN_MAX_COUNT = (int)VALUE_MATE - 2 * (int)VALUE_SENNICHITE - 1,
 	VALUE_MATE_IN_MAX_PLY  = (int) VALUE_MATE - 2 * MAX_SEARCH_DEPTH,
 	VALUE_MATED_IN_MAX_PLY = (int)-VALUE_MATE + 2 * MAX_SEARCH_DEPTH
 };
@@ -280,30 +281,6 @@ const static int toU32(Move m) {
 	return (is_promote(m) << 24) | (to_sq(m) << 6) | from_sq(m);
 }
 
-/*static std::istream& operator>>(std::istream &is, Move &m) {
-	std::string str;
-	is >> str;
-	if (str == "SURRENDER" || str == "surrender")
-		m = MOVE_NULL;
-	else if (str == "UNDO" || str == "undo")
-		m = MOVE_UNDO;
-	//else if (str == "SAVEBOARD" || str == "saveboard")
-	//	m = MOVE_SAVEBOARD;
-	else if (str.length() != 4 && (str.length() == 5 && str[4] != '+'))
-		m = MOVE_NONE;
-	else if (str[1] == '*') {
-		m = make_move(Square(HAND_2_CHAR.find(str[0]) + BOARD_NB),
-			          Square((str[2] - 'a') * 5 + '5' - str[3]),
-			          false);
-	}
-	else {
-		m = make_move(Square((str[0] - 'a') * 5 + '5' - str[1]),
-			          Square((str[2] - 'a') * 5 + '5' - str[3]),
-			          str.length() == 5);
-	}
-	return is;
-}*/
-
 static Move usi2move(std::string str, Turn turn) {
 	Move m;
 	if (str == "resign")
@@ -328,7 +305,7 @@ static Move usi2move(std::string str, Turn turn) {
 static std::ostream& operator<<(std::ostream& os, Move m) {
 	switch (m) {
 	case MOVE_NULL:
-		os << "resign";
+		os << "resign"; //resign
 		break;
 	case MOVE_UNDO:
 		os << "undo";

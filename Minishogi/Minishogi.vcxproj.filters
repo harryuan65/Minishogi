@@ -54,6 +54,9 @@
     <ClCompile Include="Test.cpp">
       <Filter>標頭檔</Filter>
     </ClCompile>
+    <ClCompile Include="TimeManage.cpp">
+      <Filter>標頭檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Observer.h">
@@ -87,6 +90,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="usi.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeManage.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

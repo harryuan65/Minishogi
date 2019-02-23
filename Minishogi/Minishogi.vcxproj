@@ -158,6 +158,7 @@
     <ClCompile Include="Search.cpp" />
     <ClCompile Include="Test.cpp" />
     <ClCompile Include="Thread.cpp" />
+    <ClCompile Include="TimeManage.cpp" />
     <ClCompile Include="Transposition.cpp" />
     <ClCompile Include="usi.cpp" />
     <ClCompile Include="usioption.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="MovePick.h" />
     <ClInclude Include="Observer.h" />
     <ClInclude Include="Thread.h" />
+    <ClInclude Include="TimeManage.h" />
     <ClInclude Include="Transposition.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="usi.h" />

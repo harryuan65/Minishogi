@@ -97,7 +97,7 @@ public:
 	CapturePieceToHistory captureHistory;
 	PieceToHistory contHistory[PIECE_NB][SQUARE_NB];
 	//CounterMoveHistory counterMoves;
-	int selDepth;
+	//int selDepth;
 	int maxCheckPly;
 
 	Thread();
@@ -110,14 +110,8 @@ public:
 
 	bool IsStop();
 	bool CheckStop(Key rootKey = KEY_NULL);
-	uint64_t GetSearchDuration() const;
-
-	//void SetEnemyMove(Key k);
-	//RootMove GetBestMove();
 
 	void InitSearch();
-	//void StartGameLoop();
-	//void GameLoop();
 	void StartWorking();
 	void WaitWorking();
 	void StartSearching(const Minishogi &rootPos, const LimitsType& limits);
@@ -137,8 +131,7 @@ private:
 
 	RootMove bestMove;
 	std::vector<RootMove> rootMoves;
-	int beginTime = 0;
-	bool isSearching, finishDepth;
+	bool isSearching, isFinishPonder;
 	std::atomic_bool isStop;
 };
 
@@ -146,10 +139,6 @@ extern Thread *GlobalThread;
 
 inline bool Thread::IsStop() { 
 	return isStop || isExit; 
-}
-
-inline uint64_t Thread::GetSearchDuration() const { 
-	return beginTime ? clock() - beginTime : 0; 
 }
 
 inline void Thread::Stop() {

@@ -22,7 +22,7 @@
 #define REFUTATION_DISABLE
 //#define BACKGROUND_SEARCH_DISABLE
 
-#define AI_NAME "Nyanpass #115 ponder"
+#define AI_NAME "Nyanpass #116 time3"
 
 namespace Observer {
 	typedef std::chrono::milliseconds::rep TimePoint;
@@ -53,7 +53,6 @@ namespace Observer {
 
 	// 單一盤面搜尋結果
 	extern uint64_t data[COUNT];
-	extern TimePoint start_time;
 
 	// 整局結果
 	extern uint64_t game_data[COUNT];
@@ -90,7 +89,7 @@ namespace Observer {
 	}
 
 	void StartSearching();
-	void EndSearching();
+	void EndSearching(int elpased);
 	void GameStart();
 	void GameOver(bool _winner, bool isSwap);
 

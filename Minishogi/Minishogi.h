@@ -166,7 +166,6 @@ inline bool Minishogi::IsInChecked() const {
 	return stateHist[ply].checker_bb;
 }
 
-// 移動完有沒有被將軍
 inline bool Minishogi::IsInCheckedAfter(Move m) const {
 	return IsInCheckedAfter(from_sq(m), to_sq(m));
 }

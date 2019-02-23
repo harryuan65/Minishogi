@@ -5,6 +5,7 @@
 #include "Observer.h"
 #include "usi.h"
 #include "EvaluateLearn.h"
+#include "TimeManage.h"
 
 namespace fs = std::experimental::filesystem;
 using namespace std;
@@ -31,7 +32,7 @@ struct TimeTestThread : public Thread {
 			InitSearch();
 			Observer::StartSearching();
 			IDAS(rm, USI::Options["Depth"]);
-			Observer::EndSearching();
+			Observer::EndSearching(Time.Elapsed());
 
 			Observer::PrintSearchReport(cout);
 			cout << endl;
@@ -114,7 +115,7 @@ struct TimeTestThread : public Thread {
 				InitSearch();
 				Observer::StartSearching();
 				IDAS(rm, USI::Options["Depth"]);
-				Observer::EndSearching();
+				Observer::EndSearching(Time.Elapsed());
 
 				moveCorrect += r.first == rm.pv[0];
 
